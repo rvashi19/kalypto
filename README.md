@@ -16,21 +16,27 @@ When we watch a dubbed movie or video today, we often lose the "soul" of the ori
 
 ## Problem Statement & Motivation
 
-Global video content consumption continues to grow, but language remains a major accessibility barrier. Existing dubbing approaches suffer from one or more of the following limitations:
+Global video content consumption continues to grow, yet language remains a significant accessibility barrier. Crucially, content creators face a major challenge in scaling their content: to reach a different language-speaking audience, they often have to sacrifice the unique voice and personality that allows them to connect with their viewers.
 
-- Loss of emotional nuance  
-- Loss of speaker identity  
-- High cost and long production timelines  
+Existing dubbing approaches are insufficient for bridging this gap, suffering from one or more of the following limitations:
 
-Automated text-to-speech dubbing fails to preserve prosody and affect, while professional dubbing replaces the original voice entirely. Our project aims to solve this by creating an **identity and emotion-preserving speech-to-speech translation pipeline**.
+- **Disconnect with Audience:** Generic voices fail to carry the creator’s persona, making it difficult to build bond across languages.
+- **Loss of Emotional Nuance:** The subtle affect and energy of the original performance are stripped away.
+- **Loss of Speaker Identity:** The speaker's unique vocal characteristics are replaced entirely.
+- **High Cost & Latency:** Professional dubbing is too expensive and slow for the fast-paced creator economy.
+
+Automated text-to-speech dubbing fails to preserve prosody and affect, while professional dubbing replaces the original voice entirely. Our project aims to solve this by creating an identity and emotion-preserving speech-to-speech translation pipeline.
 
 The system focuses on preserving:
-- **Who is speaking** (voiceprint)
-- **How they feel** (emotion, energy, timing)
-- **What they say** (accurate, context-aware translation)
+1. **Who is speaking** (Voiceprint and Identity)
+2. **How they feel** (Emotion, Energy, and Timing)
+3. **What they say** (Accurate, Context-Aware Translation)
 
-Target applications include educational content, interviews, documentaries, accessibility tools, and user-generated media.
-
+### Target Applications
+- **User-Generated Media:** Enabling creators to connect natively with global audiences.
+- Educational content and tutorials.
+- Interviews and documentaries.
+- Accessibility tools.
 ---
 
 ## System Architecture & Workflow
