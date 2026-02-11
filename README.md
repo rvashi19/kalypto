@@ -27,7 +27,6 @@ AI & Cloud Services
 1. OpenAI (Whisper & GPT-4o): Used for precise timestamped transcription and nuance-aware translation.
 2. ElevenLabs: State-of-the-art voice cloning and Speech-to-Speech (STS) synthesis to preserve prosody and emotion.              
 
-
 Project Workflow
 1. The Input Phase
 Upload: The user uploads a video file (MP4/MOV) via the React frontend.
