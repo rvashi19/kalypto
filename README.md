@@ -1,117 +1,151 @@
-Project Title: SP14 Emotion-Preserving AI Video Dubbing System
+# SP14 Emotion-Preserving AI Video Dubbing System
 
-Team Members: Nishant Sai Challa - nishantsaichalla@uvic.ca
-              Dharun Kosanam - dharunk@uvic.ca
-              Ravi Vashi - Rvashi@uvic.ca
+## Project Overview
 
+When we watch a dubbed movie or video today, we often lose the *soul* of the original performance. Traditional AI dubbing systems produce flat, robotic speech, while human dubbing replaces the original speaker’s voice entirely.
 
-Project Statement :
-When we watch a dubbed movie or video today, we often lose the "soul" of the original performance. Standard AI dubbing sounds like a robot reading a script, while human dubbing replaces the original actor’s voice entirely. Our project, the Emotion-Preserving AI Video Dubbing System, solves this by creating a middle ground. We are building a tool that "listens" to the original speaker to learn two things: exactly what their voice sounds like (their unique vocal fingerprint) and how they are feeling (the excitement, sadness, or anger in their tone). The system then translates their words into English and speaks them back using that same original voice, keeping the same emotional energy and timing. Essentially, we want to make it sound as if the person in the video suddenly learned how to speak English perfectly, keeping their personality and feelings completely intact.
+The **Emotion-Preserving AI Video Dubbing System** bridges this gap by analyzing the original speaker’s **voice identity** and **emotional prosody**, translating the speech into English, and re-synthesizing it so that it sounds as if the original speaker is speaking English naturally—**with their personality, timing, and emotional energy preserved**.
 
+This project is developed as part of **CSC 475 – Music Information Retrieval (University of Victoria)**. The README serves as the **design and requirement specification**, and will be expanded into the final project report and later formatted as an ISMIR paper in LaTeX.
 
+---
 
-Technical Stack:
-Our system is built on a modular AI pipeline to ensure high performance and scalability.
+## Team Members
 
-Frontend (The User Interface)
-1. React 18+ & Vite: For a fast, responsive single-page application.
-2. Tailwind CSS: For a modern, premium "SaaS-style" dashboard.
-3. Axios: For handling asynchronous API communication and video upload tracking.
+- **Nishant Sai Challa** – nishantsaichalla@uvic.ca  
+- **Dharun Kosanam** – dharunk@uvic.ca  
+- **Ravi Vashi** – rvashi@uvic.ca  
 
-Backend (The Brains)
-1. FastAPI (Python): High-performance web framework for handling concurrent AI requests.
-2. Uvicorn: ASGI server for production-grade speed.
-3. FFmpeg: The core engine for video/audio manipulation, including audio extraction, time-stretching, and final muxing.
+---
 
-AI & Cloud Services
-1. OpenAI (Whisper & GPT-4o): Used for precise timestamped transcription and nuance-aware translation.
-2. ElevenLabs: State-of-the-art voice cloning and Speech-to-Speech (STS) synthesis to preserve prosody and emotion.              
+## Problem Statement & Motivation
 
-Project Workflow
-1. The Input Phase
-Upload: The user uploads a video file (MP4/MOV) via the React frontend.
-Preprocessing: The FastAPI backend receives the file and uses FFmpeg to separate the audio track from the video.
+Global video content consumption continues to grow, but language remains a major accessibility barrier. Existing dubbing approaches suffer from one or more of the following limitations:
 
-2. The Intelligence Phase (The AI Loop)
-Transcription: The audio is sent to OpenAI Whisper (or similar) to transcribe the original speech into text with precise timestamps.
-Translation: The text is translated into English while maintaining the original meaning and sentence length.
-Vocal Analysis: The system analyzes the original audio to extract the speaker's unique "voiceprint" and emotional cues (pitch, speed, and intensity).
+- Loss of emotional nuance  
+- Loss of speaker identity  
+- High cost and long production timelines  
 
-3. The Synthesis Phase
-Voice Cloning: Using ElevenLabs, we generate the English speech. Instead of a generic voice, we use the extracted "voiceprint" so the English words sound like the original speaker.
-Emotion Injection: We apply the captured emotional markers to the synthesized speech so the tone (joy, anger, etc.) matches the visual performance.
+Automated text-to-speech dubbing fails to preserve prosody and affect, while professional dubbing replaces the original voice entirely. Our project aims to solve this by creating an **identity- and emotion-preserving speech-to-speech translation pipeline**.
 
-4. The Assembly Phase
-Audio Mastering: FFmpeg adjusts the speed of the new English audio to match the original lip movements (Time-Stretching).
-Final Render: The new English audio is merged back with the original video, replacing the old track.
-Delivery: The final "Identity-Preserved" dubbed video is served back to the user on the Tailwind-styled dashboard for download and side-by-side comparison.
+The system focuses on preserving:
+- **Who is speaking** (voiceprint)
+- **How they feel** (emotion, energy, timing)
+- **What they say** (accurate, context-aware translation)
 
-## Prerequisites
+Target applications include educational content, interviews, documentaries, accessibility tools, and user-generated media.
 
-- **Python 3.8+**
-- **Node.js & npm**
-- **FFmpeg** (Recommended for real processing, but mocked in this prototype)
+---
 
-> **Note on FFmpeg**: The current `pipeline.py` mocks the heavy video processing to run without FFmpeg for demonstration purposes. To enable real video processing, you will need to install FFmpeg, add it to your system PATH, and uncomment the actual processing logic in `backend/services/pipeline.py`.
+## System Architecture & Workflow
 
-## Project Structure
+### 1. Input Phase
+- User uploads a video file (MP4/MOV) via a React frontend.
+- FastAPI backend receives the file.
+- FFmpeg extracts the audio track.
 
-- `backend/`: FastAPI application handling video uploads and processing (Mocked).
-- `frontend/`: React application for the user interface.
+### 2. Intelligence Phase (AI Loop)
+- **Transcription:** OpenAI Whisper generates timestamped text.
+- **Translation:** GPT-4o translates speech into English while preserving meaning and sentence length.
+- **Vocal & Emotion Analysis:**
+  - Speaker voice characteristics (“voiceprint”)
+  - Emotional cues (pitch, speed, intensity, energy)
 
-## Getting Started
+### 3. Synthesis Phase
+- **Voice Cloning:** ElevenLabs generates English speech using the cloned voice of the original speaker.
+- **Emotion Injection:** Emotional parameters are applied so the tone (joy, anger, sadness, etc.) matches the original delivery.
 
-### 1. Backend Setup
+### 4. Assembly Phase
+- FFmpeg time-stretches synthesized audio to match original timing.
+- The new English audio replaces the original audio track.
+- The final dubbed video is returned to the user for download and comparison.
 
-Open a terminal in the `backend` directory:
+---
 
-```bash
-cd backend
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
+## Technical Stack
 
-pip install -r requirements.txt
-```
+### Frontend
+- React 18+ & Vite
+- Tailwind CSS
+- Axios
 
-Start the backend server:
+### Backend
+- FastAPI (Python)
+- Uvicorn
+- FFmpeg
 
-```bash
-uvicorn main:app --reload
-```
+### AI & Cloud Services
+- OpenAI Whisper (speech-to-text)
+- OpenAI GPT-4o (translation)
+- ElevenLabs (voice cloning & speech synthesis)
 
-The backend runs on `http://localhost:8000`.
+---
 
-### 2. Frontend Setup
+## Tools, Datasets & Related Work
 
-Open a new terminal in the `frontend` directory:
+### Datasets
+- **RAVDESS** – Emotional speech dataset for emotion recognition
+- **ESD** – Multilingual emotional speech dataset
+- **Mozilla Common Voice** – Large-scale multilingual speech corpus
+- **Custom Test Corpus** – Curated real-world video clips
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### Research Areas
+- Speech Emotion Recognition (SER)
+- Expressive Text-to-Speech (TTS)
+- Voice Cloning & Speaker Embeddings
+- Cross-lingual Speech Translation
+- Prosody and Emotion Transfer
 
-The frontend runs on `http://localhost:5173`.
+---
 
-## Usage
+## Project Timeline
 
-1. Open `http://localhost:5173` in your browser.
-2. Upload a short video file.
-3. Watch the progress bars as the system "processes" your video.
-4. Once complete, compare the "Original", "Prototyped Generic", "Cloned", and "Emotion" outputs (Currently all copies of the original in this mock).
+| Phase | Objectives |
+|------|-----------|
+| Weeks 1–2 | Literature review, dataset setup, audio extraction pipeline |
+| Weeks 3–4 | Transcription and translation integration |
+| Weeks 5–6 | Voice cloning and emotion analysis |
+| Weeks 7–8 | End-to-end evaluation and refinement |
+| Week 9 | Final report (ISMIR format) and presentation |
 
-## Configuration
+---
 
-To enable real AI features (if you modify the code):
+## Individual Objectives & Performance Indicators
 
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Add your OpenAI and ElevenLabs API keys.
-3. Update `backend/services/pipeline.py` to use `openai` and `elevenlabs-api` calls instead of `time.sleep`.
+### Nishant Sai Challa
 
-## Troubleshooting
+**Objective:** Core backend pipeline and AI integration  
 
-- **Upload Fails**: Ensure the backend is running on port 8000.
-- **Playback Fails**: ensure the backend is running so it can serve the video files from `uploads` and `outputs`.
+- **PI1 (Basic):** Implement FFmpeg-based audio extraction  
+- **PI2 (Basic):** Integrate Whisper transcription  
+- **PI3 (Expected):** Integrate GPT-4o translation  
+- **PI4 (Expected):** Implement FastAPI orchestration and error handling  
+- **PI5 (Advanced):** Optimize pipeline latency via parallel processing  
+
+---
+
+### Dharun Kosanam
+
+**Objective:** Emotion analysis and synthesis quality  
+
+- **PI1 (Basic):** Extract pitch and energy features from speech  
+- **PI2 (Basic):** Implement baseline TTS comparison  
+- **PI3 (Expected):** Integrate emotion classification model  
+- **PI4 (Expected):** Apply emotion-aware synthesis parameters  
+- **PI5 (Advanced):** Quantitatively evaluate emotion preservation  
+
+---
+
+### Ravi Vashi
+
+**Objective:** Frontend development, evaluation, and usability  
+
+- **PI1 (Basic):** Build React-based video upload interface  
+- **PI2 (Basic):** Implement video comparison player  
+- **PI3 (Expected):** Visualize processing progress and pipeline stages  
+- **PI4 (Expected):** Conduct user testing and collect feedback  
+- **PI5 (Advanced):** Design evaluation dashboard for side-by-side comparison  
+
+---
+
+## References
