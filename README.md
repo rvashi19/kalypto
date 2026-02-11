@@ -149,7 +149,23 @@ The system focuses on preserving:
 - **PI5 (Advanced):** Design evaluation dashboard for side-by-side comparison  
 
 ---
-
 ## References
+
+1.  **Ericsson.** (2025). *Ericsson Mobility Report: November 2025*. Ericsson. [https://www.ericsson.com/4aca6f/assets/local/reports-papers/mobility-report/documents/2025/ericsson-mobility-report-november-2025.pdf](https://www.ericsson.com/4aca6f/assets/local/reports-papers/mobility-report/documents/2025/ericsson-mobility-report-november-2025.pdf)
+2.  **Park, S., Park, S., You, T., & Yun, J.** (2025). Social links vs. language barriers: Decoding the global spread of streaming content. *Humanities and Social Sciences Communications*, 12, Article 76. [https://doi.org/10.1057/s41599-025-04400-2](https://doi.org/10.1057/s41599-025-04400-2)
+3.  **Chaume, F.** (2007). Dubbing practices in Europe: Localisation beats globalisation. *Linguistica Antverpiensia, New Series – Themes in Translation Studies*, 6. [https://doi.org/10.52034/lanstts.v6i.188](https://doi.org/10.52034/lanstts.v6i.188)
+4.  **Di Gangi, M., Rossenbach, N., Pérez, A., Bahar, P., Beck, E., Wilken, P., & Matusov, E.** (2022). Automatic video dubbing at AppTek. In *Proceedings of the 23rd Annual Conference of the European Association for Machine Translation (EAMT 2022)* (pp. 351–352). European Association for Machine Translation. [https://aclanthology.org/2022.eamt-1.65/](https://aclanthology.org/2022.eamt-1.65/)
+5.  **Brannon, W., Virkar, Y., & Thompson, B.** (2023). Dubbing in practice: A large scale study of human localization with insights for automatic dubbing. *Transactions of the Association for Computational Linguistics*, 11, 419–435. [https://doi.org/10.1162/tacl_a_00551](https://doi.org/10.1162/tacl_a_00551)
+6.  **Jia, Y., et al.** (2018). Transfer learning from speaker verification to multispeaker text-to-speech synthesis. In *Advances in Neural Information Processing Systems 31 (NeurIPS 2018)*. NeurIPS. [https://proceedings.neurips.cc/paper/2018/hash/6832a7b24bc06775d02b7406880b93fc-Abstract.html](https://proceedings.neurips.cc/paper/2018/hash/6832a7b24bc06775d02b7406880b93fc-Abstract.html)
+7.  **Barakat, H., Türk, O., & Demiroglu, C.** (2024). Deep learning-based expressive speech synthesis: A systematic review of approaches, challenges, and resources. *EURASIP Journal on Audio, Speech, and Music Processing*, 2024, Article 11. SpringerOpen. [https://doi.org/10.1186/s13636-024-00329-7](https://doi.org/10.1186/s13636-024-00329-7)
+8.  **Radford, A., Kim, J. W., Xu, T., Brockman, G., McLeavey, C., & Sutskever, I.** (2023). Robust speech recognition via large-scale weak supervision. In *Proceedings of the 40th International Conference on Machine Learning (ICML 2023)*. Proceedings of Machine Learning Research. [https://proceedings.mlr.press/v202/radford23a.html](https://proceedings.mlr.press/v202/radford23a.html)
+9.  **OpenAI.** (2024). Voice translation into different languages using GPT-4o. *OpenAI Developers Cookbook*. [https://developers.openai.com/cookbook/examples/voice_solutions/voice_translation_into_different_languages_using_gpt-4o/](https://developers.openai.com/cookbook/examples/voice_solutions/voice_translation_into_different_languages_using_gpt-4o/)
+10. **Jia, Y., Tadmor Ramanovich, M., Remez, T., & Pomerantz, R.** (2021). Translatotron 2: High-quality direct speech-to-speech translation with voice preservation. *arXiv*. [https://arxiv.org/abs/2107.08661](https://arxiv.org/abs/2107.08661)
+11. **ElevenLabs.** (n.d.). Voice cloning. *ElevenLabs Documentation*. [https://elevenlabs.io/docs/eleven-creative/voices/voice-cloning](https://elevenlabs.io/docs/eleven-creative/voices/voice-cloning)
+12. **ElevenLabs.** (n.d.). Edit voice settings (Update voice settings API). *ElevenLabs API Reference*. [https://elevenlabs.io/docs/api-reference/voices/settings/update](https://elevenlabs.io/docs/api-reference/voices/settings/update)
+13. **FFmpeg Developers.** (n.d.). FFmpeg filters documentation. *FFmpeg Project*. [https://ffmpeg.org/ffmpeg-filters.html](https://ffmpeg.org/ffmpeg-filters.html)
+14. **Livingstone, S. R., & Russo, F. A.** (2018). The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS): A dynamic, multimodal set of facial and vocal expressions in North American English. *PLOS ONE*, 13(5), e0196391. [https://doi.org/10.1371/journal.pone.0196391](https://doi.org/10.1371/journal.pone.0196391)
+15. **Zhou, K., Sisman, B., Liu, R., & Li, H.** (2021). Emotional voice conversion: Theory, databases and ESD. *arXiv*. [https://arxiv.org/abs/2105.14762](https://arxiv.org/abs/2105.14762)
+16. **Ardila, R., et al.** (2020). Common voice: A massively-multilingual speech corpus. In *Proceedings of the Twelfth Language Resources and Evaluation Conference (LREC 2020)*. European Language Resources Association. [https://aclanthology.org/2020.lrec-1.520/](https://aclanthology.org/2020.lrec-1.520/)
 
 
