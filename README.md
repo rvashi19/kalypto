@@ -2,11 +2,7 @@
 
 ## Project Overview
 
-When we watch a dubbed movie or video today, we often lose the *soul* of the original performance. Traditional AI dubbing systems produce flat, robotic speech, while human dubbing replaces the original speaker’s voice entirely.
-
-The **Emotion-Preserving AI Video Dubbing System** bridges this gap by analyzing the original speaker’s **voice identity** and **emotional prosody**, translating the speech into English, and re-synthesizing it so that it sounds as if the original speaker is speaking English naturally—**with their personality, timing, and emotional energy preserved**.
-
-This project is developed as part of **CSC 475 – Music Information Retrieval (University of Victoria)**. The README serves as the **design and requirement specification**, and will be expanded into the final project report and later formatted as an ISMIR paper in LaTeX.
+When we watch a dubbed movie or video today, we often lose the "soul" of the original performance. Standard AI dubbing sounds robotic, while human dubbing replaces the original actor’s voice entirely. Our project, the Emotion-Preserving AI Video Dubbing System, creates a middle ground. We are building a tool that "listens" to the original speaker to learn two things: exactly what their voice sounds like and how they are feeling (the excitement, sadness, or anger in their tone). The system then translates their words into English and speaks them back using that same original voice, keeping the same emotional energy and timing.
 
 ---
 
@@ -26,7 +22,7 @@ Global video content consumption continues to grow, but language remains a major
 - Loss of speaker identity  
 - High cost and long production timelines  
 
-Automated text-to-speech dubbing fails to preserve prosody and affect, while professional dubbing replaces the original voice entirely. Our project aims to solve this by creating an **identity- and emotion-preserving speech-to-speech translation pipeline**.
+Automated text-to-speech dubbing fails to preserve prosody and affect, while professional dubbing replaces the original voice entirely. Our project aims to solve this by creating an **identity and emotion-preserving speech-to-speech translation pipeline**.
 
 The system focuses on preserving:
 - **Who is speaking** (voiceprint)
@@ -67,7 +63,6 @@ Target applications include educational content, interviews, documentaries, acce
 ### Frontend
 - React 18+ & Vite
 - Tailwind CSS
-- Axios
 
 ### Backend
 - FastAPI (Python)
@@ -76,6 +71,7 @@ Target applications include educational content, interviews, documentaries, acce
 
 ### AI & Cloud Services
 - OpenAI Whisper (speech-to-text)
+- AWS
 - OpenAI GPT-4o (translation)
 - ElevenLabs (voice cloning & speech synthesis)
 
@@ -106,7 +102,7 @@ Target applications include educational content, interviews, documentaries, acce
 | Weeks 3–4 | Transcription and translation integration |
 | Weeks 5–6 | Voice cloning and emotion analysis |
 | Weeks 7–8 | End-to-end evaluation and refinement |
-| Week 9 | Final report (ISMIR format) and presentation |
+| Week 9 | Final report  and presentation |
 
 ---
 
@@ -149,3 +145,5 @@ Target applications include educational content, interviews, documentaries, acce
 ---
 
 ## References
+
+
