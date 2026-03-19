@@ -1,0 +1,30 @@
+{
+  "status": "completed",
+  "raw_metrics": {
+    "pitch_correlation": -0.0385,
+    "energy_correlation": -0.0619,
+    "mcd_score": 195.8906
+  },
+  "aligned_metrics": {
+    "pitch_correlation": null,
+    "energy_correlation": null
+  },
+  "invalid_or_omitted_metrics": {
+    "aligned_pitch_correlation": "Signal lacks variance after DTW structural mapping.",
+    "aligned_energy_correlation": "Energy array lacks variance after DTW structural mapping."
+  },
+  "source_duration_s": 18.58,
+  "dubbed_duration_s": 28.98,
+  "duration_ratio": 1.56,
+  "valence": 0.33875549098692415,
+  "arousal": 1.0,
+  "alignment_info": {
+    "status": "success",
+    "dtw_normalized_cost": 102.5202,
+    "source_frames": 581,
+    "dubbed_frames": 906,
+    "notes": "Cost represents structural MFCC distance. Lower is better aligned."
+  },
+  "is_demo_run": false,
+  "run_validity": "Synthetic Baseline"
+}

@@ -1,0 +1,54 @@
+{
+  "status": "success",
+  "segments": [
+    {
+      "id": 0,
+      "start_s": 0.064,
+      "end_s": 4.512,
+      "duration": 4.448,
+      "file": "segment_0.wav"
+    },
+    {
+      "id": 1,
+      "start_s": 4.896,
+      "end_s": 9.408,
+      "duration": 4.512,
+      "file": "segment_1.wav"
+    },
+    {
+      "id": 2,
+      "start_s": 9.472,
+      "end_s": 10.176,
+      "duration": 0.704,
+      "file": "segment_2.wav"
+    },
+    {
+      "id": 3,
+      "start_s": 10.24,
+      "end_s": 10.88,
+      "duration": 0.64,
+      "file": "segment_3.wav"
+    },
+    {
+      "id": 4,
+      "start_s": 11.616,
+      "end_s": 16.736,
+      "duration": 5.12,
+      "file": "segment_4.wav"
+    },
+    {
+      "id": 5,
+      "start_s": 16.768,
+      "end_s": 17.28,
+      "duration": 0.512,
+      "file": "segment_5.wav"
+    },
+    {
+      "id": 6,
+      "start_s": 17.664,
+      "end_s": 18.336,
+      "duration": 0.672,
+      "file": "segment_6.wav"
+    }
+  ]
+}

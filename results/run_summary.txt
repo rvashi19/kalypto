@@ -1,0 +1,14 @@
+=== PIPELINE RUN SUMMARY ===
+Input Used: C:\Users\raviv\OneDrive\Desktop\beta\real_human_speech.wav (Detected Profile: Synthetic Speech / TTS)
+Transcript Mode: Real Audio Pipeline
+Run Validity: Synthetic Baseline
+Segments assembled natively: 7
+Alignment Computed: success (Cost: 102.5202)
+--- Metrics ---
+Raw Pitch Correlation: -0.0385
+Aligned Pitch Correlation: None
+Raw Energy Correlation: -0.0619
+Aligned Energy Correlation: None
+MCD Score: 195.8906
+---
+Major Limitations: Emotion mapping is heuristic. Time-warping waveform reconstruction not yet applied, but structural contours are aligned mathematically.

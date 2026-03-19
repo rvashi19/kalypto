@@ -1,33 +1,6 @@
-<<<<<<< HEAD
-# Dependencies
-node_modules/
-venv/
-env/
-.env
-
-# Python
-__pycache__/
-*.py[cod]
-*.so
-
-# Distribution / Packaging
-dist/
-build/
-
-# IDEs
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Media (optional, but good if they are large temporary files, keeping them for now as they seem part of the project)
-# *.mp4
-# *.aac
-=======
 .env
 *.env
+# results/ (Currently allowing for curated baseline artifacts)
 __pycache__/
 *.pyc
 venv/
@@ -35,7 +8,7 @@ venv/
 backend/venv/
 backend/outputs/
 backend/uploads/
-results/
+outputs/
 out*.txt
 tree.txt
 task.md
@@ -45,4 +18,3 @@ Thumbs.db
 node_modules/
 dist/
 build/
->>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)

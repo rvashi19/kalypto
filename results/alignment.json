@@ -1,0 +1,7 @@
+{
+  "status": "success",
+  "dtw_normalized_cost": 102.5202,
+  "source_frames": 581,
+  "dubbed_frames": 906,
+  "notes": "Cost represents structural MFCC distance. Lower is better aligned."
+}
