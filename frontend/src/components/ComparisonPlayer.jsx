@@ -99,7 +99,50 @@ const ComparisonPlayer = ({ results }) => {
                         )}
                     </button>
                 ))}
+<<<<<<< HEAD
             </div>
+=======
+        </div>
+
+            {/* MIR Evaluation Section */}
+            {results.metrics && (
+                <div className="mt-8 bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50 backdrop-blur-sm animate-fade-in-up">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Quantitative MIR Evaluation
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <p className="text-sm text-slate-400 font-medium mb-1">MCD Score (Distortion)</p>
+                            <p className="text-2xl font-bold text-white">{results.metrics.mcd_score.toFixed(2)}</p>
+                            <p className="text-xs text-slate-500 mt-1">Lower is better (closer voiceprint)</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <p className="text-sm text-slate-400 font-medium mb-1">Pitch Correlation</p>
+                            <p className="text-2xl font-bold text-blue-400">{(results.metrics.pitch_correlation * 100).toFixed(1)}%</p>
+                            <p className="text-xs text-slate-500 mt-1">DTW-aligned F0 contour match</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <p className="text-sm text-slate-400 font-medium mb-1">Energy Correlation</p>
+                            <p className="text-2xl font-bold text-violet-400">{(results.metrics.energy_correlation * 100).toFixed(1)}%</p>
+                            <p className="text-xs text-slate-500 mt-1">RMS envelope rhythm match</p>
+                        </div>
+                    </div>
+
+                    {results.plot_url && (
+                        <div className="mt-6">
+                            <p className="text-sm text-slate-400 font-medium mb-3">Prosody Alignment (Original vs. Dubbed)</p>
+                            <div className="bg-white rounded-xl overflow-hidden shadow-inner border border-slate-700">
+                                <img src={results.plot_url} alt="Prosody Match Plot" className="w-full h-auto object-cover" />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
         </div>
     );
 };

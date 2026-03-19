@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SP14 Emotion-Preserving AI Video Dubbing System
 
 ## Project Overview
@@ -169,3 +170,40 @@ The system focuses on preserving:
 16. **Ardila, R., et al.** (2020). Common voice: A massively-multilingual speech corpus. In *Proceedings of the Twelfth Language Resources and Evaluation Conference (LREC 2020)*. European Language Resources Association. [https://aclanthology.org/2020.lrec-1.520/](https://aclanthology.org/2020.lrec-1.520/)
 
 
+=======
+# Emotion-Preserving AI Video Dubbing System
+
+This repository provides the core backend architecture and a FastAPI/React prototyping setup for an Emotion-Preserving AI Video Dubbing System. 
+
+## Final Project Pipeline Architecture
+The system utilizes a strictly decoupled, modular Python package pipeline (`backend/pipeline/`). It processes audio securely while explicitly auditing execution stages:
+
+- `ingest.py`: File ingestion and FFmpeg demuxing (includes robust pitch-variance checks rejecting flat test tones).
+- `preprocess.py`: Performs true dynamic silence segmentation utilizing `librosa.effects.split`.
+- `analyze.py`: Core MIR feature extraction (`librosa` F0, RMS, MFCC, Centroid).
+- `emotion_map.py`: Dedicated layer mapping baseline acoustic markers to a continuous Valence-Arousal heuristical representation.
+- `transcribe_translate.py`: Text pipeline utilizing OpenAI Whisper and GPTs, fortified with offline fallback stubs.
+- `synthesize.py`: TwelveLabs / gTTS speech generation layered over emotion constraints.
+- `align.py`: Computes normalized Dynamic Time Warping (DTW) distance matrices across MFCC structures.
+- `evaluate.py`: Statistical verification (Pearson R, MCD) explicitly protected against `NaN`/Zero-variance corruption.
+- `orchestrator.py`: Iterates dynamically segmented chunks sequentially, generating localized `run_summary.txt` validations.
+
+## Running the Core Pipeline
+
+You can run the full, end-to-end backbone pipeline via the CLI entry wrapper.
+**Important**: The default `speech_sample.wav` is a **Synthetic Baseline** for mechanical testing only. For a truly scientifically valid experiment, you must provide a real human `.mp4` or `.wav` via `--input`. Output evaluation metrics explicitly tag synthetic/fallback runs as `Invalid/Demo` or `Synthetic Baseline` to preserve experimental honesty.
+
+```bash
+# Process explicitly
+.\backend\venv\Scripts\python.exe run_pipeline.py --input path/to/real_speech.mp4
+```
+
+### Artifact Outputs (`results/`)
+Successful runs will dump reproducible metrics:
+- `source_audio.wav` / `dubbed_audio.wav`
+- `transcription.txt` / `translation.txt`
+- `pitch_plot.png`, `energy_plot.png`, `comparison_plot.png`
+- `pipeline_results.json`: Execution runbook containing explicit correlations (null-safe) and DTW alignment costs.
+- `segments.json`: Audio slice boundaries.
+- `run_summary.txt`: Human-readable logging.
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)

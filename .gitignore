@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 venv/
@@ -24,3 +25,24 @@ Thumbs.db
 # Media (optional, but good if they are large temporary files, keeping them for now as they seem part of the project)
 # *.mp4
 # *.aac
+=======
+.env
+*.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+backend/venv/
+backend/outputs/
+backend/uploads/
+results/
+out*.txt
+tree.txt
+task.md
+implementation_plan.md
+.DS_Store
+Thumbs.db
+node_modules/
+dist/
+build/
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)

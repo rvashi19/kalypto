@@ -6,3 +6,12 @@ openai
 requests
 python-dotenv
 elevenlabs
+<<<<<<< HEAD
+=======
+librosa
+scipy
+matplotlib
+soundfile
+gTTS
+numpy
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)

@@ -56,6 +56,23 @@ def process_video_job(job_id: str, file_path: str, jobs: Dict):
             mock_flow(job_id, file_path, output_dir, base_url, jobs)
             return
 
+<<<<<<< HEAD
+=======
+        # 1.5 MIR FEATURE EXTRACTION (Acoustic Analysis)
+        jobs[job_id]["progress"] = 20.0
+        jobs[job_id]["message"] = "Extracting MIR Features & Rhythm Mapping..."
+        try:
+            from .mir_analysis import extract_features, compute_valence_arousal, evaluate_prosody
+            features, y_aud, sr_aud = extract_features(audio_path)
+            valence, arousal = compute_valence_arousal(features)
+            jobs[job_id]["valence"] = valence
+            jobs[job_id]["arousal"] = arousal
+            print(f"Calculated Valence-Arousal: {valence:.2f}, {arousal:.2f}")
+        except Exception as e:
+            print(f"MIR Feature Extraction failed: {e}")
+            valence, arousal = 0.5, 0.5
+
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
         # 2. TRANSCRIBE (Whisper)
         jobs[job_id]["progress"] = 30.0
         jobs[job_id]["message"] = "Transcribing..."
@@ -127,10 +144,28 @@ def process_video_job(job_id: str, file_path: str, jobs: Dict):
                 )
                 save_audio_generator(audio_cloned, cloned_audio)
                 
+<<<<<<< HEAD
                 audio_emotion = elevenlabs_client.generate(
                     text=translated_text,
                     voice="Antoni", # Another voice
                     model="eleven_multilingual_v2" # Better for emotion
+=======
+                # Let's map continuous Valence/Arousal to TTS params
+                # Stability (high arousal = lower stability/more dynamic)
+                stability = max(0.1, 1.0 - arousal)
+                # Clarity / style exaggeration (high valence = higher similarity)
+                similarity_boost = max(0.1, valence)
+
+                from elevenlabs import Voice, VoiceSettings
+                audio_emotion = elevenlabs_client.generate(
+                    text=translated_text,
+                    voice=Voice(
+                        voice_id="pNInz6obpgDQGcFmaJgB", # random voice ID for Adam
+                        settings=VoiceSettings(stability=stability, similarity_boost=similarity_boost, style=arousal, use_speaker_boost=True)
+                    ),
+                    model="eleven_multilingual_v2" # Better for emotion
+
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
                 )
                 save_audio_generator(audio_emotion, emotion_audio)
 
@@ -170,15 +205,42 @@ def process_video_job(job_id: str, file_path: str, jobs: Dict):
         merge_audio(file_path, cloned_audio, f"{output_dir}/cloned.mp4")
         merge_audio(file_path, emotion_audio, f"{output_dir}/emotion.mp4")
         
+<<<<<<< HEAD
+=======
+        # 5.5 QUANTITATIVE MIR EVALUATION
+        jobs[job_id]["progress"] = 90.0
+        jobs[job_id]["message"] = "Evaluating Prosody Transfer..."
+        try:
+            from .mir_analysis import evaluate_prosody
+            eval_metrics = evaluate_prosody(audio_path, emotion_audio, output_dir)
+            jobs[job_id]["metrics"] = eval_metrics
+        except Exception as e:
+            print(f"Prosody evaluation failed: {e}")
+            jobs[job_id]["metrics"] = None
+        
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
         # 6. FINALIZE
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["progress"] = 100.0
         jobs[job_id]["message"] = "Done"
+<<<<<<< HEAD
+=======
+        
+        # Determine plot URL if it exists
+        plot_url = f"{base_url}/{output_dir}/prosody_match.png" if getattr(jobs[job_id], 'metrics', None) and jobs[job_id]["metrics"].get("plot_path") else None
+
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
         jobs[job_id]["results"] = {
             "original": f"{base_url}/{file_path.replace(os.sep, '/')}",
             "generic": f"{base_url}/{output_dir}/generic.mp4",
             "cloned": f"{base_url}/{output_dir}/cloned.mp4",
+<<<<<<< HEAD
             "emotion": f"{base_url}/{output_dir}/emotion.mp4"
+=======
+            "emotion": f"{base_url}/{output_dir}/emotion.mp4",
+            "plot_url": plot_url,
+            "metrics": jobs[job_id].get("metrics")
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
         }
         
     except Exception as e:
@@ -208,5 +270,11 @@ def mock_flow(job_id, file_path, output_dir, base_url, jobs):
         "original": f"{base_url}/{file_path.replace(os.sep, '/')}",
         "generic": f"{base_url}/{output_dir}/generic.mp4",
         "cloned": f"{base_url}/{output_dir}/cloned.mp4",
+<<<<<<< HEAD
         "emotion": f"{base_url}/{output_dir}/emotion.mp4"
+=======
+        "emotion": f"{base_url}/{output_dir}/emotion.mp4",
+        "plot_url": None,
+        "metrics": None
+>>>>>>> c5552c8 (Initial Milestone: Modular refactor complete. Implements full pipeline intelligence decoupled from services.)
     }
