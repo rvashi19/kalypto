@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import UploadArea from './components/UploadArea';
 import ComparisonPlayer from './components/ComparisonPlayer';
-import { uploadVideo, getJobStatus } from './services/api';
+import { uploadVideo, getJobStatus, startDemoJob } from './services/api';
 
 function App() {
   const [jobId, setJobId] = useState(null);
@@ -10,15 +10,33 @@ function App() {
   const [message, setMessage] = useState('');
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [targetLanguage, setTargetLanguage] = useState('English');
 
   const handleUpload = async (file) => {
     try {
-      const data = await uploadVideo(file);
+      setError(null);
+      setResults(null);
+      const data = await uploadVideo(file, targetLanguage);
       setJobId(data.job_id);
       setStatus(data.status);
+      setMessage(data.message || `Queued ${targetLanguage} dubbing job...`);
     } catch (err) {
       console.error(err);
       setError("Upload failed. Please try again.");
+    }
+  };
+
+  const handleDemo = async () => {
+    try {
+      setError(null);
+      setResults(null);
+      const data = await startDemoJob(targetLanguage);
+      setJobId(data.job_id);
+      setStatus(data.status);
+      setMessage(data.message || `Queued demo job for ${targetLanguage}...`);
+    } catch (err) {
+      console.error(err);
+      setError("Demo launch failed. Please try again.");
     }
   };
 
@@ -52,6 +70,7 @@ function App() {
     setResults(null);
     setError(null);
     setProgress(0);
+    setMessage('');
   };
 
   return (
@@ -89,7 +108,7 @@ function App() {
               Dub videos with <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">emotional intelligence</span>
             </h2>
             <p className="text-lg text-slate-400 leading-relaxed">
-              Translate your content while preserving the original speaker's identity and emotional nuances using advanced AI voice cloning.
+              Upload a clip, choose a target language, and generate a localhost dub that preserves timing, energy, and emotional delivery through MIR-guided analysis.
             </p>
           </div>
         )}
@@ -97,7 +116,13 @@ function App() {
         {/* Upload State */}
         {!jobId && (
           <div className="w-full transition-all duration-500 transform translate-y-0 opacity-100">
-            <UploadArea onUpload={handleUpload} />
+            <UploadArea
+              onUpload={handleUpload}
+              onUseDemo={handleDemo}
+              onLanguageChange={setTargetLanguage}
+              selectedLanguage={targetLanguage}
+              isUploading={status === 'queued' || status === 'processing'}
+            />
             {error && (
               <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center max-w-xl mx-auto">
                 {error}
@@ -125,6 +150,9 @@ function App() {
               <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-slate-800">
                 <div style={{ width: `${progress}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"></div>
               </div>
+              <p className="text-center text-xs uppercase tracking-[0.3em] text-slate-500 mb-3">
+                Target language: {targetLanguage}
+              </p>
               <p className="text-center text-slate-400 animate-pulse">{message || 'Initializing magic...'}</p>
             </div>
           </div>
@@ -140,12 +168,23 @@ function App() {
             </div>
             <h3 className="text-xl font-bold text-white">Something went wrong</h3>
             <p className="text-slate-400 max-w-md">{error}</p>
-            <button
-              onClick={reset}
-              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                onClick={reset}
+                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={async () => {
+                  reset();
+                  await handleDemo();
+                }}
+                className="px-6 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors"
+              >
+                Run Built-in Demo
+              </button>
+            </div>
           </div>
         )}
 
@@ -154,7 +193,9 @@ function App() {
           <div className="w-full animate-fade-in-up">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">Dubbing Complete</h2>
-              <p className="text-slate-400">Experience the difference between standard and emotion-aware synthesis.</p>
+              <p className="text-slate-400">
+                Review the original video, the {results.target_language || targetLanguage} dub, and the underlying MIR validation outputs.
+              </p>
             </div>
             <ComparisonPlayer results={results} />
           </div>

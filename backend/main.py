@@ -4,7 +4,11 @@ from api.router import api_router
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 app = FastAPI(title="Emotion-Preserving Video Dubbing API")
 
@@ -31,9 +35,9 @@ def read_root():
 
 from fastapi.staticfiles import StaticFiles
 # Mount the outputs directory to serve generated files
-os.makedirs("outputs", exist_ok=True)
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 
 # Mount the uploads directory to serve original files
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")

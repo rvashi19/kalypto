@@ -1,8 +1,47 @@
 import os
+import json
 import subprocess
 import soundfile as sf
 import librosa
 import numpy as np
+
+
+def _probe_media(input_path: str) -> dict:
+    try:
+        completed = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_streams",
+                "-show_format",
+                "-of",
+                "json",
+                os.path.abspath(input_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        payload = json.loads(completed.stdout or "{}")
+    except Exception:
+        return {"available": False, "has_audio": None, "has_video": None}
+
+    streams = payload.get("streams") or []
+    has_audio = any(stream.get("codec_type") == "audio" for stream in streams)
+    has_video = any(stream.get("codec_type") == "video" for stream in streams)
+    duration = 0.0
+    try:
+        duration = float((payload.get("format") or {}).get("duration") or 0.0)
+    except (TypeError, ValueError):
+        duration = 0.0
+
+    return {
+        "available": True,
+        "has_audio": has_audio,
+        "has_video": has_video,
+        "duration": duration,
+    }
 
 def extract_audio(input_path: str, output_dir: str, sample_rate: int = 16000) -> str:
     """Extract audio from video/audio file -> mono WAV."""
@@ -15,16 +54,27 @@ def extract_audio(input_path: str, output_dir: str, sample_rate: int = 16000) ->
     print(f"[INGEST] Processing {'audio' if is_audio_only else 'video'} from: {input_path}")
 
     try:
+        media_probe = _probe_media(abs_input)
+        if not is_audio_only and media_probe.get("available") and not media_probe.get("has_audio"):
+            raise RuntimeError(
+                "Unable to extract audio. The uploaded file does not contain an audio stream."
+            )
+
         cmd = [
             "ffmpeg", "-y", "-i", abs_input,
             "-vn", "-ac", "1", "-ar", str(sample_rate),
             "-acodec", "pcm_s16le", abs_output
         ]
-        subprocess.run(cmd, capture_output=True, check=True)
+        completed = subprocess.run(cmd, capture_output=True, text=True, check=True)
         print(f"         Extracted via FFmpeg -> {output_path}")
         _validate_speech(output_path)
         return output_path
+    except RuntimeError:
+        raise
     except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        stderr = ""
+        if isinstance(e, subprocess.CalledProcessError):
+            stderr = (e.stderr or "").strip()
         print(f"         FFmpeg failed ({e}), falling back to librosa...")
         # Fallback
         try:
@@ -34,11 +84,13 @@ def extract_audio(input_path: str, output_dir: str, sample_rate: int = 16000) ->
             _validate_speech(output_path)
             return output_path
         except Exception as ex:
+            details = stderr or str(ex)
             print(f"\n[FATAL ERROR] Could not read audio from {input_path}.")
-            print(f"              Format uncrecognized or file is corrupt. ({ex})")
-            print(f"              Please provide a valid .wav or .mp4 file containing speech.")
-            import sys
-            sys.exit(1)
+            print(f"              Format unrecognized, file corrupt, or video has no audio stream. ({details})")
+            print(f"              Please provide a valid .wav or a video file containing audible speech.")
+            raise RuntimeError(
+                "Unable to extract audio. The uploaded file may be corrupted, unsupported, or may not contain an audio stream."
+            ) from ex
     
     _validate_speech(output_path)
     return output_path

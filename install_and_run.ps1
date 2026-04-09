@@ -1,32 +1,24 @@
-# Beta Video Dubbing Version
 Write-Host "Setting up Beta Version..." -ForegroundColor Cyan
 
-# Check for Python
+$projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$backendDir = Join-Path $projectRoot "backend"
+$frontendDir = Join-Path $projectRoot "frontend"
+
 python --version
-if ($?) {
-    Write-Host "Python found." -ForegroundColor Green
-}
-else {
+if (-not $?) {
     Write-Host "Please install Python." -ForegroundColor Red
-    exit
+    exit 1
 }
 
-# Setup Backend
 Write-Host "Setting up Backend..." -ForegroundColor Yellow
-cd backend
+Set-Location $backendDir
 python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-cd ..
+& ".\venv\Scripts\python.exe" -m pip install -r requirements.txt
 
-# Setup Frontend
 Write-Host "Setting up Frontend..." -ForegroundColor Yellow
-cd frontend
+Set-Location $frontendDir
 npm install
-cd ..
 
-Write-Host "Setup Complete! Running App..." -ForegroundColor Green
-
-# Launch App
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; .\venv\Scripts\activate; uvicorn main:app --reload"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; npm run dev"
+Set-Location $projectRoot
+Write-Host "Setup complete. Launching app..." -ForegroundColor Green
+& (Join-Path $projectRoot "start_app.ps1")
