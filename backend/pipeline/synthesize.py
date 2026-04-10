@@ -242,8 +242,8 @@ def _extract_pause_plan(source_audio_path: str | None, sample_rate: int, pause_c
         gaps: list[float] = []
         for previous, following in zip(intervals[:-1], intervals[1:]):
             gap_s = float((following[0] - previous[1]) / sample_rate)
-            if gap_s >= 0.07:
-                gaps.append(float(np.clip(gap_s, 0.08, 0.26)))
+            if gap_s >= 0.05:
+                gaps.append(float(np.clip(gap_s, 0.05, 0.45)))
 
         if not gaps:
             return defaults

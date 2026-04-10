@@ -1,6 +1,6 @@
 # Emotion-Preserving AI Video Dubbing System
 
-This repository contains a local FastAPI + React application and a modular Python audio pipeline for emotion-preserving video dubbing. The current implementation emphasizes a MIR-first flow: it analyzes acoustic features from the source speech, maps them into a continuous valence/arousal space, synthesizes translated speech, time-matches the result, applies DTW-guided alignment, and remuxes the dubbed audio back into video for localhost playback.
+This repository contains a local FastAPI + React application and a modular Python audio pipeline for emotion-preserving video dubbing. The current implementation emphasizes a MIR-first (Music Information Retrieval) flow: it analyzes acoustic features from the source speech, maps them into a continuous valence/arousal space, synthesizes translated speech, **applies DSP-based emotional prosody transfer** (Dynamic EQ & Energy Envelope matching), and utilizes **RMS-weighted DTW-guided alignment** to strictly retain the source pacing before remuxing the dubbed audio back into the video without algorithmic lag.
 
 ## What the app does
 
@@ -11,9 +11,11 @@ This repository contains a local FastAPI + React application and a modular Pytho
 - Extract an acoustic fingerprint using Librosa-based MIR features
 - Estimate continuous valence/arousal values from acoustic evidence
 - Transcribe and translate speech with OpenAI when credentials are available
-- Synthesize translated speech with ElevenLabs or gTTS fallback
-- Match segment durations, assemble a dubbed timeline, and DTW-warp it onto the source timing
-- Remux the final dubbed audio into a downloadable video
+- Synthesize translated speech with ElevenLabs (StS/TTS) or gTTS fallback based on Valance/Arousal values
+- Reconstruct natural clause-pauses and apply DSP-driven **Emotional Prosody Transfer** (RMS Energy + Dynamic Spectral EQ)
+- Match segment durations and perform **RMS-Weighted Dynamic Time Warping (DTW)** for syllable-preserving pacing
+- Apply continuous soft-noise gating to eliminate timeline assembly artifacts
+- Remux the final, perfectly-synced dubbed audio into a downloadable video
 - Display MIR evaluation outputs and artifact downloads in the frontend
 
 ## Architecture
@@ -24,9 +26,10 @@ The modular source of truth lives in `backend/pipeline/`.
 - `preprocess.py`: silence-based segmentation with padding and short-segment merging
 - `analyze.py`: acoustic fingerprint extraction (`F0`, RMS, MFCCs, spectral centroid, spectral flux, onset density, syllabic-rate proxy, jitter/shimmer proxies, harmonicity proxy)
 - `emotion_map.py`: maps acoustic statistics into continuous valence/arousal
-- `transcribe_translate.py`: OpenAI transcription/translation with demo fallbacks
-- `synthesize.py`: ElevenLabs/gTTS synthesis with language-aware fallback
-- `align.py`: duration matching and DTW-guided time warping
+- `transcribe_translate.py`: Context-aware OpenAI transcription/translation with demo fallbacks
+- `synthesize.py`: ElevenLabs/gTTS synthesis with language and emotion-aware TTS guidance
+- **`prosody_transfer.py`**: The core DSP module applying continuous soft-gated noise masking, dynamic multiband EQ, and energy envelope transfers to preserve source emotion on synthetic audio.
+- `align.py`: Duration matching and **RMS-Weighted DTW-guided time warping** with local syllable-preserving constraints and post-DTW soft gating.
 - `evaluate.py`: raw vs aligned pitch/energy/MCD evaluation plus plot generation
 - `orchestrator.py`: end-to-end run coordination, artifact writing, and video remuxing
 
@@ -85,4 +88,4 @@ You can still run the modular pipeline directly:
 - Voice identity preservation is still synthesis-service dependent and not yet a full speaker-cloning research pipeline in the modular path.
 - Jitter, shimmer, and harmonicity are currently transparent MIR proxies rather than Praat-grade measurements.
 - Plot rendering is currently image-based; interactive frontend visualization can still be extended further.
-- Better VAD, richer cross-lingual prosody transfer, and stronger human-speech benchmarking remain good next steps.
+- Better Voice Activity Detection (VAD) and scaling to multi-speaker real-time separation remain good next steps.

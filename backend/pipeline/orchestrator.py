@@ -14,6 +14,7 @@ from .emotion_map import map_features_to_emotion
 from .evaluate import evaluate_metrics
 from .ingest import extract_audio
 from .preprocess import segment_audio
+from .prosody_transfer import transfer_prosody
 from .synthesize import resolve_elevenlabs_voice_profile, synthesize_speech
 from .transcribe_translate import (
     TranslationService,
@@ -693,9 +694,25 @@ class DubbingOrchestrator:
                         synthesis_info = retry_synthesis_info
                         job["translation_strategy"] = "tightened_for_timing"
 
+            # ---- Prosody transfer: match source emotion ----
+            emotional_segment_path = os.path.join(self.output_dir, f"emotional_segment_{index}.wav")
+            prosody_info = transfer_prosody(
+                source_audio_path=job["segment_path"],
+                dubbed_audio_path=timed_segment_path,
+                output_path=emotional_segment_path,
+                sample_rate=sr,
+                eq_blend=0.35, # Reduced for maximum clarity
+                energy_blend=0.45, # Keep volume dynamic but less aggressive
+            )
+            # Use the prosody-transferred version if it succeeded
+            if prosody_info.get("status") == "success" and os.path.exists(emotional_segment_path):
+                final_segment_path = emotional_segment_path
+            else:
+                final_segment_path = timed_segment_path
+
             transcripts.append(f"[Segment {index + 1}] {transcript}")
             translations.append(f"[Segment {index + 1}] {translation}")
-            timed_segments.append(timed_segment_path)
+            timed_segments.append(final_segment_path)
 
             manifest["segments"].append(
                 {
@@ -703,6 +720,7 @@ class DubbingOrchestrator:
                     "source_segment": job["segment_path"],
                     "dubbed_segment_raw": raw_segment_path,
                     "dubbed_segment_timed": timed_segment_path,
+                    "dubbed_segment_emotional": final_segment_path,
                     "start_s": round(float(job["segment_info"].get("start_s", 0.0)), 3),
                     "end_s": round(float(job["segment_info"].get("end_s", target_duration_s)), 3),
                     "source_duration_s": round(target_duration_s, 3),
@@ -717,6 +735,7 @@ class DubbingOrchestrator:
                     "features": self._feature_snapshot(segment_features),
                     "synthesis": synthesis_info,
                     "timing": timing_info,
+                    "prosody_transfer": prosody_info,
                 }
             )
 
@@ -737,19 +756,12 @@ class DubbingOrchestrator:
         self._update(78, "Assembling dubbed timeline...")
         raw_dubbed_audio = self._assemble_timeline(len(y_src), sr, timed_segments, seg_meta, manifest)
 
-        self._update(84, "Applying prosody alignment...")
+        self._update(84, "Applying prosody alignment (MIR DTW)...")
         aligned_dubbed_audio = os.path.join(self.output_dir, "dubbed_audio.wav")
-        if is_curated_demo or is_showcase_demo or len(segments) <= 1 or self._should_skip_global_alignment(manifest, quality_profile):
-            align_info = {
-                "status": "skipped",
-                "reason": "Conservative alignment mode preserved the clean synthesized dub without extra whole-track warping.",
-                "aligned_audio_path": raw_dubbed_audio,
-            }
+        # FORCE DTW execution for MIR course assignment
+        align_info = align_prosody(source_audio, raw_dubbed_audio, output_path=aligned_dubbed_audio, sample_rate=sr)
+        if align_info.get("status") == "failed" or not os.path.exists(aligned_dubbed_audio):
             aligned_dubbed_audio = raw_dubbed_audio
-        else:
-            align_info = align_prosody(source_audio, raw_dubbed_audio, output_path=aligned_dubbed_audio, sample_rate=sr)
-            if align_info.get("status") == "failed" or not os.path.exists(aligned_dubbed_audio):
-                aligned_dubbed_audio = raw_dubbed_audio
 
         self._update(91, "Evaluating prosody transfer...")
         metrics = evaluate_metrics(
