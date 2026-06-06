@@ -112,6 +112,37 @@ pnpm lint
 pnpm typecheck
 ```
 
+## Render deployment
+
+This repo now includes a root-level `render.yaml` Blueprint for Render.
+
+What it provisions:
+
+- `kalypto-postgres` as Render Postgres
+- `kalypto-redis` as Render Key Value
+- `kalypto-api` as a Docker-based web service
+- `kalypto-web` as a static site
+
+What you still enter manually during the first Blueprint import:
+
+- `FRONTEND_URL` for the API service
+- `VITE_API_BASE_URL` for the frontend build
+
+Recommended order in Render:
+
+1. Import the repo as a Blueprint from `https://github.com/rvashi19/kalypto.git`
+2. Let Render create the four resources from `render.yaml`
+3. After Render assigns your service URLs, set:
+   - `FRONTEND_URL=https://<your-static-site>.onrender.com`
+   - `VITE_API_BASE_URL=https://<your-api-service>.onrender.com/api/v1`
+4. Trigger a redeploy of both `kalypto-api` and `kalypto-web`
+
+Notes:
+
+- The API health check path is `/api/v1/health`
+- The frontend includes a rewrite from `/*` to `/index.html` for React Router
+- The free instance types are suitable for a demo only
+
 ## Phase 0 acceptance map
 
 - `docker compose up --build` starts `postgres`, `redis`, `api`, and `web`
