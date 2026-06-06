@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r /t
 
 COPY apps/api /workspace/apps/api
 
+RUN chmod +x /workspace/apps/api/scripts/start-render.sh
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "./scripts/start-render.sh"]
