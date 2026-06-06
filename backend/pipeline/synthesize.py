@@ -135,6 +135,7 @@ def _elevenlabs_voice_settings(
     arousal: float,
     speed: float | None = None,
     quality_profile: str = "standard",
+    delivery_mode: str = "tts",
 ):
     from elevenlabs import VoiceSettings
 
@@ -147,10 +148,19 @@ def _elevenlabs_voice_settings(
         stability = float(np.clip(stability + 0.08, 0.3, 0.82))
         similarity_boost = float(np.clip(similarity_boost + 0.03, 0.54, 0.88))
         style = float(np.clip(style - 0.05, 0.05, 0.4))
+    if delivery_mode == "sts":
+        stability = float(np.clip(stability + 0.12, 0.42, 0.88))
+        similarity_boost = float(np.clip(similarity_boost + 0.08, 0.72, 0.96))
+        style = float(np.clip(style - 0.12, 0.02, 0.24))
     if quality_profile == "presentation":
-        stability = float(np.clip(stability - (0.11 if is_english else 0.05), 0.18, 0.78))
-        similarity_boost = float(np.clip(similarity_boost + 0.03, 0.58, 0.92))
-        style = float(np.clip(style + (0.22 if is_english else 0.12), 0.12, 0.74))
+        if delivery_mode == "sts":
+            stability = float(np.clip(stability + 0.03, 0.48, 0.9))
+            similarity_boost = float(np.clip(similarity_boost + 0.02, 0.76, 0.98))
+            style = float(np.clip(style - 0.03, 0.02, 0.2))
+        else:
+            stability = float(np.clip(stability - (0.08 if is_english else 0.04), 0.22, 0.82))
+            similarity_boost = float(np.clip(similarity_boost + 0.03, 0.58, 0.92))
+            style = float(np.clip(style + (0.12 if is_english else 0.08), 0.08, 0.58))
 
     resolved_speed = None if speed is None else float(np.clip(speed, 0.6, 1.15))
     return VoiceSettings(
@@ -168,6 +178,7 @@ def _elevenlabs_voice_settings_payload(
     arousal: float,
     speed: float | None = None,
     quality_profile: str = "standard",
+    delivery_mode: str = "tts",
 ) -> dict:
     is_english = target_lang.strip().lower() == "english"
     stability = float(np.clip(1.0 - arousal, 0.24, 0.76))
@@ -178,10 +189,19 @@ def _elevenlabs_voice_settings_payload(
         stability = float(np.clip(stability + 0.08, 0.3, 0.82))
         similarity_boost = float(np.clip(similarity_boost + 0.03, 0.54, 0.88))
         style = float(np.clip(style - 0.05, 0.05, 0.4))
+    if delivery_mode == "sts":
+        stability = float(np.clip(stability + 0.12, 0.42, 0.88))
+        similarity_boost = float(np.clip(similarity_boost + 0.08, 0.72, 0.96))
+        style = float(np.clip(style - 0.12, 0.02, 0.24))
     if quality_profile == "presentation":
-        stability = float(np.clip(stability - (0.11 if is_english else 0.05), 0.18, 0.78))
-        similarity_boost = float(np.clip(similarity_boost + 0.03, 0.58, 0.92))
-        style = float(np.clip(style + (0.22 if is_english else 0.12), 0.12, 0.74))
+        if delivery_mode == "sts":
+            stability = float(np.clip(stability + 0.03, 0.48, 0.9))
+            similarity_boost = float(np.clip(similarity_boost + 0.02, 0.76, 0.98))
+            style = float(np.clip(style - 0.03, 0.02, 0.2))
+        else:
+            stability = float(np.clip(stability - (0.08 if is_english else 0.04), 0.22, 0.82))
+            similarity_boost = float(np.clip(similarity_boost + 0.03, 0.58, 0.92))
+            style = float(np.clip(style + (0.12 if is_english else 0.08), 0.08, 0.58))
 
     payload = {
         "stability": stability,
@@ -194,9 +214,19 @@ def _elevenlabs_voice_settings_payload(
     return payload
 
 
-def _resolve_mastering_profile(target_lang: str, quality_profile: str, *, is_guide: bool = False) -> str:
+def _resolve_mastering_profile(
+    target_lang: str,
+    quality_profile: str,
+    *,
+    is_guide: bool = False,
+    delivery_mode: str = "generic",
+) -> str:
     if is_guide:
         return "guide" if (quality_profile == "presentation" or target_lang.strip().lower() == "english") else "none"
+    if delivery_mode == "cloned_sts":
+        return "cloned_sts"
+    if delivery_mode == "cloned_tts":
+        return "cloned_tts"
     if quality_profile == "presentation" or target_lang.strip().lower() == "english":
         return "presentation"
     return "standard"
@@ -547,6 +577,7 @@ def _synthesize_with_elevenlabs_tts(
             arousal,
             speed=tts_speed,
             quality_profile=quality_profile,
+            delivery_mode="tts",
         ),
         seed=seed,
         previous_text=previous_text or None,
@@ -560,7 +591,11 @@ def _synthesize_with_elevenlabs_tts(
         sample_rate,
         trim_edges=False,
         smart_trim=True,
-        mastering_profile=_resolve_mastering_profile(target_lang, quality_profile),
+        mastering_profile=_resolve_mastering_profile(
+            target_lang,
+            quality_profile,
+            delivery_mode="cloned_tts" if voice_profile.get("mode") in {"configured_voice_id", "cached_auto_clone", "auto_clone"} else "generic",
+        ),
         target_lang=target_lang,
     )
     return True
@@ -617,6 +652,7 @@ def _convert_with_elevenlabs_speech_to_speech(
                             valence,
                             arousal,
                             quality_profile=quality_profile,
+                            delivery_mode="sts",
                         )
                     ),
                 },
@@ -646,7 +682,7 @@ def _convert_with_elevenlabs_speech_to_speech(
         sample_rate,
         trim_edges=False,
         smart_trim=True,
-        mastering_profile=_resolve_mastering_profile(target_lang, quality_profile),
+        mastering_profile=_resolve_mastering_profile(target_lang, quality_profile, delivery_mode="cloned_sts"),
         target_lang=target_lang,
     )
     return True

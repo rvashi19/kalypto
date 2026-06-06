@@ -229,6 +229,7 @@ def build_openai_instructions(
         polish = (
             "Sound like a polished lead actor in a film dub. "
             "Keep the performance emotionally legible, intimate, and screen-natural. "
+            "Underplay rather than over-announcing. Avoid exaggerated diction, trailer-voice emphasis, or artificial punchiness. "
         )
 
     return (

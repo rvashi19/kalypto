@@ -25,7 +25,7 @@ from .transcribe_translate import (
 )
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
-DEFAULT_PIPELINE_SAMPLE_RATE = 16000
+DEFAULT_PIPELINE_SAMPLE_RATE = 24000
 
 
 class DubbingOrchestrator:
@@ -694,21 +694,29 @@ class DubbingOrchestrator:
                         synthesis_info = retry_synthesis_info
                         job["translation_strategy"] = "tightened_for_timing"
 
-            # ---- Prosody transfer: match source emotion ----
-            emotional_segment_path = os.path.join(self.output_dir, f"emotional_segment_{index}.wav")
-            prosody_info = transfer_prosody(
-                source_audio_path=job["segment_path"],
-                dubbed_audio_path=timed_segment_path,
-                output_path=emotional_segment_path,
-                sample_rate=sr,
-                eq_blend=0.35, # Reduced for maximum clarity
-                energy_blend=0.45, # Keep volume dynamic but less aggressive
-            )
-            # Use the prosody-transferred version if it succeeded
-            if prosody_info.get("status") == "success" and os.path.exists(emotional_segment_path):
-                final_segment_path = emotional_segment_path
-            else:
+            synthesis_method = synthesis_info.get("method")
+            if quality_profile == "presentation" and synthesis_method == "guide_tts_plus_speech_to_speech":
+                prosody_info = {
+                    "status": "skipped",
+                    "reason": "Speech-to-speech already preserved the guide performance, so extra timbre warping was skipped to protect voice realism.",
+                    "eq_applied": False,
+                    "energy_applied": False,
+                }
                 final_segment_path = timed_segment_path
+            else:
+                emotional_segment_path = os.path.join(self.output_dir, f"emotional_segment_{index}.wav")
+                prosody_info = transfer_prosody(
+                    source_audio_path=job["segment_path"],
+                    dubbed_audio_path=timed_segment_path,
+                    output_path=emotional_segment_path,
+                    sample_rate=sr,
+                    eq_blend=0.18,
+                    energy_blend=0.24,
+                )
+                if prosody_info.get("status") == "success" and os.path.exists(emotional_segment_path):
+                    final_segment_path = emotional_segment_path
+                else:
+                    final_segment_path = timed_segment_path
 
             transcripts.append(f"[Segment {index + 1}] {transcript}")
             translations.append(f"[Segment {index + 1}] {translation}")
@@ -758,10 +766,17 @@ class DubbingOrchestrator:
 
         self._update(84, "Applying prosody alignment (MIR DTW)...")
         aligned_dubbed_audio = os.path.join(self.output_dir, "dubbed_audio.wav")
-        # FORCE DTW execution for MIR course assignment
-        align_info = align_prosody(source_audio, raw_dubbed_audio, output_path=aligned_dubbed_audio, sample_rate=sr)
-        if align_info.get("status") == "failed" or not os.path.exists(aligned_dubbed_audio):
+        if self._should_skip_global_alignment(manifest, quality_profile):
+            align_info = {
+                "status": "skipped",
+                "reason": "Segment timing was already tight, so extra whole-track DTW warping was skipped to preserve the cloned voice quality.",
+                "aligned_audio_path": raw_dubbed_audio,
+            }
             aligned_dubbed_audio = raw_dubbed_audio
+        else:
+            align_info = align_prosody(source_audio, raw_dubbed_audio, output_path=aligned_dubbed_audio, sample_rate=sr)
+            if align_info.get("status") == "failed" or not os.path.exists(aligned_dubbed_audio):
+                aligned_dubbed_audio = raw_dubbed_audio
 
         self._update(91, "Evaluating prosody transfer...")
         metrics = evaluate_metrics(

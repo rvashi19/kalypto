@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    working_dir: /workspace/apps/api
+    command: >
+      sh -c "alembic upgrade head &&
+      python -m app.scripts.seed_demo &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      FRONTEND_URL: http://localhost:5173
+      PYTHONPATH: /workspace/apps/api
+    volumes:
+      - .:/workspace
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    working_dir: /workspace
+    command: >
+      sh -c "corepack enable &&
+      pnpm install --no-frozen-lockfile &&
+      pnpm --filter web dev --host 0.0.0.0 --port 5173"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    volumes:
+      - .:/workspace
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:

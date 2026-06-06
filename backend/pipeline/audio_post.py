@@ -21,6 +21,31 @@ def _build_dialogue_filter(mastering_profile: str, target_lang: str) -> str:
         )
         return ",".join(filters)
 
+    if mastering_profile == "cloned_sts":
+        filters.extend(
+            [
+                "equalizer=f=210:t=q:w=1.0:g=0.5",
+                "equalizer=f=420:t=q:w=1.1:g=0.7",
+                "equalizer=f=2800:t=q:w=1.3:g=0.5",
+                "equalizer=f=5200:t=q:w=1.4:g=-0.8",
+                "acompressor=threshold=0.13:ratio=1.55:attack=10:release=95:makeup=1.05",
+                "alimiter=limit=0.94",
+            ]
+        )
+        return ",".join(filters)
+
+    if mastering_profile == "cloned_tts":
+        filters.extend(
+            [
+                "equalizer=f=220:t=q:w=1.0:g=0.35",
+                "equalizer=f=3000:t=q:w=1.2:g=0.7",
+                "equalizer=f=5200:t=q:w=1.4:g=-0.4",
+                "acompressor=threshold=0.12:ratio=1.75:attack=9:release=85:makeup=1.12",
+                "alimiter=limit=0.93",
+            ]
+        )
+        return ",".join(filters)
+
     filters.extend(
         [
             "equalizer=f=220:t=q:w=1.1:g=-1.2",

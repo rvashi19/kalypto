@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222 47% 4%;
+  --foreground: 210 40% 98%;
+  --border: 215 25% 18%;
+  --ring: 189 94% 43%;
+  font-family: "Segoe UI Variable Text", "Aptos", "Trebuchet MS", sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(34, 211, 238, 0.08), transparent 28%),
+    linear-gradient(180deg, #020617 0%, #020617 100%);
+  color: hsl(var(--foreground));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
