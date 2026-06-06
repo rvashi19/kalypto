@@ -38,7 +38,6 @@ services:
     runtime: static
     repo: https://github.com/rvashi19/kalypto.git
     branch: main
-    region: oregon
     buildCommand: corepack enable && corepack prepare pnpm@9.12.1 --activate && pnpm install --no-frozen-lockfile && pnpm --filter web build
     staticPublishPath: ./apps/web/dist
     envVars:
