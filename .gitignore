@@ -21,4 +21,5 @@ node_modules/
 dist/
 build/
 .turbo/
+*.tsbuildinfo
 apps/api/tests/test_phase0.db

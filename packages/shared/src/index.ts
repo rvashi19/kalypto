@@ -38,3 +38,15 @@ export interface DashboardOverview {
   role: MembershipRole;
   message: string;
 }
+
+export interface DocumentationAssistantStatus {
+  configured: boolean;
+  model: string;
+  message: string;
+}
+
+export interface DocumentationAssistantResponse {
+  answer: string;
+  configured: boolean;
+  model: string;
+}

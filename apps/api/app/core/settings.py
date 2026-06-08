@@ -9,12 +9,15 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:5173"
+    cors_allow_origin_regex: str = r"https://.*\.onrender\.com"
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/export_assurance",
         alias="DATABASE_URL",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
     audit_logging_enabled: bool = True

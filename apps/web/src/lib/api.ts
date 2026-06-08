@@ -1,10 +1,47 @@
 import type {
   AuthResponse,
   CurrentUserResponse,
-  DashboardOverview
+  DashboardOverview,
+  DocumentationAssistantResponse,
+  DocumentationAssistantStatus
 } from "@repo/shared";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+function normalizeBaseUrl(url: string) {
+  return url.replace(/\/+$/, "");
+}
+
+function deriveRenderApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const { hostname, protocol } = window.location;
+  if (!hostname.endsWith(".onrender.com")) {
+    return null;
+  }
+
+  if (hostname.includes("-web")) {
+    return `${protocol}//${hostname.replace(/-web(?=\.onrender\.com$)/, "-api")}/api/v1`;
+  }
+
+  return null;
+}
+
+function resolveApiBaseUrl() {
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  if (configured && !configured.includes("example.com")) {
+    return normalizeBaseUrl(configured);
+  }
+
+  const derived = deriveRenderApiBaseUrl();
+  if (derived) {
+    return normalizeBaseUrl(derived);
+  }
+
+  return "http://localhost:8000/api/v1";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export interface RegisterPayload {
   email: string;
@@ -21,14 +58,21 @@ export interface LoginPayload {
 }
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers
-    }
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers
+      }
+    });
+  } catch {
+    throw new Error(
+      "Could not reach the KALYPTO API. If this is the live site, wait for the Render deploy to finish or recheck the API URL."
+    );
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({ detail: "Unexpected API error." }))) as {
@@ -60,5 +104,16 @@ export const api = {
       token
     ),
   me: (token: string) => request<CurrentUserResponse>("/auth/me", {}, token),
-  dashboardOverview: (token: string) => request<DashboardOverview>("/dashboard/overview", {}, token)
+  dashboardOverview: (token: string) => request<DashboardOverview>("/dashboard/overview", {}, token),
+  documentationAssistantStatus: (token: string) =>
+    request<DocumentationAssistantStatus>("/assistant/docs/status", {}, token),
+  askDocumentationAssistant: (question: string, token: string) =>
+    request<DocumentationAssistantResponse>(
+      "/assistant/docs/answer",
+      {
+        method: "POST",
+        body: JSON.stringify({ question })
+      },
+      token
+    )
 };
