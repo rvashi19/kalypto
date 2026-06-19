@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Response, UploadFile, status
 from fastapi import File as FastAPIFile
 
 from app.api.deps import CurrentUser, DbSession
@@ -96,8 +96,8 @@ def update_shipment(
     return ShipmentResponse.model_validate(shipment)
 
 
-@router.delete("/{shipment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_shipment(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> None:
+@router.delete("/{shipment_id}")
+def delete_shipment(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> Response:
     repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,
@@ -108,6 +108,7 @@ def delete_shipment(shipment_id: UUID, session: DbSession, current_user: Current
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shipment not found.")
     repo.delete(shipment)
     session.commit()
+    return Response(status_code=204)
 
 
 # ── Document upload ────────────────────────────────────────────────────────────
