@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
+    groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    upload_dir: str = Field(default="/tmp/kalypto_uploads", alias="UPLOAD_DIR")
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
     audit_logging_enabled: bool = True

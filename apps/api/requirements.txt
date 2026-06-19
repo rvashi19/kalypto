@@ -14,3 +14,4 @@ rq==2.3.3
 ruff==0.11.11
 SQLAlchemy==2.0.41
 uvicorn[standard]==0.34.2
+groq
