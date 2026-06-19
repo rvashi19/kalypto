@@ -350,3 +350,77 @@ class RevokedToken(Base, UUIDPrimaryKeyMixin):
         server_default=func.now(),
         default=lambda: datetime.now(UTC),
     )
+
+
+class ShipmentMode(StrEnum):
+    SEA = "sea"
+    AIR = "air"
+    COURIER = "courier"
+
+
+class ShipmentStage(StrEnum):
+    PRE_SHIPMENT = "pre_shipment"
+    POST_SHIPMENT = "post_shipment"
+
+
+class DocumentType(StrEnum):
+    PROFORMA_INVOICE = "proforma_invoice"
+    COMMERCIAL_INVOICE = "commercial_invoice"
+    PACKING_LIST = "packing_list"
+    PURCHASE_ORDER = "purchase_order"
+    BL_AWB = "bl_awb"
+    SHIPPING_BILL = "shipping_bill"
+    CERTIFICATE_OF_ORIGIN = "certificate_of_origin"
+    INSURANCE = "insurance"
+    INSPECTION_CERTIFICATE = "inspection_certificate"
+    PHYTOSANITARY_CERTIFICATE = "phytosanitary_certificate"
+    FUMIGATION_CERTIFICATE = "fumigation_certificate"
+    EBRC = "ebrc"
+    OTHER = "other"
+
+
+class DocumentUploadStatus(StrEnum):
+    PENDING = "pending"
+    EXTRACTED = "extracted"
+    FAILED = "failed"
+
+
+class ExportShipment(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Core shipment profile — the entry point for every audit workflow."""
+
+    __tablename__ = "export_shipments"
+
+    exporter_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hsn_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    destination_country: Mapped[str] = mapped_column(String(120), nullable=False)
+    buyer_country: Mapped[str] = mapped_column(String(120), nullable=False)
+    incoterm: Mapped[str] = mapped_column(String(20), nullable=False)
+    payment_term: Mapped[str] = mapped_column(String(120), nullable=False)
+    shipment_mode: Mapped[ShipmentMode] = mapped_column(SqlEnum(ShipmentMode), nullable=False)
+    container_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    shipment_stage: Mapped[ShipmentStage] = mapped_column(SqlEnum(ShipmentStage), nullable=False)
+    fob_value: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    invoice_currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
+    shipping_bill_no: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    port_of_loading: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    shipment_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ShipmentDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Tracks every document uploaded against a shipment."""
+
+    __tablename__ = "shipment_documents"
+
+    shipment_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("export_shipments.id"), nullable=False, index=True)
+    document_type: Mapped[DocumentType] = mapped_column(SqlEnum(DocumentType), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    extracted_fields: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    upload_status: Mapped[DocumentUploadStatus] = mapped_column(
+        SqlEnum(DocumentUploadStatus),
+        nullable=False,
+        default=DocumentUploadStatus.PENDING,
+    )
