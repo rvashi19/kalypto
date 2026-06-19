@@ -92,34 +92,68 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
 export const api = {
   register: (payload: RegisterPayload) =>
-    request<AuthResponse>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }),
+    request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+
   login: (payload: LoginPayload) =>
-    request<AuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }),
+    request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
+
   logout: (token: string) =>
-    request<{ success: boolean }>(
-      "/auth/logout",
-      {
-        method: "POST"
-      },
-      token
-    ),
-  me: (token: string) => request<CurrentUserResponse>("/auth/me", {}, token),
-  dashboardOverview: (token: string) => request<DashboardOverview>("/dashboard/overview", {}, token),
+    request<{ success: boolean }>("/auth/logout", { method: "POST" }, token),
+
+  me: (token: string) =>
+    request<CurrentUserResponse>("/auth/me", {}, token),
+
+  dashboardOverview: (token: string) =>
+    request<DashboardOverview>("/dashboard/overview", {}, token),
+
   documentationAssistantStatus: (token: string) =>
     request<DocumentationAssistantStatus>("/assistant/docs/status", {}, token),
+
   askDocumentationAssistant: (question: string, token: string) =>
     request<DocumentationAssistantResponse>(
       "/assistant/docs/answer",
-      {
-        method: "POST",
-        body: JSON.stringify({ question })
-      },
+      { method: "POST", body: JSON.stringify({ question }) },
       token
-    )
+    ),
+
+  // ── Shipments ────────────────────────────────────────────────────────────────
+
+  createShipment: (payload: ShipmentCreate, token: string) =>
+    request<ShipmentResponse>("/shipments", { method: "POST", body: JSON.stringify(payload) }, token),
+
+  listShipments: (token: string) =>
+    request<ShipmentResponse[]>("/shipments", {}, token),
+
+  getShipment: (id: string, token: string) =>
+    request<ShipmentResponse>(`/shipments/${id}`, {}, token),
+
+  deleteShipment: async (id: string, token: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/shipments/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  getChecklist: (shipmentId: string, token: string) =>
+    request<DocumentChecklist>(`/shipments/${shipmentId}/checklist`, {}, token),
+
+  listDocuments: (shipmentId: string, token: string) =>
+    request<DocumentResponse[]>(`/shipments/${shipmentId}/documents`, {}, token),
+
+  uploadDocument: async (shipmentId: string, documentType: DocumentType, file: File, token: string): Promise<DocumentResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch(
+      `${API_BASE_URL}/shipments/${shipmentId}/documents?document_type=${documentType}`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
+      throw new Error(body.detail ?? "Upload failed.");
+    }
+    return response.json() as Promise<DocumentResponse>;
+  },
+
+  verifyShipment: (shipmentId: string, token: string) =>
+    request<VerificationReport>(`/shipments/${shipmentId}/verify`, {}, token),
 };
