@@ -10,6 +10,9 @@ from app.models.base import (
     ConsentStatus,
     Discrepancy,
     DiscrepancySeverity,
+    DocumentType,
+    DocumentUploadStatus,
+    ExportShipment,
     GstExportInvoice,
     IncentiveClaim,
     IncentiveClaimStatus,
@@ -28,6 +31,9 @@ from app.models.base import (
     RevokedToken,
     RuleDefinition,
     Shipment,
+    ShipmentDocument,
+    ShipmentMode,
+    ShipmentStage,
     User,
 )
 
@@ -43,6 +49,9 @@ __all__ = [
     "ConsentStatus",
     "Discrepancy",
     "DiscrepancySeverity",
+    "DocumentType",
+    "DocumentUploadStatus",
+    "ExportShipment",
     "GstExportInvoice",
     "IncentiveClaim",
     "IncentiveClaimStatus",
@@ -61,5 +70,8 @@ __all__ = [
     "RevokedToken",
     "RuleDefinition",
     "Shipment",
+    "ShipmentDocument",
+    "ShipmentMode",
+    "ShipmentStage",
     "User",
 ]
