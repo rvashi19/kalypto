@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,8 +16,18 @@ class Settings(BaseSettings):
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
+    xai_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("XAI_API_KEY", "OPENAI_API_KEY"),
+    )
+    xai_model: str = Field(
+        default="grok-4.3",
+        validation_alias=AliasChoices("XAI_MODEL", "OPENAI_MODEL"),
+    )
+    xai_base_url: str = Field(
+        default="https://api.x.ai/v1",
+        alias="XAI_BASE_URL",
+    )
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
     audit_logging_enabled: bool = True

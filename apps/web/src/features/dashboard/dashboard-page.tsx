@@ -116,7 +116,7 @@ export function DashboardPage() {
           />
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <p className="text-xs text-slate-500">
-              The AI helper needs `OPENAI_API_KEY` on the API service. Core signup/login do not.
+              The AI helper needs `XAI_API_KEY` on the API service. Core signup/login do not.
             </p>
             <Button
               onClick={() => assistantMutation.mutate()}

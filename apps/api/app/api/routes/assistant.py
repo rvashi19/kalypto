@@ -19,7 +19,7 @@ def get_documentation_assistant_status(current_user: CurrentUser) -> Documentati
     service = DocumentationAssistantService()
     return DocumentationAssistantStatusResponse(
         configured=service.is_configured,
-        model=service.settings.openai_model,
+        model=service.settings.xai_model,
         message=service.status_message(),
     )
 
@@ -43,5 +43,5 @@ def ask_documentation_assistant(
     return DocumentationAssistantResponse(
         answer=answer,
         configured=service.is_configured,
-        model=service.settings.openai_model,
+        model=service.settings.xai_model,
     )

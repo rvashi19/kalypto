@@ -26,10 +26,12 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         sync: false
-      - key: OPENAI_API_KEY
+      - key: XAI_API_KEY
         sync: false
-      - key: OPENAI_MODEL
-        value: gpt-5.4-mini
+      - key: XAI_MODEL
+        value: grok-4.3
+      - key: XAI_BASE_URL
+        value: https://api.x.ai/v1
       - key: PYTHONPATH
         value: /workspace/apps/api
     buildFilter:
