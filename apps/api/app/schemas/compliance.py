@@ -22,6 +22,8 @@ class ComplianceOptionsResponse(BaseModel):
     countries: list[str]
     categories: list[str]
     recommended_scraping_stack: list[str]
+    knowledge_store_backend: str
+    refresh_interval_days: int
 
 
 class ComplianceCheckerRequest(BaseModel):

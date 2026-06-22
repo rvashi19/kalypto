@@ -172,3 +172,13 @@ def requirement_fingerprint(
         ],
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+def source_snapshot_fingerprint(*, source_url: str, title: str, markdown: str) -> str:
+    raw = "|".join(
+        [
+            source_url.strip().lower(),
+            normalize_spaces(title).lower(),
+            normalize_spaces(markdown).lower(),
+        ],
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()

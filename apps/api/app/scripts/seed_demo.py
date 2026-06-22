@@ -10,7 +10,7 @@ from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models import Buyer, Membership, MembershipRole, Organization, Product, User
 from app.schemas.compliance import ComplianceRequirementInput
-from app.services.compliance_retrieval import ComplianceDataWriter
+from app.services.compliance_store import get_compliance_knowledge_store
 
 
 def compliance_seed_records() -> list[ComplianceRequirementInput]:
@@ -134,8 +134,8 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
 
 
 def seed_compliance_data(session: Session, organization: Organization) -> None:
-    writer = ComplianceDataWriter(session=session, tenant_id=organization.id)
-    writer.ingest(compliance_seed_records())
+    store = get_compliance_knowledge_store(session=session, tenant_id=organization.id)
+    store.ingest(compliance_seed_records())
 
 
 def main() -> None:

@@ -202,3 +202,31 @@ Each stored requirement has an operator-provided `confidence_score` from `0` to 
 - `Low` when records are missing, generic, or uncertain.
 
 Every answer includes sources, last scraped date, unresolved questions, and the disclaimer that the output is compliance assistance, not legal/customs advice.
+### MongoDB compliance knowledge store
+
+Compliance requirements can now be served from MongoDB while the rest of the SaaS stays on Postgres. This keeps auth, audit logs, shipments, claims, and tenant records relational, but lets country compliance data remain flexible and fast.
+
+Local Docker defaults:
+
+```bash
+COMPLIANCE_STORE_BACKEND=mongo
+MONGODB_URL=mongodb://mongo:27017
+MONGODB_DATABASE=kalypto
+COMPLIANCE_REFRESH_INTERVAL_DAYS=3
+```
+
+Render defaults to `COMPLIANCE_STORE_BACKEND=postgres` so the live service does not break without MongoDB Atlas. To use MongoDB in production, create a MongoDB Atlas cluster, set `MONGODB_URL`, then change `COMPLIANCE_STORE_BACKEND` to `mongo`.
+
+The Mongo collections are:
+
+- `compliance_requirements`: active approved records used by the checker.
+- `compliance_source_snapshots`: raw scraped source snapshots and content hashes.
+- `compliance_source_changes`: source changes marked `needs_review`.
+
+Source checks should run every 3-4 days:
+
+```bash
+python -m app.scripts.refresh_compliance_sources
+```
+
+That job re-scrapes due sources, stores a new snapshot, compares the content hash, and marks changed sources as `needs_review`. It does not automatically publish new compliance answers. A human still reviews source changes and ingests approved structured records.

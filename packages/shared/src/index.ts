@@ -55,6 +55,8 @@ export interface ComplianceOptionsResponse {
   countries: string[];
   categories: string[];
   recommended_scraping_stack: string[];
+  knowledge_store_backend: string;
+  refresh_interval_days: number;
 }
 
 export interface ComplianceCheckerRequest {

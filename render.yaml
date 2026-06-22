@@ -32,6 +32,14 @@ services:
         value: grok-4.3
       - key: XAI_BASE_URL
         value: https://api.x.ai/v1
+      - key: COMPLIANCE_STORE_BACKEND
+        value: postgres
+      - key: MONGODB_URL
+        sync: false
+      - key: MONGODB_DATABASE
+        value: kalypto
+      - key: COMPLIANCE_REFRESH_INTERVAL_DAYS
+        value: 3
       - key: PYTHONPATH
         value: /workspace/apps/api
     buildFilter:

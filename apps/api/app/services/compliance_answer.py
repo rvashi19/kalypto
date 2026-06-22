@@ -17,7 +17,8 @@ from app.schemas.compliance import (
     ConfidenceLevel,
     ProductSummary,
 )
-from app.services.compliance_retrieval import ComplianceRetriever, RequirementMatch
+from app.services.compliance_retrieval import RequirementMatch
+from app.services.compliance_store import get_compliance_knowledge_store
 
 DISCLAIMER = (
     "This is compliance assistance based on available stored sources. Verify with your customs "
@@ -74,8 +75,8 @@ class CountryComplianceCheckerService:
         self.session = session
 
     def answer(self, *, payload: ComplianceCheckerRequest, tenant_id: UUID, user_id: UUID) -> ComplianceCheckerResponse:
-        retriever = ComplianceRetriever(self.session, tenant_id)
-        matches = retriever.retrieve(
+        store = get_compliance_knowledge_store(self.session, tenant_id)
+        matches = store.retrieve(
             product=payload.product,
             hsn_code=payload.hsn_code,
             destination_country=payload.destination_country,

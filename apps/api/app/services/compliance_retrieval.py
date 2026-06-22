@@ -18,9 +18,53 @@ from app.services.compliance_normalization import (
 
 
 @dataclass(frozen=True, slots=True)
+class StoredComplianceRequirement:
+    id: str
+    tenant_id: str
+    country: str
+    category: str
+    hsn_code: str | None
+    product_keywords: list[str]
+    requirement_type: str
+    requirement_text: str
+    source_url: str
+    source_name: str
+    source_authority_level: str
+    last_scraped_at: datetime
+    confidence_score: float
+    status: str
+    content_hash: str
+
+
+@dataclass(frozen=True, slots=True)
 class RequirementMatch:
-    requirement: ComplianceRequirement
+    requirement: StoredComplianceRequirement
     score: float
+
+
+def stored_requirement_from_row(
+    row: ComplianceRequirement,
+    *,
+    country: str | None = None,
+    category: str | None = None,
+) -> StoredComplianceRequirement:
+    return StoredComplianceRequirement(
+        id=str(row.id),
+        tenant_id=str(row.tenant_id),
+        country=country or "",
+        category=category or "",
+        hsn_code=row.hsn_code,
+        product_keywords=list(row.product_keywords or []),
+        requirement_type=row.requirement_type,
+        requirement_text=row.requirement_text,
+        source_url=row.source_url,
+        source_name=row.source_name,
+        source_authority_level=row.source_authority_level,
+        last_scraped_at=row.last_scraped_at,
+        confidence_score=float(row.confidence_score),
+        status=row.status,
+        content_hash=row.content_hash,
+    )
 
 
 class ComplianceDataWriter:
@@ -42,7 +86,7 @@ class ComplianceDataWriter:
     def upsert_requirement(
         self,
         record: ComplianceRequirementInput,
-    ) -> tuple[ComplianceRequirement, bool]:
+    ) -> tuple[StoredComplianceRequirement, bool]:
         country = self._get_or_create_country(record.country)
         category = self._get_or_create_category(record.category)
         normalized_hsn = normalize_hsn(record.hsn_code)
@@ -68,7 +112,7 @@ class ComplianceDataWriter:
             existing.confidence_score = record.confidence_score
             existing.status = record.status
             self.session.add(existing)
-            return existing, False
+            return stored_requirement_from_row(existing, country=country.name, category=category.name), False
 
         requirement = ComplianceRequirement(
             tenant_id=self.tenant_id,
@@ -89,7 +133,7 @@ class ComplianceDataWriter:
         )
         self.session.add(requirement)
         self.session.flush()
-        return requirement, True
+        return stored_requirement_from_row(requirement, country=country.name, category=category.name), True
 
     def _get_or_create_country(self, name: str) -> ComplianceCountry:
         country = self.session.scalars(
@@ -173,7 +217,12 @@ class ComplianceRetriever:
             if requirement.hsn_code and hsn_score == 0 and keyword_score == 0:
                 continue
             score = float(requirement.confidence_score) + hsn_score + keyword_score
-            matches.append(RequirementMatch(requirement=requirement, score=min(score, 100)))
+            stored = stored_requirement_from_row(
+                requirement,
+                country=country.name,
+                category=category_row.name,
+            )
+            matches.append(RequirementMatch(requirement=stored, score=min(score, 100)))
         return sorted(matches, key=lambda match: match.score, reverse=True)[:limit]
 
     @staticmethod

@@ -20,6 +20,18 @@ services:
     ports:
       - "6379:6379"
 
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: .
@@ -34,6 +46,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
+      MONGODB_URL: mongodb://mongo:27017
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-kalypto}
+      COMPLIANCE_STORE_BACKEND: ${COMPLIANCE_STORE_BACKEND:-mongo}
+      COMPLIANCE_REFRESH_INTERVAL_DAYS: ${COMPLIANCE_REFRESH_INTERVAL_DAYS:-3}
       FRONTEND_URL: http://localhost:5173
       PYTHONPATH: /workspace/apps/api
     volumes:
@@ -45,6 +61,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      mongo:
+        condition: service_healthy
 
   web:
     build:
@@ -67,3 +85,4 @@ services:
 
 volumes:
   postgres_data:
+  mongo_data:

@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.settings import get_settings
 from app.models import ComplianceScrapeRun, MembershipRole
 from app.schemas.compliance import (
     ComplianceCheckerRequest,
@@ -18,8 +19,11 @@ from app.schemas.compliance import (
 )
 from app.services.compliance_answer import CountryComplianceCheckerService
 from app.services.compliance_normalization import SUPPORTED_CATEGORIES, SUPPORTED_COUNTRIES
-from app.services.compliance_retrieval import ComplianceDataWriter
 from app.services.compliance_scraper import ComplianceScraperError, get_compliance_scraper
+from app.services.compliance_store import (
+    ComplianceStoreConfigurationError,
+    get_compliance_knowledge_store,
+)
 
 router = APIRouter(prefix="/compliance", tags=["compliance"])
 
@@ -34,6 +38,7 @@ def require_editor(current_user: CurrentUser) -> None:
 
 @router.get("/options", response_model=ComplianceOptionsResponse)
 def get_compliance_options(current_user: CurrentUser) -> ComplianceOptionsResponse:
+    settings = get_settings()
     return ComplianceOptionsResponse(
         countries=list(SUPPORTED_COUNTRIES),
         categories=list(SUPPORTED_CATEGORIES),
@@ -42,6 +47,8 @@ def get_compliance_options(current_user: CurrentUser) -> ComplianceOptionsRespon
             "Firecrawl API for page/PDF extraction into markdown or JSON",
             "Bright Data Web Unlocker only when official pages block normal extraction",
         ],
+        knowledge_store_backend=settings.compliance_store_backend,
+        refresh_interval_days=settings.compliance_refresh_interval_days,
     )
 
 
@@ -52,11 +59,14 @@ def answer_country_compliance_checker(
     current_user: CurrentUser,
 ) -> ComplianceCheckerResponse:
     service = CountryComplianceCheckerService(session)
-    return service.answer(
-        payload=payload,
-        tenant_id=current_user.organization.id,
-        user_id=current_user.user.id,
-    )
+    try:
+        return service.answer(
+            payload=payload,
+            tenant_id=current_user.organization.id,
+            user_id=current_user.user.id,
+        )
+    except ComplianceStoreConfigurationError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
 
 
 @router.post("/scrape/ingest", response_model=ManualComplianceIngestResponse)
@@ -66,8 +76,11 @@ def ingest_compliance_records(
     current_user: CurrentUser,
 ) -> ManualComplianceIngestResponse:
     require_editor(current_user)
-    writer = ComplianceDataWriter(session=session, tenant_id=current_user.organization.id)
-    created, updated = writer.ingest(payload.records)
+    try:
+        store = get_compliance_knowledge_store(session=session, tenant_id=current_user.organization.id)
+    except ComplianceStoreConfigurationError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+    created, updated = store.ingest(payload.records)
     session.commit()
     return ManualComplianceIngestResponse(created=created, updated=updated, total=len(payload.records))
 
@@ -92,8 +105,16 @@ def run_compliance_scrape(
     session.flush()
     scraper = get_compliance_scraper()
     try:
+        store = get_compliance_knowledge_store(session=session, tenant_id=current_user.organization.id)
         document = scraper.scrape(payload.source_url)
-    except ComplianceScraperError as error:
+        snapshot = store.record_source_snapshot(
+            source_url=document.source_url,
+            country=payload.country,
+            category=payload.category,
+            title=document.title,
+            markdown=document.markdown,
+        )
+    except (ComplianceScraperError, ComplianceStoreConfigurationError) as error:
         run.status = "failed"
         run.completed_at = datetime.now(UTC)
         run.errors = {"message": str(error)}
@@ -105,7 +126,7 @@ def run_compliance_scrape(
             message=str(error),
         )
 
-    run.status = "needs_review"
+    run.status = snapshot.status
     run.completed_at = datetime.now(UTC)
     run.records_found = 0
     run.errors = None
@@ -114,8 +135,5 @@ def run_compliance_scrape(
         run_id=str(run.id),
         status=run.status,
         records_found=0,
-        message=(
-            f"Scraped '{document.title}'. Review the extracted source text, convert it to structured "
-            "requirements, then submit it through /compliance/scrape/ingest."
-        ),
+        message=snapshot.message,
     )
