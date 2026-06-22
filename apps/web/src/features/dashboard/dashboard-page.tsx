@@ -1,166 +1,167 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-
+import { Link } from "react-router-dom";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
-
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { ComingSoonBadge } from "../../lib/ui";
 
 export function DashboardPage() {
   const { session, token, setSession } = useAuth();
-  const [question, setQuestion] = useState(
-    "What is already live in this KALYPTO build, and what still comes in later phases?"
-  );
 
-  const overviewQuery = useQuery({
-    queryKey: ["dashboard-overview", token],
-    queryFn: () => api.dashboardOverview(token!),
-    enabled: Boolean(token)
+  const shipmentsQuery = useQuery({
+    queryKey: ["shipments", token],
+    queryFn: () => api.listShipments(token!),
+    enabled: Boolean(token),
   });
 
   const meQuery = useQuery({
     queryKey: ["current-user", token],
     queryFn: () => api.me(token!),
-    enabled: Boolean(token)
-  });
-
-  const assistantStatusQuery = useQuery({
-    queryKey: ["documentation-assistant-status", token],
-    queryFn: () => api.documentationAssistantStatus(token!),
-    enabled: Boolean(token)
-  });
-
-  const assistantMutation = useMutation({
-    mutationFn: async () => api.askDocumentationAssistant(question, token!)
+    enabled: Boolean(token),
   });
 
   const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) {
-        await api.logout(token);
-      }
-    },
-    onSettled: () => setSession(null)
+    mutationFn: async () => { if (token) await api.logout(token); },
+    onSettled: () => setSession(null),
   });
+
+  const shipments = shipmentsQuery.data ?? [];
+  const preCount = shipments.filter((s) => s.shipment_stage === "pre_shipment").length;
+  const postCount = shipments.filter((s) => s.shipment_stage === "post_shipment").length;
+  const recentShipments = shipments.slice(0, 3);
+
+  const user = meQuery.data?.user ?? session?.user;
+  const org = meQuery.data?.organization ?? session?.organization;
+  const role = meQuery.data?.membership.role ?? session?.membership.role ?? "";
 
   return (
     <DashboardShell
-      organizationName={session?.organization.name ?? "Workspace"}
-      role={session?.membership.role ?? "owner"}
+      organizationName={org?.name ?? "Workspace"}
+      role={role}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      {/* Welcome */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-slate-50">
+          {user?.full_name ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Dashboard"}
+        </h2>
+        <p className="mt-0.5 text-sm text-slate-500">{org?.name}</p>
+      </div>
+
+      {/* Stats */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <StatCard label="Total shipments" value={shipmentsQuery.isLoading ? "—" : String(shipments.length)} />
+        <StatCard label="Pre-shipment" value={shipmentsQuery.isLoading ? "—" : String(preCount)} accent="text-indigo-300" />
+        <StatCard label="Post-shipment" value={shipmentsQuery.isLoading ? "—" : String(postCount)} accent="text-emerald-300" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+        {/* Recent shipments */}
         <Card>
           <CardHeader>
-            <CardTitle>Foundation status</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent shipments</CardTitle>
+              <Link to="/shipments" className="text-xs font-medium text-indigo-400 hover:text-indigo-300">
+                View all →
+              </Link>
+            </div>
             <CardDescription>
-              This dashboard is intentionally light for Phase 0, but the secure backbone is active.
+              Each shipment walks through checklist → documents → verification report.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-3">
-              <StatusCard title="Authentication" value="Ready" caption="Register, login, logout, and owner membership bootstrapping." />
-              <StatusCard title="Tenancy" value="Locked" caption="Repository queries are scoped by organization ID." />
-              <StatusCard title="Audit" value="Live" caption="Requests and repository actions append to the audit trail." />
-            </div>
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-100">
-              {overviewQuery.isLoading ? "Loading dashboard overview..." : overviewQuery.data?.message}
-            </div>
+          <CardContent>
+            {shipmentsQuery.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
+            {!shipmentsQuery.isLoading && shipments.length === 0 && (
+              <div className="py-8 text-center">
+                <p className="text-sm text-slate-500">No shipments yet.</p>
+                <Link to="/shipments/new">
+                  <Button className="mt-4" size="sm">+ Create first shipment</Button>
+                </Link>
+              </div>
+            )}
+            {recentShipments.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {recentShipments.map((s) => (
+                  <Link
+                    key={s.id}
+                    to={`/shipments/${s.id}`}
+                    className="flex items-center justify-between rounded-lg border border-white/6 bg-slate-950/40 px-4 py-3 transition-colors hover:border-indigo-500/30 hover:bg-indigo-500/5"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-slate-100">{s.product_name}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        HSN {s.hsn_code} · {s.destination_country}
+                      </p>
+                    </div>
+                    <span className={`text-xs font-medium ${s.shipment_stage === "pre_shipment" ? "text-indigo-300" : "text-emerald-300"}`}>
+                      {s.shipment_stage === "pre_shipment" ? "Pre-shipment" : "Post-shipment"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Account snapshot</CardTitle>
-            <CardDescription>Useful sanity checks before Phase 1 ingestion and reconciliation.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <SnapshotRow label="User" value={meQuery.data?.user.full_name ?? session?.user.full_name ?? "Owner"} />
-            <SnapshotRow label="Email" value={meQuery.data?.user.email ?? session?.user.email ?? ""} />
-            <SnapshotRow
-              label="Organization"
-              value={meQuery.data?.organization.name ?? session?.organization.name ?? ""}
-            />
-            <SnapshotRow label="Role" value={meQuery.data?.membership.role ?? session?.membership.role ?? ""} />
-            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-slate-300">
-              Demo seed account after `docker compose up`:
-              <div className="mt-2 font-mono text-xs text-slate-400">
-                demo@example.com / DemoPassword123!
-              </div>
-            </div>
-            <Button className="w-full" variant="secondary" onClick={() => logoutMutation.mutate()}>
-              {logoutMutation.isPending ? "Signing out..." : "Sign out"}
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Account + quick action */}
+        <div className="flex w-full flex-col gap-4 lg:w-64">
+          <Card>
+            <CardHeader><CardTitle>Account</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <Row label="Name" value={user?.full_name ?? "—"} />
+              <Row label="Email" value={user?.email ?? "—"} />
+              <Row label="Role" value={role.replaceAll("_", " ")} />
+              <Button className="mt-3 w-full" size="sm" variant="secondary" onClick={() => logoutMutation.mutate()}>
+                {logoutMutation.isPending ? "Signing out…" : "Sign out"}
+              </Button>
+            </CardContent>
+          </Card>
+          <Link to="/shipments/new">
+            <Button className="w-full">+ New shipment</Button>
+          </Link>
+        </div>
       </div>
-      <Card className="mt-6">
+
+      {/* Documentation assistant — gated */}
+      <Card className="mt-4">
         <CardHeader>
-          <CardTitle>AI Documentation Helper</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Documentation Assistant</CardTitle>
+            <ComingSoonBadge />
+          </div>
           <CardDescription>
-            Ask about the current KALYPTO build, onboarding steps, or what is and is not live yet.
+            Ask about RoDTEP rates, Advance Authorisation, eBRC realization, and DGFT filing steps.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-300">
-            {assistantStatusQuery.isLoading
-              ? "Checking AI helper status..."
-              : assistantStatusQuery.data?.message}
-          </div>
-          <textarea
-            className="min-h-32 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500 focus:border-cyan-400/40"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Ask what is live, how to use the app, or what still needs manual filing."
-          />
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-xs text-slate-500">
-              The AI helper needs `OPENAI_API_KEY` on the API service. Core signup/login do not.
+        <CardContent>
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <p className="text-2xl" aria-hidden="true">📋</p>
+            <p className="text-sm font-medium text-slate-300">Launching in a future update</p>
+            <p className="max-w-sm text-sm text-slate-500">
+              An AI assistant for DGFT regulations, ITC(HS) classification, and export documentation procedures.
             </p>
-            <Button
-              onClick={() => assistantMutation.mutate()}
-              disabled={assistantMutation.isPending || !question.trim()}
-            >
-              {assistantMutation.isPending ? "Thinking..." : "Ask helper"}
-            </Button>
           </div>
-          {assistantMutation.isError ? (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
-              {assistantMutation.error instanceof Error
-                ? assistantMutation.error.message
-                : "The AI documentation helper is unavailable right now."}
-            </div>
-          ) : null}
-          {assistantMutation.data ? (
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-50">
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-cyan-200">
-                Answer via {assistantMutation.data.model}
-              </p>
-              <p>{assistantMutation.data.answer}</p>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </DashboardShell>
   );
 }
 
-function StatusCard({ title, value, caption }: { title: string; value: string; caption: string }) {
+function StatCard({ label, value, accent = "text-slate-50" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-      <p className="text-sm text-slate-400">{title}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-50">{value}</p>
-      <p className="mt-2 text-sm text-slate-500">{caption}</p>
+    <div className="rounded-xl border border-white/8 bg-slate-900/70 px-4 py-4 backdrop-blur">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</p>
+      <p className={`mt-2 text-2xl font-bold ${accent}`}>{value}</p>
     </div>
   );
 }
 
-function SnapshotRow({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-      <span className="text-slate-400">{label}</span>
-      <span className="font-medium text-slate-100">{value}</span>
+    <div className="flex items-center justify-between">
+      <span className="text-slate-500">{label}</span>
+      <span className="font-medium capitalize text-slate-200">{value}</span>
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
-
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -17,12 +15,12 @@ export function LoginPage() {
     mutationFn: async (formData: FormData) =>
       api.login({
         email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? "")
+        password: String(formData.get("password") ?? ""),
       }),
     onSuccess: (session) => {
       setSession(session);
       navigate(from, { replace: true });
-    }
+    },
   });
 
   const errorMessage =
@@ -30,43 +28,48 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      eyebrow="Secure exporter workspace"
-      title="Recover incentive leakage without exposing tenant data."
-      description="Start in the clean Phase 0 shell: email/password auth, organization-scoped access, and an audit-ready backend for the workflows we'll add next."
+      eyebrow="Indian export compliance"
+      title="Catch document errors before they cost you."
+      description="AI-powered audit of your export documents — catch discrepancies, estimate incentives, and submit with confidence."
     >
       <Card>
         <CardHeader>
-          <CardTitle>Log in</CardTitle>
-          <CardDescription>Use your organization account to enter the dashboard.</CardDescription>
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>Enter your organization account to continue.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
-            className="space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              mutation.mutate(new FormData(event.currentTarget));
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              mutation.mutate(new FormData(e.currentTarget));
             }}
           >
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" placeholder="owner@exportco.in" type="email" required />
+              <Input id="email" name="email" type="email" placeholder="owner@exportco.in" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" placeholder="Minimum 12 characters" type="password" required />
+              <Input id="password" name="password" type="password" placeholder="Your password" required />
             </div>
-            {errorMessage ? (
-              <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {errorMessage}
+
+            {errorMessage && (
+              <p
+                className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/8 px-3 py-2 text-sm text-rose-300"
+                role="alert"
+              >
+                <span aria-hidden="true">✕</span> {errorMessage}
               </p>
-            ) : null}
+            )}
+
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Signing in..." : "Log in"}
+              {mutation.isPending ? "Signing in…" : "Sign in"}
             </Button>
-            <p className="text-sm text-slate-400">
-              Need an account?{" "}
-              <Link className="text-cyan-300 hover:text-cyan-200" to="/signup">
-                Create your organization
+            <p className="text-center text-sm text-slate-500">
+              No account?{" "}
+              <Link className="text-indigo-400 hover:text-indigo-300" to="/signup">
+                Create your workspace
               </Link>
             </p>
           </form>

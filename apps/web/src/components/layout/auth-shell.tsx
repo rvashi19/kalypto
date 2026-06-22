@@ -4,7 +4,7 @@ export function AuthShell({
   eyebrow,
   title,
   description,
-  children
+  children,
 }: PropsWithChildren<{
   eyebrow: string;
   title: string;
@@ -12,27 +12,39 @@ export function AuthShell({
 }>) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.2),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.18),_transparent_24%)]" />
-      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-6 py-12">
-        <div className="grid w-full gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-8">
-            <div className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.12),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(79,70,229,0.08),_transparent_30%)]" />
+
+      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-12 md:flex-row md:items-center md:gap-16">
+        {/* Hero text — hidden on small screens */}
+        <div className="mb-10 hidden flex-1 space-y-8 md:mb-0 md:block">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/20 bg-indigo-400/8 px-3 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden="true" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-indigo-300">
               {eyebrow}
-            </div>
-            <div className="space-y-4">
-              <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                {title}
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-300">{description}</p>
-            </div>
-            <div className="grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
-              <FeaturePill title="Tenant-safe" body="Every business query is organization-scoped by design." />
-              <FeaturePill title="Audited" body="Auth and repository activity is logged to an append-only trail." />
-              <FeaturePill title="Phase-ready" body="The dashboard is set up for data ingestion next." />
-            </div>
+            </span>
           </div>
-          <div>{children}</div>
+          <div className="space-y-4">
+            <h1 className="max-w-lg text-4xl font-semibold tracking-tight text-white">{title}</h1>
+            <p className="max-w-md text-base leading-7 text-slate-400">{description}</p>
+          </div>
+          <div className="grid gap-3 text-sm sm:grid-cols-3">
+            <FeaturePill
+              title="AI document audit"
+              body="Cross-check invoices, packing lists, and shipping bills before customs submission."
+            />
+            <FeaturePill
+              title="Incentive recovery"
+              body="Estimate RoDTEP, Duty Drawback, and IGST refund eligibility for every shipment."
+            />
+            <FeaturePill
+              title="Tenant-isolated"
+              body="Every query is scoped to your organization. No data leaks between accounts."
+            />
+          </div>
         </div>
+
+        {/* Auth card — full width on mobile */}
+        <div className="w-full max-w-sm flex-shrink-0">{children}</div>
       </div>
     </div>
   );
@@ -40,9 +52,9 @@ export function AuthShell({
 
 function FeaturePill({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+    <div className="rounded-xl border border-white/8 bg-white/4 p-4 backdrop-blur">
       <p className="font-medium text-slate-100">{title}</p>
-      <p className="mt-2 text-slate-400">{body}</p>
+      <p className="mt-1.5 text-slate-500">{body}</p>
     </div>
   );
 }

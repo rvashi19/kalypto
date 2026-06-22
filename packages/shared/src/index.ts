@@ -144,9 +144,9 @@ export interface DiscrepancyItem {
   field: string;
   severity: "info" | "warn" | "critical";
   document_a: string;
-  document_b: string;
+  document_b: string | null;
   value_a: string;
-  value_b: string;
+  value_b: string | null;
   message: string;
   suggested_fix: string;
 }

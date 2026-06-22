@@ -1,48 +1,89 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
+import { Button, Card, CardContent } from "@repo/ui";
 import type { ShipmentResponse } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { SkeletonCard } from "../../lib/ui";
 
-function RiskBadge({ stage }: { stage: string }) {
-  const label = stage === "pre_shipment" ? "Pre-shipment" : "Post-shipment";
-  const cls = stage === "pre_shipment"
-    ? "bg-amber-500/15 text-amber-300 border-amber-500/20"
-    : "bg-green-500/15 text-green-300 border-green-500/20";
+function StageBadge({ stage }: { stage: string }) {
+  const isPre = stage === "pre_shipment";
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
+    <span
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${
+        isPre
+          ? "border-indigo-500/20 bg-indigo-500/10 text-indigo-300"
+          : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+      }`}
+    >
+      {isPre ? "Pre-shipment" : "Post-shipment"}
+    </span>
   );
 }
 
-function ShipmentCard({ shipment, onDelete }: { shipment: ShipmentResponse; onDelete: (id: string) => void }) {
+function ShipmentCard({
+  shipment,
+  onDelete,
+}: {
+  shipment: ShipmentResponse;
+  onDelete: (id: string) => void;
+}) {
+  function handleDelete() {
+    if (window.confirm(`Delete "${shipment.product_name}"? This cannot be undone.`)) {
+      onDelete(shipment.id);
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/60 p-5 transition-colors hover:border-cyan-500/30">
+    <div className="flex flex-col gap-4 rounded-xl border border-white/8 bg-slate-900/70 p-5 backdrop-blur transition-colors hover:border-indigo-500/20">
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold text-slate-100">{shipment.product_name}</p>
-          <p className="mt-0.5 text-sm text-slate-400">HSN {shipment.hsn_code} · {shipment.destination_country}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-slate-100">{shipment.product_name}</p>
+          <p className="mt-0.5 text-sm text-slate-500">
+            HSN {shipment.hsn_code} · {shipment.destination_country}
+          </p>
         </div>
-        <RiskBadge stage={shipment.shipment_stage} />
+        <StageBadge stage={shipment.shipment_stage} />
       </div>
-      <div className="grid grid-cols-3 gap-2 text-xs text-slate-500">
-        <span>{shipment.incoterm}</span>
-        <span className="capitalize">{shipment.shipment_mode}</span>
-        <span>{shipment.fob_value ? `${shipment.invoice_currency} ${shipment.fob_value.toLocaleString()}` : "—"}</span>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Meta label="Mode" value={shipment.shipment_mode} />
+        <Meta label="Terms" value={shipment.incoterm} />
+        <Meta
+          label="FOB"
+          value={
+            shipment.fob_value
+              ? `${shipment.invoice_currency} ${shipment.fob_value.toLocaleString()}`
+              : "—"
+          }
+        />
       </div>
-      <div className="flex gap-2 pt-1">
+
+      <div className="flex gap-2">
         <Link to={`/shipments/${shipment.id}`} className="flex-1">
-          <Button className="w-full" variant="secondary">Open</Button>
+          <Button className="w-full" variant="secondary" size="sm">
+            Open →
+          </Button>
         </Link>
         <Button
-          variant="secondary"
-          onClick={() => onDelete(shipment.id)}
-          className="text-rose-400 hover:text-rose-300"
+          variant="danger"
+          size="sm"
+          onClick={handleDelete}
+          aria-label={`Delete ${shipment.product_name}`}
         >
           Delete
         </Button>
       </div>
+    </div>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">{label}</p>
+      <p className="mt-0.5 text-xs capitalize text-slate-400">{value}</p>
     </div>
   );
 }
@@ -74,39 +115,58 @@ export function ShipmentsPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Shipments</h2>
-          <p className="mt-0.5 text-sm text-slate-400">Each shipment walks through checklist → documents → verification report.</p>
+          <h2 className="text-xl font-semibold text-slate-50">Shipments</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Each shipment walks through checklist → documents → AI verification.
+          </p>
         </div>
-        <Button onClick={() => navigate("/shipments/new")}>+ New Shipment</Button>
+        <Button size="sm" onClick={() => navigate("/shipments/new")}>
+          + New shipment
+        </Button>
       </div>
 
-      {shipmentsQuery.isLoading && (
-        <p className="text-sm text-slate-400">Loading shipments…</p>
-      )}
-
       {shipmentsQuery.isError && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
-          {shipmentsQuery.error instanceof Error ? shipmentsQuery.error.message : "Failed to load shipments."}
+        <div
+          className="mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300"
+          role="alert"
+        >
+          <span aria-hidden="true">✕</span>
+          {shipmentsQuery.error instanceof Error
+            ? shipmentsQuery.error.message
+            : "Failed to load shipments."}
         </div>
       )}
 
-      {shipmentsQuery.data?.length === 0 && (
+      {shipmentsQuery.isLoading && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {!shipmentsQuery.isLoading && shipmentsQuery.data?.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-slate-400">No shipments yet.</p>
-            <p className="mt-1 text-sm text-slate-500">Create your first shipment profile to get started.</p>
-            <Button className="mt-4" onClick={() => navigate("/shipments/new")}>Create shipment</Button>
+          <CardContent className="py-16 text-center">
+            <p className="text-3xl" aria-hidden="true">📦</p>
+            <p className="mt-4 font-medium text-slate-300">No shipments yet</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Create a shipment profile to generate a document checklist and run AI verification.
+            </p>
+            <Button className="mt-6" onClick={() => navigate("/shipments/new")}>
+              Create first shipment
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {shipmentsQuery.data?.map((s) => (
-          <ShipmentCard key={s.id} shipment={s} onDelete={(id) => deleteMutation.mutate(id)} />
-        ))}
-      </div>
+      {(shipmentsQuery.data?.length ?? 0) > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {shipmentsQuery.data!.map((s) => (
+            <ShipmentCard key={s.id} shipment={s} onDelete={(id) => deleteMutation.mutate(id)} />
+          ))}
+        </div>
+      )}
     </DashboardShell>
   );
 }

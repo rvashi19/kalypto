@@ -1,8 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
-
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -17,12 +15,12 @@ export function SignupPage() {
         full_name: String(formData.get("full_name") ?? ""),
         organization_name: String(formData.get("organization_name") ?? ""),
         email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? "")
+        password: String(formData.get("password") ?? ""),
       }),
     onSuccess: (session) => {
       setSession(session);
       navigate("/", { replace: true });
-    }
+    },
   });
 
   const errorMessage =
@@ -30,51 +28,67 @@ export function SignupPage() {
 
   return (
     <AuthShell
-      eyebrow="Phase 0 onboarding"
-      title="Create your organization and get an isolated workspace instantly."
-      description="Signup provisions the tenant, assigns the owner role, and returns you to a protected dashboard shell without leaking data across organizations."
+      eyebrow="Indian export compliance"
+      title="Your export documents, verified before they reach customs."
+      description="Create a workspace for your organization and start auditing shipment documents in minutes."
     >
       <Card>
         <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>We'll create both the owner user and the first organization.</CardDescription>
+          <CardTitle>Create workspace</CardTitle>
+          <CardDescription>Set up your organization account to get started.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
-            className="space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              mutation.mutate(new FormData(event.currentTarget));
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              mutation.mutate(new FormData(e.currentTarget));
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="full_name">Your name</Label>
               <Input id="full_name" name="full_name" placeholder="Priya Shah" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="organization_name">Organization name</Label>
-              <Input id="organization_name" name="organization_name" placeholder="Shah Exports LLP" required />
+              <Input
+                id="organization_name"
+                name="organization_name"
+                placeholder="Shah Exports LLP"
+                required
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" placeholder="owner@shahexports.in" type="email" required />
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Work email</Label>
+              <Input id="email" name="email" type="email" placeholder="owner@shahexports.in" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" placeholder="At least 12 characters" type="password" required />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="At least 12 characters"
+                required
+              />
             </div>
-            {errorMessage ? (
-              <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {errorMessage}
+
+            {errorMessage && (
+              <p
+                className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/8 px-3 py-2 text-sm text-rose-300"
+                role="alert"
+              >
+                <span aria-hidden="true">✕</span> {errorMessage}
               </p>
-            ) : null}
+            )}
+
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Creating workspace..." : "Create workspace"}
+              {mutation.isPending ? "Creating workspace…" : "Create workspace"}
             </Button>
-            <p className="text-sm text-slate-400">
+            <p className="text-center text-sm text-slate-500">
               Already set up?{" "}
-              <Link className="text-cyan-300 hover:text-cyan-200" to="/login">
-                Log in here
+              <Link className="text-indigo-400 hover:text-indigo-300" to="/login">
+                Sign in
               </Link>
             </p>
           </form>

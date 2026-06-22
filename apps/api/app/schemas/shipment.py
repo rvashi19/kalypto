@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import DocumentType, DocumentUploadStatus, ShipmentMode, ShipmentStage
 
@@ -103,9 +103,9 @@ class DiscrepancyItem(BaseModel):
     field: str
     severity: str
     document_a: str
-    document_b: str
+    document_b: str | None = None
     value_a: str
-    value_b: str
+    value_b: str | None = None
     message: str
     suggested_fix: str
 
@@ -113,10 +113,25 @@ class DiscrepancyItem(BaseModel):
 class IncentiveEstimate(BaseModel):
     scheme: str
     eligible: bool
-    estimated_amount: float | None
-    rate_percent: float | None
-    notes: str
-    action_items: list[str]
+    estimated_amount: float | None = None
+    rate_percent: float | None = None
+    notes: str = ""
+    action_items: list[str] = []
+
+    @field_validator("eligible", mode="before")
+    @classmethod
+    def coerce_eligible(cls, v: object) -> bool:
+        return False if v is None else bool(v)
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def coerce_notes(cls, v: object) -> str:
+        return "" if v is None else str(v)
+
+    @field_validator("action_items", mode="before")
+    @classmethod
+    def coerce_action_items(cls, v: object) -> list:
+        return [] if v is None else v
 
 
 class VerificationReport(BaseModel):
