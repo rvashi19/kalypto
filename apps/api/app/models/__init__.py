@@ -30,6 +30,14 @@ from app.models.base import (
     Shipment,
     User,
 )
+from app.models.compliance import (
+    ComplianceChatMessage,
+    ComplianceChatSession,
+    ComplianceCountry,
+    ComplianceRequirement,
+    ComplianceScrapeRun,
+    ProductCategory,
+)
 
 __all__ = [
     "Alert",
@@ -37,7 +45,12 @@ __all__ = [
     "AuditLog",
     "BankRealization",
     "Buyer",
+    "ComplianceChatMessage",
+    "ComplianceChatSession",
+    "ComplianceCountry",
     "ComplianceItem",
+    "ComplianceRequirement",
+    "ComplianceScrapeRun",
     "ComplianceStatus",
     "ConsentRecord",
     "ConsentStatus",
@@ -57,6 +70,7 @@ __all__ = [
     "Organization",
     "PackingList",
     "Product",
+    "ProductCategory",
     "RateTable",
     "RevokedToken",
     "RuleDefinition",

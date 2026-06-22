@@ -28,6 +28,13 @@ class Settings(BaseSettings):
         default="https://api.x.ai/v1",
         alias="XAI_BASE_URL",
     )
+    compliance_scraper_provider: str = Field(
+        default="manual",
+        alias="COMPLIANCE_SCRAPER_PROVIDER",
+    )
+    firecrawl_api_key: str | None = Field(default=None, alias="FIRECRAWL_API_KEY")
+    tavily_api_key: str | None = Field(default=None, alias="TAVILY_API_KEY")
+    bright_data_api_key: str | None = Field(default=None, alias="BRIGHT_DATA_API_KEY")
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
     audit_logging_enabled: bool = True

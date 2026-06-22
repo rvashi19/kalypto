@@ -155,3 +155,50 @@ Notes:
 ## Next phase
 
 Phase 1 should begin only after you verify this scaffold runs cleanly in your environment. That phase will add CSV/Excel ingestion, the pure reconciliation engine, discrepancy dashboards, rate lookup, and PDF document generation.
+
+## Country Compliance Requirement Checker
+
+This feature is available behind the authenticated dashboard. It helps an exporter check destination-country import documents, certificates, labeling, restrictions, inspection/testing needs, buyer-side questions, sources, confidence, and a mandatory compliance disclaimer.
+
+### How to run the checker
+
+1. Start the stack with `docker compose up --build`.
+2. Log in with the demo account: `demo@example.com` / `DemoPassword123!`.
+3. Open the dashboard and use the `Country Compliance Requirement Checker` panel.
+4. Try the seeded examples:
+   - `Mango fruit beverage`, HSN `200989`, destination `Canada`, category `beverages`.
+   - `Packaged cashew dry fruits`, HSN `080132`, destination `United Arab Emirates`, category `dry fruits`.
+   - `Cotton knit shirt`, HSN `610910`, destination `UK`, category `textiles`.
+
+### How to run scraper or source updates
+
+The checker is retrieval-first. It does not trust live scraped text automatically. Use `/api/v1/compliance/scrape/run` to capture a source page, review the extracted text, then send verified structured records to `/api/v1/compliance/scrape/ingest`.
+
+Environment variables:
+
+```bash
+COMPLIANCE_SCRAPER_PROVIDER=manual
+FIRECRAWL_API_KEY=
+TAVILY_API_KEY=
+BRIGHT_DATA_API_KEY=
+```
+
+Recommended live data stack:
+
+- Use Tavily Search API to discover official source pages.
+- Use Firecrawl API to extract official pages and PDFs into markdown/JSON for review.
+- Use Bright Data Web Unlocker only for official sources that block normal extraction.
+
+### How to add countries or product categories
+
+Add verified records through `/api/v1/compliance/scrape/ingest`. The ingestion service creates tenant-scoped country/category rows automatically. Start with Canada, UAE, USA, Netherlands/EU, UK, and Saudi Arabia; add new countries only after confirming source coverage and update cadence.
+
+### Confidence scoring
+
+Each stored requirement has an operator-provided `confidence_score` from `0` to `100`. Retrieval adds small boosts for HSN and product keyword matches. The final response is:
+
+- `High` when source-backed records strongly match the product context and there are no major unresolved questions.
+- `Medium` when the country/category matches but product-specific or buyer-side checks remain.
+- `Low` when records are missing, generic, or uncertain.
+
+Every answer includes sources, last scraped date, unresolved questions, and the disclaimer that the output is compliance assistance, not legal/customs advice.
