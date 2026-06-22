@@ -130,3 +130,18 @@ class VerificationReport(BaseModel):
     finance_readiness_notes: str
     recommendations: list[str]
     disclaimer: str
+
+
+class HsnRateLookupResponse(BaseModel):
+    found: bool
+    hsn_code: str
+    hsn_prefix_matched: str | None = None
+    description: str | None = None
+    duty_drawback_rate: float | None = None
+    rodtep_rate: float | None = None
+    rosctl_rate: float | None = None
+    notes: str | None = None
+    estimated_amounts_inr: dict | None = None
+    fob_inr_basis: float | None = None
+    exchange_rate_note: str | None = None
+    message: str | None = None

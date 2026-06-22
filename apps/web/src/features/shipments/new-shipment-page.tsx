@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui";
 import type { ShipmentCreate, ShipmentMode, ShipmentStage } from "@repo/shared";
@@ -20,6 +20,62 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const inputCls = "rounded-xl border border-white/10 bg-slate-950/80 px-4 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400/40 placeholder:text-slate-600";
 const selectCls = `${inputCls} cursor-pointer`;
+
+function HsnRateCard({ hsn, fobValue }: { hsn: string; fobValue: number | null | undefined }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["hsn-rates", hsn, fobValue],
+    queryFn: () => api.getHsnRates(hsn, fobValue ?? undefined),
+    enabled: hsn.length >= 4,
+    staleTime: 60_000,
+  });
+
+  if (!hsn || hsn.length < 4) return null;
+  if (isLoading) return <p className="mt-1.5 text-xs text-slate-500">Looking up HSN rates…</p>;
+  if (!data) return null;
+
+  if (!data.found) {
+    return (
+      <p className="mt-1.5 text-xs text-slate-500">{data.message}</p>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3">
+      <p className="text-xs font-semibold text-cyan-300">{data.description}</p>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs">
+        {data.duty_drawback_rate != null && data.duty_drawback_rate > 0 && (
+          <span className="rounded-full bg-green-500/15 px-2.5 py-0.5 text-green-300">
+            Duty Drawback {data.duty_drawback_rate}%
+          </span>
+        )}
+        {data.rodtep_rate != null && data.rodtep_rate > 0 && (
+          <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-blue-300">
+            RoDTEP {data.rodtep_rate}%
+          </span>
+        )}
+        {data.rosctl_rate != null && data.rosctl_rate > 0 && (
+          <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-violet-300">
+            RoSCTL {data.rosctl_rate}%
+          </span>
+        )}
+      </div>
+      {data.estimated_amounts_inr && (
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-300">
+          {Object.entries(data.estimated_amounts_inr).map(([scheme, amount]) => (
+            <span key={scheme}>
+              Est. {scheme.replace("_", " ")}:{" "}
+              <span className="font-semibold text-green-400">₹{amount.toLocaleString("en-IN")}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {data.notes && <p className="mt-1.5 text-xs text-slate-500">{data.notes}</p>}
+      {data.exchange_rate_note && (
+        <p className="mt-1 text-xs text-slate-600 italic">{data.exchange_rate_note}</p>
+      )}
+    </div>
+  );
+}
 
 export function NewShipmentPage() {
   const { session, token, setSession } = useAuth();
@@ -85,7 +141,14 @@ export function NewShipmentPage() {
               <input className={inputCls} value={form.product_name} onChange={(e) => set("product_name", e.target.value)} placeholder="e.g. Dried Red Chillies" required />
             </Field>
             <Field label="HSN Code" required>
-              <input className={inputCls} value={form.hsn_code} onChange={(e) => set("hsn_code", e.target.value)} placeholder="e.g. 09042220" required />
+              <input
+                className={inputCls}
+                value={form.hsn_code}
+                onChange={(e) => set("hsn_code", e.target.value)}
+                placeholder="e.g. 09042220"
+                required
+              />
+              <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} />
             </Field>
             <Field label="Exporter name" required>
               <input className={inputCls} value={form.exporter_name} onChange={(e) => set("exporter_name", e.target.value)} placeholder="Your company name" required />

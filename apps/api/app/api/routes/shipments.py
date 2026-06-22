@@ -1,26 +1,32 @@
 from __future__ import annotations
 
+import logging
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, UploadFile, status
-from fastapi import File as FastAPIFile
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, UploadFile, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.settings import get_settings
+from app.db.session import SessionLocal
 from app.models import DocumentType, DocumentUploadStatus, ExportShipment, ShipmentDocument
 from app.repositories.shipment import DocumentRepository, ShipmentRepository
 from app.schemas.shipment import (
     DocumentChecklist,
     DocumentResponse,
+    HsnRateLookupResponse,
     ShipmentCreate,
     ShipmentResponse,
     ShipmentUpdate,
     VerificationReport,
 )
+from app.services import ocr_service
 from app.services.checklist_service import generate_checklist
 from app.services.groq_client import GroqClientError
+from app.services.hsn_rate_service import estimate_incentives
 from app.services.verification_service import run_verification
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/shipments", tags=["shipments"])
 
@@ -33,6 +39,14 @@ ALLOWED_MIME_TYPES = {
     "application/vnd.ms-excel",
 }
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+# ── HSN rate lookup (public — no auth required) ────────────────────────────────
+
+@router.get("/hsn-rates", response_model=HsnRateLookupResponse)
+def get_hsn_rates(hsn: str, fob_value: float | None = None) -> HsnRateLookupResponse:
+    result = estimate_incentives(hsn_code=hsn, fob_value_usd=fob_value)
+    return HsnRateLookupResponse(**result)
 
 
 # ── Shipment CRUD ──────────────────────────────────────────────────────────────
@@ -113,11 +127,36 @@ def delete_shipment(shipment_id: UUID, session: DbSession, current_user: Current
 
 # ── Document upload ────────────────────────────────────────────────────────────
 
+def _run_ocr_background(doc_id: UUID, file_path: str, mime_type: str | None) -> None:
+    """Background task: extract fields from an uploaded document and persist results."""
+    session = SessionLocal()
+    try:
+        doc = session.get(ShipmentDocument, doc_id)
+        if doc is None:
+            return
+        fields = ocr_service.extract_fields(file_path=file_path, mime_type=mime_type)
+        doc.extracted_fields = fields
+        doc.upload_status = DocumentUploadStatus.EXTRACTED
+        session.commit()
+    except Exception as exc:
+        logger.error("OCR background task failed for doc %s: %s", doc_id, exc)
+        try:
+            doc = session.get(ShipmentDocument, doc_id)
+            if doc is not None:
+                doc.upload_status = DocumentUploadStatus.FAILED
+                session.commit()
+        except Exception:
+            pass
+    finally:
+        session.close()
+
+
 @router.post("/{shipment_id}/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     shipment_id: UUID,
     document_type: DocumentType,
     file: UploadFile,
+    background_tasks: BackgroundTasks,
     session: DbSession,
     current_user: CurrentUser,
 ) -> DocumentResponse:
@@ -168,6 +207,9 @@ async def upload_document(
     doc_repo.add(doc)
     session.commit()
     session.refresh(doc)
+
+    background_tasks.add_task(_run_ocr_background, doc.id, file_path, file.content_type)
+
     return DocumentResponse.model_validate(doc)
 
 

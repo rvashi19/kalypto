@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui";
-import type { ChecklistItem, DiscrepancyItem, DocumentType, IncentiveEstimate } from "@repo/shared";
+import type { ChecklistItem, DiscrepancyItem, DocumentResponse, DocumentType, IncentiveEstimate } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -37,6 +37,82 @@ const RISK_STYLES: Record<string, string> = {
   high: "bg-orange-500/15 text-orange-300 border-orange-500/20",
   critical: "bg-rose-500/15 text-rose-300 border-rose-500/20",
 };
+
+const FIELD_LABELS: Record<string, string> = {
+  document_number: "Doc No.",
+  document_date: "Date",
+  buyer_name: "Buyer",
+  seller_name: "Seller",
+  hsn_code: "HSN",
+  product_description: "Product",
+  quantity: "Qty",
+  unit_of_measure: "UOM",
+  net_weight_kg: "Net Wt (kg)",
+  gross_weight_kg: "Gross Wt (kg)",
+  fob_value: "FOB Value",
+  cif_value: "CIF Value",
+  currency: "Currency",
+  incoterm: "Incoterm",
+  payment_term: "Payment Term",
+  port_of_loading: "POL",
+  port_of_discharge: "POD",
+  vessel_flight_no: "Vessel/Flight",
+  bl_awb_number: "BL/AWB No.",
+  shipping_bill_no: "Shipping Bill",
+  igst_amount: "IGST Amount",
+  gstin: "GSTIN",
+  iec_code: "IEC Code",
+  marks_and_numbers: "Marks & Nos.",
+};
+
+function ExtractedFieldsPanel({ doc }: { doc: DocumentResponse }) {
+  const [open, setOpen] = useState(false);
+
+  if (doc.upload_status === "pending") {
+    return (
+      <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-400">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+        Extracting fields…
+      </div>
+    );
+  }
+
+  if (doc.upload_status === "failed") {
+    return <p className="mt-1 text-xs text-rose-400">Extraction failed</p>;
+  }
+
+  if (!doc.extracted_fields || Object.keys(doc.extracted_fields).length === 0) return null;
+
+  const fields = Object.entries(doc.extracted_fields).filter(([k]) => k !== "_note");
+  const note = doc.extracted_fields["_note"] as string | undefined;
+
+  if (note) {
+    return <p className="mt-1 text-xs text-slate-500">{note}</p>;
+  }
+
+  if (!fields.length) return null;
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300"
+      >
+        {open ? "▾" : "▸"} {fields.length} fields extracted
+      </button>
+      {open && (
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
+          {fields.map(([key, value]) => (
+            <div key={key} className="flex flex-col">
+              <span className="text-xs text-slate-500">{FIELD_LABELS[key] ?? key}</span>
+              <span className="text-xs text-slate-200">{String(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ChecklistSection({ title, items, color }: { title: string; items: ChecklistItem[]; color: string }) {
   if (!items.length) return null;
@@ -127,6 +203,8 @@ export function ShipmentDetailPage() {
     queryKey: ["documents", id, token],
     queryFn: () => api.listDocuments(id!, token!),
     enabled: Boolean(id && token && tab === "documents"),
+    refetchInterval: (query) =>
+      query.state.data?.some((d) => d.upload_status === "pending") ? 3000 : false,
   });
 
   const reportQuery = useQuery({
@@ -285,14 +363,17 @@ export function ShipmentDetailPage() {
               )}
               <div className="flex flex-col gap-2">
                 {docsQuery.data?.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-100">{DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type}</p>
-                      <p className="text-xs text-slate-500">{doc.file_name} · {doc.file_size_bytes ? `${(doc.file_size_bytes / 1024).toFixed(0)} KB` : ""}</p>
+                  <div key={doc.id} className="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-100">{DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type}</p>
+                        <p className="text-xs text-slate-500">{doc.file_name} · {doc.file_size_bytes ? `${(doc.file_size_bytes / 1024).toFixed(0)} KB` : ""}</p>
+                      </div>
+                      <span className={`text-xs ${doc.upload_status === "extracted" ? "text-green-400" : doc.upload_status === "failed" ? "text-rose-400" : "text-amber-400"}`}>
+                        {doc.upload_status}
+                      </span>
                     </div>
-                    <span className={`text-xs ${doc.upload_status === "extracted" ? "text-green-400" : doc.upload_status === "failed" ? "text-rose-400" : "text-amber-400"}`}>
-                      {doc.upload_status}
-                    </span>
+                    <ExtractedFieldsPanel doc={doc} />
                   </div>
                 ))}
               </div>

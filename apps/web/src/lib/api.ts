@@ -7,6 +7,7 @@ import type {
   DocumentChecklist,
   DocumentResponse,
   DocumentType,
+  HsnRateLookupResponse,
   ShipmentCreate,
   ShipmentResponse,
   VerificationReport,
@@ -156,4 +157,9 @@ export const api = {
 
   verifyShipment: (shipmentId: string, token: string) =>
     request<VerificationReport>(`/shipments/${shipmentId}/verify`, {}, token),
+
+  getHsnRates: (hsn: string, fobValue?: number) =>
+    request<HsnRateLookupResponse>(
+      `/shipments/hsn-rates?hsn=${encodeURIComponent(hsn)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
+    ),
 };

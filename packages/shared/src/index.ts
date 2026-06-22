@@ -172,3 +172,18 @@ export interface VerificationReport {
   recommendations: string[];
   disclaimer: string;
 }
+
+export interface HsnRateLookupResponse {
+  found: boolean;
+  hsn_code: string;
+  hsn_prefix_matched: string | null;
+  description: string | null;
+  duty_drawback_rate: number | null;
+  rodtep_rate: number | null;
+  rosctl_rate: number | null;
+  notes: string | null;
+  estimated_amounts_inr: Record<string, number> | null;
+  fob_inr_basis: number | null;
+  exchange_rate_note: string | null;
+  message: string | null;
+}
