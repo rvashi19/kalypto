@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Generic, Protocol, TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.services.audit import AuditLogger
@@ -32,7 +32,7 @@ class TenantRepository(Generic[TenantModelT]):
         self.actor_user_id = actor_user_id
         self.audit = AuditLogger(session)
 
-    def scoped_query(self):
+    def scoped_query(self) -> Select[tuple[TenantModelT]]:
         model = cast(Any, self.model)
         return select(self.model).where(model.tenant_id == self.tenant_id)
 

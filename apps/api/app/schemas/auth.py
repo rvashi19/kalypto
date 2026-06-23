@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from app.models import MembershipRole
 
-EmailValue = Annotated[str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=320)]
+EmailValue = Annotated[
+    str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=320)
+]
 
 
 class OrganizationSummary(BaseModel):

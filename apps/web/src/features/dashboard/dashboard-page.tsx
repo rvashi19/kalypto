@@ -142,13 +142,13 @@ export function DashboardPage() {
             <SelectField
               label="Destination"
               value={complianceForm.destination_country}
-              options={complianceOptionsQuery.data?.countries ?? ["Canada", "United Arab Emirates", "USA", "Netherlands/EU", "UK", "Saudi Arabia"]}
+              options={complianceOptionsQuery.data?.countries ?? ["Canada", "United Arab Emirates", "UK"]}
               onChange={(value) => setComplianceForm((current) => ({ ...current, destination_country: value }))}
             />
             <SelectField
               label="Category"
               value={complianceForm.category}
-              options={complianceOptionsQuery.data?.categories ?? ["food/agri", "spices", "dry fruits", "beverages", "textiles"]}
+              options={complianceOptionsQuery.data?.categories ?? ["beverages", "dry fruits", "spices", "textiles"]}
               onChange={(value) => setComplianceForm((current) => ({ ...current, category: value }))}
             />
           </div>
@@ -237,24 +237,51 @@ export function DashboardPage() {
 }
 
 function ComplianceResult({ result }: { result: ComplianceCheckerResponse }) {
+  const summary = result.sections.product_summary;
+  const isInsufficient = result.status === "insufficient_verified_data" || result.status === "needs_review";
+
   return (
     <div className="space-y-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-50">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Result</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Country Compliance Requirement Checker</p>
           <p className="mt-1 text-lg font-semibold">{result.confidence_level} confidence</p>
         </div>
         <span className="rounded-full border border-white/10 bg-slate-950/80 px-3 py-1 text-xs uppercase text-slate-300">
-          {result.status.replace("_", " ")}
+          {result.status.replaceAll("_", " ")}
         </span>
       </div>
-      <p className="text-slate-300">{result.confidence_explanation}</p>
-      <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-slate-950/80 p-4 leading-7 text-slate-100">
-        {result.answer}
-      </pre>
-      {result.follow_up_questions.length ? (
-        <SectionList title="Follow-up questions" values={result.follow_up_questions} />
+
+      {isInsufficient ? (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-amber-100">
+          Insufficient verified data available.
+        </div>
       ) : null}
+
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <MiniFact label="Product" value={summary.product} />
+        <MiniFact label="HSN" value={summary.hsn ?? "Not confirmed"} />
+        <MiniFact label="Destination" value={summary.destination} />
+        <MiniFact label="Category" value={summary.category} />
+      </div>
+
+      <p className="text-slate-300">{result.confidence_explanation}</p>
+      {result.last_checked_date ? (
+        <p className="text-xs text-slate-400">Latest approved source checked: {result.last_checked_date}</p>
+      ) : null}
+
+      <SectionList title="Assumptions" values={summary.assumptions} />
+      <SectionList title="Required import documents" values={result.sections.required_import_documents} />
+      <SectionList title="Certificates required" values={result.sections.certificates_required} />
+      <SectionList title="Labeling requirements" values={result.sections.labeling_requirements} />
+      <SectionList title="Restrictions / prohibited alerts" values={result.sections.restriction_alerts} />
+      <SectionList title="Inspection / testing requirements" values={result.sections.inspection_testing_requirements} />
+      <SectionList title="Buyer-side questions" values={result.sections.buyer_side_questions} />
+
+      {result.unresolved_questions.length ? (
+        <SectionList title="Unresolved questions" values={result.unresolved_questions} />
+      ) : null}
+
       {result.sections.source_references.length ? (
         <div className="space-y-2">
           <p className="font-semibold text-slate-100">Sources</p>
@@ -266,15 +293,31 @@ function ComplianceResult({ result }: { result: ComplianceCheckerResponse }) {
               rel="noreferrer"
               target="_blank"
             >
-              {source.source_name} Â· {source.last_scraped_date}
+              <span className="font-medium">{source.source_name}</span>
+              <span className="mt-1 block text-xs text-slate-400">
+                {source.source_authority_level} - last checked {source.last_checked_date ?? "unknown"}
+                {source.expires_at ? ` - expires ${source.expires_at}` : ""}
+              </span>
             </a>
           ))}
         </div>
       ) : null}
+
+      <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs leading-6 text-slate-300">
+        {result.disclaimer}
+      </div>
     </div>
   );
 }
 
+function MiniFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 font-medium text-slate-100">{value}</p>
+    </div>
+  );
+}
 function SectionList({ title, values }: { title: string; values: string[] }) {
   return (
     <div className="space-y-2">

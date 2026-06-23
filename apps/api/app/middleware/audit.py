@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 from app.core.security import decode_access_token
 from app.core.settings import get_settings
@@ -10,10 +13,16 @@ from app.services.audit import AuditLogger
 
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         response = await call_next(request)
         settings = get_settings()
-        if not settings.audit_logging_enabled or not request.url.path.startswith(settings.api_v1_prefix):
+        if not settings.audit_logging_enabled or not request.url.path.startswith(
+            settings.api_v1_prefix,
+        ):
             return response
 
         actor_user_id = None

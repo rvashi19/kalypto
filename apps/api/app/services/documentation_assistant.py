@@ -58,7 +58,8 @@ SYSTEM_PROMPT = dedent(
     - do not invent tax, customs, or legal rules
     - do not claim a feature exists unless it is described in the context
     - if the question asks for a missing feature, say it is not yet implemented
-    - if the question asks for legal or customs certainty, advise verification with a CA, CHA, or customs broker
+    - if the question asks for legal or customs certainty, advise verification with a CA,
+      CHA, or customs broker
     - keep answers concise and practical
     """
 ).strip()

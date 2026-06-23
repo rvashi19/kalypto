@@ -5,9 +5,19 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import JSON, Uuid, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from app.db.base import Base
@@ -99,7 +109,7 @@ class UUIDPrimaryKeyMixin:
 
 class TenantScopedMixin:
     @declared_attr.directive
-    def tenant_id(cls) -> Mapped[UUID]:
+    def tenant_id(self) -> Mapped[UUID]:
         return mapped_column(Uuid, ForeignKey("organizations.id"), nullable=False, index=True)
 
 
@@ -121,9 +131,13 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 class Membership(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "memberships"
-    __table_args__ = (UniqueConstraint("organization_id", "user_id", name="uq_membership_org_user"),)
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_membership_org_user"),
+    )
 
-    organization_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("organizations.id"), nullable=False)
+    organization_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organizations.id"), nullable=False
+    )
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
     role: Mapped[MembershipRole] = mapped_column(SqlEnum(MembershipRole), nullable=False)
 
@@ -152,7 +166,9 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
 
 class Shipment(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "shipments"
-    __table_args__ = (UniqueConstraint("tenant_id", "shipping_bill_no", name="uq_shipments_tenant_bill"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "shipping_bill_no", name="uq_shipments_tenant_bill"),
+    )
 
     buyer_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("buyers.id"), nullable=True)
     shipping_bill_no: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -166,9 +182,13 @@ class Shipment(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
 
 class Invoice(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "invoices"
-    __table_args__ = (UniqueConstraint("tenant_id", "invoice_number", name="uq_invoices_tenant_number"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "invoice_number", name="uq_invoices_tenant_number"),
+    )
 
-    shipment_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=True)
+    shipment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("shipments.id"), nullable=True
+    )
     buyer_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("buyers.id"), nullable=True)
     invoice_number: Mapped[str] = mapped_column(String(120), nullable=False)
     type: Mapped[InvoiceType] = mapped_column(SqlEnum(InvoiceType), nullable=False)
@@ -183,7 +203,9 @@ class PackingList(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
         UniqueConstraint("tenant_id", "packing_list_number", name="uq_packing_lists_tenant_number"),
     )
 
-    shipment_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=True)
+    shipment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("shipments.id"), nullable=True
+    )
     packing_list_number: Mapped[str] = mapped_column(String(120), nullable=False)
     issue_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     package_count: Mapped[int | None] = mapped_column(nullable=True)
@@ -194,7 +216,9 @@ class PackingList(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
 class GstExportInvoice(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "gst_export_invoices"
 
-    shipment_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=True)
+    shipment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("shipments.id"), nullable=True
+    )
     gst_invoice_number: Mapped[str] = mapped_column(String(120), nullable=False)
     gst_filing_period: Mapped[str | None] = mapped_column(String(20), nullable=True)
     taxable_value: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
@@ -205,18 +229,24 @@ class GstExportInvoice(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMi
 class BankRealization(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "bank_realizations"
 
-    shipment_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=True)
+    shipment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("shipments.id"), nullable=True
+    )
     brc_number: Mapped[str] = mapped_column(String(120), nullable=False)
     bank_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     realized_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    realization_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    realization_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class IncentiveClaim(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "incentive_claims"
 
-    shipment_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=True)
+    shipment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("shipments.id"), nullable=True
+    )
     scheme: Mapped[IncentiveScheme] = mapped_column(SqlEnum(IncentiveScheme), nullable=False)
     entitled_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     claimed_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
@@ -233,7 +263,9 @@ class Discrepancy(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
 
     shipment_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("shipments.id"), nullable=False)
     type: Mapped[str] = mapped_column(String(120), nullable=False)
-    severity: Mapped[DiscrepancySeverity] = mapped_column(SqlEnum(DiscrepancySeverity), nullable=False)
+    severity: Mapped[DiscrepancySeverity] = mapped_column(
+        SqlEnum(DiscrepancySeverity), nullable=False
+    )
     message: Mapped[str] = mapped_column(Text, nullable=False)
     suggested_fix: Mapped[str | None] = mapped_column(Text, nullable=True)
     lock_risk_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -340,7 +372,9 @@ class ConsentRecord(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin
 class RevokedToken(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "revoked_tokens"
 
-    tenant_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("organizations.id"), nullable=True)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("organizations.id"), nullable=True
+    )
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
     jti: Mapped[str] = mapped_column(String(120), nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

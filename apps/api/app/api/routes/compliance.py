@@ -43,9 +43,9 @@ def get_compliance_options(current_user: CurrentUser) -> ComplianceOptionsRespon
         countries=list(SUPPORTED_COUNTRIES),
         categories=list(SUPPORTED_CATEGORIES),
         recommended_scraping_stack=[
-            "Tavily Search API for official-source discovery",
+            "Tavily Search API for low-volume official-source discovery",
             "Firecrawl API for page/PDF extraction into markdown or JSON",
-            "Bright Data Web Unlocker only when official pages block normal extraction",
+            "Manual review before any scraped evidence becomes approved",
         ],
         knowledge_store_backend=settings.compliance_store_backend,
         refresh_interval_days=settings.compliance_refresh_interval_days,
@@ -66,7 +66,9 @@ def answer_country_compliance_checker(
             user_id=current_user.user.id,
         )
     except ComplianceStoreConfigurationError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
+        ) from error
 
 
 @router.post("/scrape/ingest", response_model=ManualComplianceIngestResponse)
@@ -77,12 +79,18 @@ def ingest_compliance_records(
 ) -> ManualComplianceIngestResponse:
     require_editor(current_user)
     try:
-        store = get_compliance_knowledge_store(session=session, tenant_id=current_user.organization.id)
+        store = get_compliance_knowledge_store(
+            session=session, tenant_id=current_user.organization.id
+        )
     except ComplianceStoreConfigurationError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
+        ) from error
     created, updated = store.ingest(payload.records)
     session.commit()
-    return ManualComplianceIngestResponse(created=created, updated=updated, total=len(payload.records))
+    return ManualComplianceIngestResponse(
+        created=created, updated=updated, total=len(payload.records)
+    )
 
 
 @router.post("/scrape/run", response_model=ComplianceScrapeRunResponse)
@@ -105,7 +113,9 @@ def run_compliance_scrape(
     session.flush()
     scraper = get_compliance_scraper()
     try:
-        store = get_compliance_knowledge_store(session=session, tenant_id=current_user.organization.id)
+        store = get_compliance_knowledge_store(
+            session=session, tenant_id=current_user.organization.id
+        )
         document = scraper.scrape(payload.source_url)
         snapshot = store.record_source_snapshot(
             source_url=document.source_url,
@@ -123,7 +133,7 @@ def run_compliance_scrape(
             run_id=str(run.id),
             status=run.status,
             records_found=0,
-            message=str(error),
+            message=f"source={payload.source_url} error={error}",
         )
 
     run.status = snapshot.status

@@ -29,6 +29,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="Canada Border Services Agency importing commercial goods guide",
             source_authority_level="official",
             confidence_score=82,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="Canada",
@@ -45,11 +49,15 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="Canadian Food Inspection Agency food labelling",
             source_authority_level="official",
             confidence_score=82,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="Canada",
-            category="food/agri",
-            product_keywords=["food", "agri", "plant", "processed"],
+            category="beverages",
+            product_keywords=["food", "plant", "processed", "beverage"],
             requirement_type="inspection",
             requirement_text=(
                 "Food and plant-origin consignments may be subject to CFIA import controls or inspection. "
@@ -59,6 +67,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="Canadian Food Inspection Agency import requirements",
             source_authority_level="official",
             confidence_score=76,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="Canada",
@@ -73,6 +85,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="Canadian Food Inspection Agency import requirements",
             source_authority_level="official",
             confidence_score=70,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="United Arab Emirates",
@@ -87,6 +103,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="UAE Ministry of Climate Change and Environment import/export services",
             source_authority_level="official",
             confidence_score=72,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="United Arab Emirates",
@@ -101,6 +121,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="Dubai Municipality food safety",
             source_authority_level="official",
             confidence_score=68,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="UK",
@@ -115,6 +139,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="GOV.UK textile products labelling and fibre composition",
             source_authority_level="official",
             confidence_score=80,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
         ComplianceRequirementInput(
             country="UK",
@@ -129,6 +157,10 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             source_name="GOV.UK product safety for businesses",
             source_authority_level="official",
             confidence_score=74,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
     ]
 
@@ -141,7 +173,9 @@ def seed_compliance_data(session: Session, organization: Organization) -> None:
 def main() -> None:
     session = SessionLocal()
     try:
-        existing = session.scalars(select(Organization).where(Organization.slug == "demo-exports")).first()
+        existing = session.scalars(
+            select(Organization).where(Organization.slug == "demo-exports")
+        ).first()
         if existing is not None:
             seed_compliance_data(session, existing)
             session.commit()

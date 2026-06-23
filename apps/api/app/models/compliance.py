@@ -25,7 +25,9 @@ from app.models.base import TenantScopedMixin, TimestampMixin, UUIDPrimaryKeyMix
 
 class ComplianceCountry(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "compliance_countries"
-    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_compliance_countries_tenant_name"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_compliance_countries_tenant_name"),
+    )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -34,7 +36,9 @@ class ComplianceCountry(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedM
 
 class ProductCategory(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "product_categories"
-    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_product_categories_tenant_name"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_product_categories_tenant_name"),
+    )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -44,7 +48,9 @@ class ProductCategory(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMix
 class ComplianceRequirement(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "compliance_requirements"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "content_hash", name="uq_compliance_requirements_tenant_hash"),
+        UniqueConstraint(
+            "tenant_id", "content_hash", name="uq_compliance_requirements_tenant_hash"
+        ),
     )
 
     country_id: Mapped[UUID] = mapped_column(
@@ -73,8 +79,17 @@ class ComplianceRequirement(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantSco
         server_default=func.now(),
         default=lambda: datetime.now(UTC),
     )
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     confidence_score: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=70)
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="active", index=True)
+    review_status: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="approved", index=True
+    )
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    unresolved_questions: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
@@ -110,7 +125,9 @@ class ComplianceChatSession(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantSco
 class ComplianceChatMessage(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "compliance_chat_messages"
 
-    tenant_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("organizations.id"), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organizations.id"), nullable=False, index=True
+    )
     session_id: Mapped[UUID] = mapped_column(
         Uuid,
         ForeignKey("compliance_chat_sessions.id"),

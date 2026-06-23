@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.settings import get_settings
 from app.models import ComplianceCountry, ComplianceRequirement, ProductCategory
 from app.schemas.compliance import ComplianceRequirementInput
+from app.services.compliance_freshness import calculate_expires_at, is_stale
 from app.services.compliance_normalization import (
     normalize_hsn,
     requirement_fingerprint,
@@ -22,6 +23,7 @@ from app.services.compliance_normalization import (
 from app.services.compliance_retrieval import (
     ComplianceDataWriter,
     ComplianceRetriever,
+    EvidenceReviewContext,
     RequirementMatch,
     StoredComplianceRequirement,
 )
@@ -61,6 +63,10 @@ class ComplianceKnowledgeStore(Protocol):
         category: str,
         limit: int = 30,
     ) -> list[RequirementMatch]: ...
+
+    def review_context(
+        self, *, destination_country: str, category: str
+    ) -> EvidenceReviewContext: ...
 
     def record_source_snapshot(
         self,
@@ -102,6 +108,11 @@ class PostgresComplianceKnowledgeStore:
             limit=limit,
         )
 
+    def review_context(self, *, destination_country: str, category: str) -> EvidenceReviewContext:
+        return self.retriever.review_context(
+            destination_country=destination_country, category=category
+        )
+
     def record_source_snapshot(
         self,
         *,
@@ -111,7 +122,9 @@ class PostgresComplianceKnowledgeStore:
         title: str,
         markdown: str,
     ) -> SourceSnapshotResult:
-        content_hash = source_snapshot_fingerprint(source_url=source_url, title=title, markdown=markdown)
+        content_hash = source_snapshot_fingerprint(
+            source_url=source_url, title=title, markdown=markdown
+        )
         return SourceSnapshotResult(
             source_url=source_url,
             title=title,
@@ -119,8 +132,8 @@ class PostgresComplianceKnowledgeStore:
             previous_content_hash=None,
             status="needs_review",
             message=(
-                "Source text was captured, but persistent snapshot diffing requires MongoDB. "
-                "Review and ingest verified structured records before activating changes."
+                f"source={source_url} content_hash={content_hash} changed=unknown "
+                "pending_review_created=true. Persistent snapshot diffing requires MongoDB."
             ),
         )
 
@@ -132,6 +145,7 @@ class PostgresComplianceKnowledgeStore:
             .where(
                 ComplianceRequirement.tenant_id == self.tenant_id,
                 ComplianceRequirement.status == "active",
+                ComplianceRequirement.review_status == "approved",
             ),
         ).all()
         seen: set[str] = set()
@@ -145,7 +159,7 @@ class PostgresComplianceKnowledgeStore:
                     source_url=requirement.source_url,
                     country=country.name,
                     category=category.name,
-                    last_checked_at=None,
+                    last_checked_at=requirement.last_checked_at,
                 ),
             )
             if len(due) >= limit:
@@ -181,8 +195,14 @@ class MongoComplianceKnowledgeStore:
             name="uq_tenant_requirement_hash",
         )
         self.requirements.create_index(
-            [("tenant_id", 1), ("country", 1), ("category", 1), ("status", 1)],
-            name="ix_tenant_country_category_status",
+            [
+                ("tenant_id", 1),
+                ("country", 1),
+                ("category", 1),
+                ("status", 1),
+                ("review_status", 1),
+            ],
+            name="ix_tenant_country_category_status_review",
         )
         self.requirements.create_index(
             [("tenant_id", 1), ("hsn_code", 1)],
@@ -203,7 +223,10 @@ class MongoComplianceKnowledgeStore:
         now = datetime.now(UTC)
         for record in records:
             document = self._record_to_document(record, now=now)
-            filter_query = {"tenant_id": str(self.tenant_id), "content_hash": document["content_hash"]}
+            filter_query = {
+                "tenant_id": str(self.tenant_id),
+                "content_hash": document["content_hash"],
+            }
             existing = self.requirements.find_one(filter_query)
             if existing:
                 document["_id"] = existing["_id"]
@@ -234,10 +257,13 @@ class MongoComplianceKnowledgeStore:
                 "country": destination_country,
                 "category": category,
                 "status": "active",
+                "review_status": "approved",
             },
         )
         matches: list[RequirementMatch] = []
         for document in documents:
+            if is_stale(expires_at=document.get("expires_at")):
+                continue
             stored_hsn = document.get("hsn_code")
             stored_keywords = list(document.get("product_keywords") or [])
             hsn_score = ComplianceRetriever._hsn_score(request_hsn, stored_hsn)
@@ -253,6 +279,28 @@ class MongoComplianceKnowledgeStore:
             )
         return sorted(matches, key=lambda match: match.score, reverse=True)[:limit]
 
+    def review_context(self, *, destination_country: str, category: str) -> EvidenceReviewContext:
+        documents = self.requirements.find(
+            {
+                "tenant_id": str(self.tenant_id),
+                "country": destination_country,
+                "category": category,
+            },
+        )
+        total = 0
+        pending = 0
+        stale = 0
+        for document in documents:
+            total += 1
+            if document.get("status") != "active" or document.get("review_status") != "approved":
+                pending += 1
+                continue
+            if is_stale(expires_at=document.get("expires_at")):
+                stale += 1
+        return EvidenceReviewContext(
+            total_records=total, pending_records=pending, stale_records=stale
+        )
+
     def record_source_snapshot(
         self,
         *,
@@ -263,19 +311,33 @@ class MongoComplianceKnowledgeStore:
         markdown: str,
     ) -> SourceSnapshotResult:
         now = datetime.now(UTC)
-        content_hash = source_snapshot_fingerprint(source_url=source_url, title=title, markdown=markdown)
+        content_hash = source_snapshot_fingerprint(
+            source_url=source_url, title=title, markdown=markdown
+        )
         filter_query = {"tenant_id": str(self.tenant_id), "source_url": source_url}
         latest = self.source_snapshots.find_one(filter_query, sort=[("scraped_at", -1)])
         previous_hash = latest.get("content_hash") if latest else None
         if previous_hash is None:
             status = "new_snapshot"
-            message = "New source snapshot stored. Review and ingest structured requirements before publishing."
+            pending_review_created = False
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=new "
+                "pending_review_created=false"
+            )
         elif previous_hash == content_hash:
             status = "unchanged"
-            message = "No source text change detected since the previous snapshot."
+            pending_review_created = False
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=false "
+                "pending_review_created=false"
+            )
         else:
             status = "needs_review"
-            message = "Source text changed. Review the diff before activating compliance updates."
+            pending_review_created = True
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=true "
+                "pending_review_created=true"
+            )
 
         snapshot_id = str(uuid4())
         self.source_snapshots.insert_one(
@@ -293,7 +355,7 @@ class MongoComplianceKnowledgeStore:
                 "scraped_at": now,
             },
         )
-        if status == "needs_review":
+        if pending_review_created:
             self.source_changes.insert_one(
                 {
                     "_id": str(uuid4()),
@@ -322,7 +384,7 @@ class MongoComplianceKnowledgeStore:
     def due_sources(self, *, limit: int = 25) -> list[DueComplianceSource]:
         cutoff = datetime.now(UTC) - timedelta(days=self.settings.compliance_refresh_interval_days)
         documents = self.requirements.find(
-            {"tenant_id": str(self.tenant_id), "status": "active"},
+            {"tenant_id": str(self.tenant_id), "status": "active", "review_status": "approved"},
             {"source_url": 1, "country": 1, "category": 1},
         )
         due: list[DueComplianceSource] = []
@@ -350,15 +412,24 @@ class MongoComplianceKnowledgeStore:
                 break
         return due
 
-    def _record_to_document(self, record: ComplianceRequirementInput, *, now: datetime) -> dict[str, Any]:
+    def _record_to_document(
+        self, record: ComplianceRequirementInput, *, now: datetime
+    ) -> dict[str, Any]:
         normalized_hsn = normalize_hsn(record.hsn_code)
+        requirement_text = record.extracted_requirement or record.requirement_text
+        last_checked_at = record.last_checked_at or now
+        expires_at = record.expires_at or calculate_expires_at(
+            category=record.category,
+            requirement_type=record.requirement_type,
+            last_checked_at=last_checked_at,
+        )
         content_hash = requirement_fingerprint(
             tenant_id=str(self.tenant_id),
             country=record.country,
             category=record.category,
             hsn_code=normalized_hsn,
             requirement_type=record.requirement_type,
-            requirement_text=record.requirement_text,
+            requirement_text=requirement_text,
             source_url=record.source_url,
         )
         return {
@@ -368,21 +439,28 @@ class MongoComplianceKnowledgeStore:
             "hsn_code": normalized_hsn,
             "product_keywords": tokenize_keywords(record.product_keywords),
             "requirement_type": record.requirement_type,
-            "requirement_text": record.requirement_text.strip(),
+            "extracted_requirement": requirement_text.strip(),
+            "requirement_text": requirement_text.strip(),
             "source_url": record.source_url.strip(),
             "source_name": record.source_name.strip(),
             "source_authority_level": record.source_authority_level,
             "effective_date": record.effective_date,
             "last_scraped_at": now,
+            "last_checked_at": last_checked_at,
+            "expires_at": expires_at,
             "confidence_score": record.confidence_score,
             "status": record.status,
+            "review_status": record.review_status,
+            "reviewed_by": record.reviewed_by,
+            "reviewed_at": record.reviewed_at,
+            "notes": record.notes,
+            "unresolved_questions": record.unresolved_questions,
             "content_hash": content_hash,
         }
 
     def _document_to_requirement(self, document: dict[str, Any]) -> StoredComplianceRequirement:
-        last_scraped_at = document.get("last_scraped_at")
-        if not isinstance(last_scraped_at, datetime):
-            last_scraped_at = datetime.now(UTC)
+        last_checked_at = document.get("last_checked_at") or document.get("last_scraped_at")
+        expires_at = document.get("expires_at")
         return StoredComplianceRequirement(
             id=str(document.get("_id", "")),
             tenant_id=str(document.get("tenant_id", "")),
@@ -391,13 +469,23 @@ class MongoComplianceKnowledgeStore:
             hsn_code=document.get("hsn_code"),
             product_keywords=list(document.get("product_keywords") or []),
             requirement_type=str(document.get("requirement_type", "")),
-            requirement_text=str(document.get("requirement_text", "")),
+            extracted_requirement=str(
+                document.get("extracted_requirement") or document.get("requirement_text", "")
+            ),
             source_url=str(document.get("source_url", "")),
             source_name=str(document.get("source_name", "")),
             source_authority_level=str(document.get("source_authority_level", "unknown")),
-            last_scraped_at=last_scraped_at,
+            last_checked_at=last_checked_at if isinstance(last_checked_at, datetime) else None,
+            expires_at=expires_at if isinstance(expires_at, datetime) else None,
             confidence_score=float(document.get("confidence_score", 0)),
             status=str(document.get("status", "")),
+            review_status=str(document.get("review_status", "")),
+            reviewed_by=document.get("reviewed_by"),
+            reviewed_at=document.get("reviewed_at")
+            if isinstance(document.get("reviewed_at"), datetime)
+            else None,
+            notes=document.get("notes"),
+            unresolved_questions=list(document.get("unresolved_questions") or []),
             content_hash=str(document.get("content_hash", "")),
         )
 

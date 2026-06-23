@@ -78,7 +78,8 @@ export interface ProductSummary {
 export interface ComplianceSourceReference {
   source_name: string;
   source_url: string;
-  last_scraped_date: string;
+  last_checked_date: string | null;
+  expires_at: string | null;
   source_authority_level: string;
 }
 
@@ -94,13 +95,14 @@ export interface ComplianceCheckerSections {
 }
 
 export interface ComplianceCheckerResponse {
-  status: "needs_more_info" | "answered" | "insufficient_data";
+  status: "answered" | "insufficient_verified_data" | "needs_review" | "unsupported_scope";
   session_id: string | null;
   answer: string;
   follow_up_questions: string[];
   sections: ComplianceCheckerSections;
   confidence_level: "High" | "Medium" | "Low";
   confidence_explanation: string;
+  last_checked_date: string | null;
   unresolved_questions: string[];
   disclaimer: string;
 }

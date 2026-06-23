@@ -23,3 +23,5 @@ build/
 .turbo/
 *.tsbuildinfo
 apps/api/tests/test_phase0.db
+apps/api/local_kalypto.db
+apps/api/*.db

@@ -24,7 +24,8 @@ class FakeCollection:
         results = list(self.find(filter_query))
         if sort:
             key, direction = sort[0]
-            results.sort(key=lambda document: document.get(key) or datetime.min.replace(tzinfo=UTC), reverse=direction < 0)
+            fallback = datetime.min.replace(tzinfo=UTC)
+            results.sort(key=lambda document: document.get(key) or fallback, reverse=direction < 0)
         return results[0] if results else None
 
     def find(
@@ -65,23 +66,43 @@ class FakeDatabase:
         return self.collections[name]
 
 
-def test_mongo_store_retrieves_active_requirement_documents() -> None:
+def _record(**overrides: Any) -> ComplianceRequirementInput:
+    values = {
+        "country": "Canada",
+        "category": "beverages",
+        "hsn_code": "2009",
+        "product_keywords": ["mango", "juice"],
+        "requirement_type": "labeling",
+        "requirement_text": "Bilingual retail label requirements must be verified before shipment.",
+        "source_url": "https://inspection.canada.ca/en/food-labels/labelling",
+        "source_name": "CFIA food labelling",
+        "source_authority_level": "official",
+        "confidence_score": 82,
+        "last_checked_at": datetime.now(UTC),
+        "review_status": "approved",
+        "reviewed_by": "test",
+        "reviewed_at": datetime.now(UTC),
+    }
+    values.update(overrides)
+    return ComplianceRequirementInput(**values)
+
+
+def test_mongo_store_retrieves_only_active_approved_fresh_requirement_documents() -> None:
     tenant_id = uuid4()
     store = MongoComplianceKnowledgeStore(tenant_id=tenant_id, database=FakeDatabase())
 
     created, updated = store.ingest(
         [
-            ComplianceRequirementInput(
-                country="Canada",
-                category="beverages",
-                hsn_code="2009",
-                product_keywords=["mango", "juice"],
-                requirement_type="labeling",
-                requirement_text="Bilingual retail label requirements must be verified before shipment.",
-                source_url="https://inspection.canada.ca/en/food-labels/labelling",
-                source_name="CFIA food labelling",
-                source_authority_level="official",
-                confidence_score=82,
+            _record(),
+            _record(
+                requirement_text="Pending record should not be used.",
+                review_status="pending",
+                source_url="https://example.com/pending",
+            ),
+            _record(
+                requirement_text="Stale record should not be used.",
+                expires_at=datetime.now(UTC) - timedelta(days=1),
+                source_url="https://example.com/stale",
             ),
         ],
     )
@@ -93,10 +114,37 @@ def test_mongo_store_retrieves_active_requirement_documents() -> None:
         category="beverages",
     )
 
-    assert (created, updated) == (1, 0)
+    assert (created, updated) == (3, 0)
     assert len(matches) == 1
     assert matches[0].requirement.source_name == "CFIA food labelling"
+    assert matches[0].requirement.review_status == "approved"
     assert matches[0].score > 80
+
+
+def test_mongo_review_context_counts_pending_and_stale_documents() -> None:
+    tenant_id = uuid4()
+    store = MongoComplianceKnowledgeStore(tenant_id=tenant_id, database=FakeDatabase())
+    store.ingest(
+        [
+            _record(),
+            _record(
+                review_status="pending",
+                requirement_text="Pending change",
+                source_url="https://example.com/pending",
+            ),
+            _record(
+                requirement_text="Expired change",
+                expires_at=datetime.now(UTC) - timedelta(days=1),
+                source_url="https://example.com/stale",
+            ),
+        ],
+    )
+
+    context = store.review_context(destination_country="Canada", category="beverages")
+
+    assert context.total_records == 3
+    assert context.pending_records == 1
+    assert context.stale_records == 1
 
 
 def test_mongo_store_detects_source_snapshot_changes() -> None:
@@ -127,8 +175,11 @@ def test_mongo_store_detects_source_snapshot_changes() -> None:
     )
 
     assert first.status == "new_snapshot"
+    assert "pending_review_created=false" in first.message
     assert unchanged.status == "unchanged"
     assert changed.status == "needs_review"
+    assert "changed=true" in changed.message
+    assert "pending_review_created=true" in changed.message
     assert len(database["compliance_source_changes"].documents) == 1
 
 
@@ -136,22 +187,7 @@ def test_mongo_store_lists_sources_due_for_refresh() -> None:
     tenant_id = uuid4()
     database = FakeDatabase()
     store = MongoComplianceKnowledgeStore(tenant_id=tenant_id, database=database)
-    store.ingest(
-        [
-            ComplianceRequirementInput(
-                country="Canada",
-                category="beverages",
-                hsn_code="2009",
-                product_keywords=["mango", "juice"],
-                requirement_type="labeling",
-                requirement_text="Bilingual retail label requirements must be verified before shipment.",
-                source_url="https://inspection.canada.ca/en/food-labels/labelling",
-                source_name="CFIA food labelling",
-                source_authority_level="official",
-                confidence_score=82,
-            ),
-        ],
-    )
+    store.ingest([_record()])
     store.record_source_snapshot(
         source_url="https://inspection.canada.ca/en/food-labels/labelling",
         country="Canada",
@@ -159,7 +195,9 @@ def test_mongo_store_lists_sources_due_for_refresh() -> None:
         title="CFIA",
         markdown="Old label rules",
     )
-    database["compliance_source_snapshots"].documents[0]["scraped_at"] = datetime.now(UTC) - timedelta(days=5)
+    database["compliance_source_snapshots"].documents[0]["scraped_at"] = datetime.now(
+        UTC
+    ) - timedelta(days=5)
 
     due = store.due_sources(limit=5)
 

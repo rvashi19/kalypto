@@ -1,21 +1,23 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.services.compliance_normalization import (
-    SUPPORTED_CATEGORIES,
-    SUPPORTED_COUNTRIES,
     normalize_category,
     normalize_country,
     normalize_hsn,
     normalize_requirement_type,
 )
 
-ComplianceStatus = Literal["needs_more_info", "answered", "insufficient_data"]
+ComplianceStatus = Literal[
+    "answered", "insufficient_verified_data", "needs_review", "unsupported_scope"
+]
 ConfidenceLevel = Literal["High", "Medium", "Low"]
+ReviewStatus = Literal["pending", "approved", "rejected"]
 
 
 class ComplianceOptionsResponse(BaseModel):
@@ -35,23 +37,13 @@ class ComplianceCheckerRequest(BaseModel):
 
     @field_validator("destination_country")
     @classmethod
-    def validate_country(cls, value: str) -> str:
-        normalized = normalize_country(value)
-        if normalized not in SUPPORTED_COUNTRIES:
-            raise ValueError(
-                "Unsupported country. Start with Canada, UAE, USA, Netherlands/EU, UK, or Saudi Arabia.",
-            )
-        return normalized
+    def normalize_request_country(cls, value: str) -> str:
+        return normalize_country(value)
 
     @field_validator("category")
     @classmethod
-    def validate_category(cls, value: str) -> str:
-        normalized = normalize_category(value)
-        if normalized not in SUPPORTED_CATEGORIES:
-            raise ValueError(
-                "Unsupported category. Start with food/agri, spices, dry fruits, beverages, textiles, chemicals, machinery, or other.",
-            )
-        return normalized
+    def normalize_request_category(cls, value: str) -> str:
+        return normalize_category(value)
 
     @field_validator("hsn_code")
     @classmethod
@@ -70,7 +62,8 @@ class ProductSummary(BaseModel):
 class ComplianceSourceReference(BaseModel):
     source_name: str
     source_url: str
-    last_scraped_date: str
+    last_checked_date: str | None
+    expires_at: str | None
     source_authority_level: str
 
 
@@ -93,6 +86,7 @@ class ComplianceCheckerResponse(BaseModel):
     sections: ComplianceCheckerSections
     confidence_level: ConfidenceLevel
     confidence_explanation: str
+    last_checked_date: str | None
     unresolved_questions: list[str]
     disclaimer: str
 
@@ -104,12 +98,22 @@ class ComplianceRequirementInput(BaseModel):
     product_keywords: list[str] = Field(default_factory=list, max_length=30)
     requirement_type: str = Field(min_length=2, max_length=80)
     requirement_text: str = Field(min_length=10, max_length=4000)
+    extracted_requirement: str | None = Field(default=None, max_length=4000)
     source_url: str = Field(min_length=8, max_length=2048)
     source_name: str = Field(min_length=2, max_length=255)
-    source_authority_level: Literal["official", "trade_body", "operator_seeded", "unknown"] = "unknown"
+    source_authority_level: Literal["official", "trade_body", "operator_seeded", "unknown"] = (
+        "unknown"
+    )
     effective_date: str | None = None
+    last_checked_at: datetime | None = None
+    expires_at: datetime | None = None
     confidence_score: float = Field(default=70, ge=0, le=100)
     status: Literal["draft", "active", "archived"] = "active"
+    review_status: ReviewStatus = "approved"
+    reviewed_by: str | None = Field(default=None, max_length=255)
+    reviewed_at: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+    unresolved_questions: list[str] = Field(default_factory=list, max_length=20)
 
     @field_validator("country")
     @classmethod
@@ -130,6 +134,12 @@ class ComplianceRequirementInput(BaseModel):
     @classmethod
     def normalize_input_requirement_type(cls, value: str) -> str:
         return normalize_requirement_type(value)
+
+    @model_validator(mode="after")
+    def populate_extracted_requirement(self) -> ComplianceRequirementInput:
+        if self.extracted_requirement is None:
+            self.extracted_requirement = self.requirement_text
+        return self
 
 
 class ManualComplianceIngestRequest(BaseModel):

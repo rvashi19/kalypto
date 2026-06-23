@@ -191,7 +191,7 @@ Recommended live data stack:
 
 ### How to add countries or product categories
 
-Add verified records through `/api/v1/compliance/scrape/ingest`. The ingestion service creates tenant-scoped country/category rows automatically. Start with Canada, UAE, USA, Netherlands/EU, UK, and Saudi Arabia; add new countries only after confirming source coverage and update cadence.
+Add verified records through `/api/v1/compliance/scrape/ingest`. The ingestion service creates tenant-scoped country/category rows automatically. Current V0 scope is Canada, United Arab Emirates, and UK with beverages, dry fruits, spices, and textiles. Add new countries only after confirming source coverage, freshness rules, and review ownership.
 
 ### Confidence scoring
 
@@ -201,7 +201,7 @@ Each stored requirement has an operator-provided `confidence_score` from `0` to 
 - `Medium` when the country/category matches but product-specific or buyer-side checks remain.
 - `Low` when records are missing, generic, or uncertain.
 
-Every answer includes sources, last scraped date, unresolved questions, and the disclaimer that the output is compliance assistance, not legal/customs advice.
+Every answer includes sources, last checked date, unresolved questions, confidence, and the disclaimer that the output is compliance assistance, not legal/customs advice.
 ### MongoDB compliance knowledge store
 
 Compliance requirements can now be served from MongoDB while the rest of the SaaS stays on Postgres. This keeps auth, audit logs, shipments, claims, and tenant records relational, but lets country compliance data remain flexible and fast.
@@ -230,3 +230,32 @@ python -m app.scripts.refresh_compliance_sources
 ```
 
 That job re-scrapes due sources, stores a new snapshot, compares the content hash, and marks changed sources as `needs_review`. It does not automatically publish new compliance answers. A human still reviews source changes and ingests approved structured records.
+## Compliance checker V0 evidence workflow
+
+The Country Compliance Requirement Checker is deliberately cache-first and review-first:
+
+- The checker answers only from tenant-scoped evidence records with `status=active`, `review_status=approved`, and a non-expired `expires_at`.
+- Scraped source changes are saved as snapshots/change records with `needs_review`; they are not published into approved answers automatically.
+- Pending, rejected, stale, or missing evidence returns a safe low-confidence response instead of a guessed compliance answer.
+- The required safety message is always shown: `This is compliance assistance based on available source-backed records. It is not legal, customs, or regulatory advice. Verify requirements with the importer, customs broker, or official authority before shipment.`
+
+Freshness rules in V0:
+
+- beverages, dry fruits, spices, food/agri: 15 days
+- textiles: 30 days
+- restricted/prohibited alerts: 7 days
+- general import-document evidence outside the short categories: 60 days
+
+To run locally without Docker, keep `COMPLIANCE_STORE_BACKEND=postgres` and use the SQLite fallback database only for demos/tests. `apps/api/local_kalypto.db` is local-only, ignored by git, and must not be committed.
+
+To refresh source snapshots:
+
+```powershell
+cd apps\api
+$env:COMPLIANCE_STORE_BACKEND="postgres"
+python -m app.scripts.refresh_compliance_sources
+```
+
+The refresh output logs `source`, `content_hash`, whether content changed, whether a pending review record was created, and any source errors. After review, add approved structured evidence through the ingest endpoint or seed script.
+
+Docker Compose is still the one-command path, but it requires Docker Desktop installed and available on PATH.

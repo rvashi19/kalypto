@@ -7,10 +7,7 @@ from collections.abc import Iterable
 SUPPORTED_COUNTRIES = (
     "Canada",
     "United Arab Emirates",
-    "USA",
-    "Netherlands/EU",
     "UK",
-    "Saudi Arabia",
 )
 
 COUNTRY_ALIASES = {
@@ -19,39 +16,19 @@ COUNTRY_ALIASES = {
     "uae": "United Arab Emirates",
     "united arab emirates": "United Arab Emirates",
     "emirates": "United Arab Emirates",
-    "usa": "USA",
-    "us": "USA",
-    "united states": "USA",
-    "united states of america": "USA",
-    "netherlands": "Netherlands/EU",
-    "netherlands/eu": "Netherlands/EU",
-    "eu": "Netherlands/EU",
-    "european union": "Netherlands/EU",
     "uk": "UK",
     "united kingdom": "UK",
     "great britain": "UK",
-    "saudi": "Saudi Arabia",
-    "saudi arabia": "Saudi Arabia",
-    "ksa": "Saudi Arabia",
 }
 
 SUPPORTED_CATEGORIES = (
-    "food/agri",
-    "spices",
-    "dry fruits",
     "beverages",
+    "dry fruits",
+    "spices",
     "textiles",
-    "chemicals",
-    "machinery",
-    "other",
 )
 
 CATEGORY_ALIASES = {
-    "food": "food/agri",
-    "agri": "food/agri",
-    "agriculture": "food/agri",
-    "food/agri": "food/agri",
-    "food and agriculture": "food/agri",
     "spice": "spices",
     "spices": "spices",
     "dry fruit": "dry fruits",
@@ -66,11 +43,6 @@ CATEGORY_ALIASES = {
     "textiles": "textiles",
     "garment": "textiles",
     "garments": "textiles",
-    "chemical": "chemicals",
-    "chemicals": "chemicals",
-    "machinery": "machinery",
-    "machine": "machinery",
-    "other": "other",
 }
 
 REQUIREMENT_TYPE_ALIASES = {
@@ -172,6 +144,7 @@ def requirement_fingerprint(
         ],
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 
 def source_snapshot_fingerprint(*, source_url: str, title: str, markdown: str) -> str:
     raw = "|".join(

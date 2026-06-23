@@ -20,11 +20,17 @@ def main() -> None:
             try:
                 store = get_compliance_knowledge_store(session=session, tenant_id=organization.id)
             except ComplianceStoreConfigurationError as error:
-                print(f"{organization.slug}: compliance store unavailable: {error}")
+                print(f"organization={organization.slug} store_unavailable error={error}")
                 failures += 1
                 continue
 
             for source in store.due_sources(limit=25):
+                print(
+                    "checking_source "
+                    f"organization={organization.slug} source={source.source_url} "
+                    f"country={source.country} category={source.category} "
+                    f"last_checked_at={source.last_checked_at}"
+                )
                 try:
                     document = scraper.scrape(source.source_url)
                     snapshot = store.record_source_snapshot(
@@ -35,10 +41,19 @@ def main() -> None:
                         markdown=document.markdown,
                     )
                     refreshed += 1
-                    print(f"{organization.slug}: {source.source_url} -> {snapshot.status}")
+                    print(
+                        "source_checked "
+                        f"organization={organization.slug} source={snapshot.source_url} "
+                        f"content_hash={snapshot.content_hash} status={snapshot.status} "
+                        f"previous_content_hash={snapshot.previous_content_hash} "
+                        f"message={snapshot.message}"
+                    )
                 except ComplianceScraperError as error:
                     failures += 1
-                    print(f"{organization.slug}: {source.source_url} failed: {error}")
+                    print(
+                        "source_check_failed "
+                        f"organization={organization.slug} source={source.source_url} error={error}"
+                    )
 
         print(f"Compliance refresh complete. refreshed={refreshed} failures={failures}")
     finally:

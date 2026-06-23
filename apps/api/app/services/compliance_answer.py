@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -14,25 +14,25 @@ from app.schemas.compliance import (
     ComplianceCheckerResponse,
     ComplianceCheckerSections,
     ComplianceSourceReference,
+    ComplianceStatus,
     ConfidenceLevel,
     ProductSummary,
 )
-from app.services.compliance_retrieval import RequirementMatch
+from app.services.compliance_normalization import SUPPORTED_CATEGORIES, SUPPORTED_COUNTRIES
+from app.services.compliance_retrieval import EvidenceReviewContext, RequirementMatch
 from app.services.compliance_store import get_compliance_knowledge_store
 
 DISCLAIMER = (
-    "This is compliance assistance based on available stored sources. Verify with your customs "
-    "broker, importer, CHA, freight forwarder, or the destination regulatory authority before shipment."
+    "This is compliance assistance based on available source-backed records. It is not legal, "
+    "customs, or regulatory advice. Verify requirements with the importer, customs broker, "
+    "or official authority before shipment."
+)
+INSUFFICIENT_MESSAGE = (
+    "Insufficient verified data available. Please confirm with importer, customs broker, "
+    "or regulatory authority."
 )
 
 CATEGORY_QUESTIONS = {
-    "food/agri": [
-        "Is the shipment retail packed or bulk/B2B?",
-        "Is the product raw or processed?",
-        "Does it contain animal-origin ingredients?",
-        "Does the buyer require organic, halal, or kosher certification?",
-        "Is a phytosanitary, fumigation, or food safety certificate already available?",
-    ],
     "spices": [
         "Is the spice whole, ground, blended, or processed?",
         "Is the shipment retail packed or bulk/B2B?",
@@ -74,7 +74,25 @@ class CountryComplianceCheckerService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def answer(self, *, payload: ComplianceCheckerRequest, tenant_id: UUID, user_id: UUID) -> ComplianceCheckerResponse:
+    def answer(
+        self, *, payload: ComplianceCheckerRequest, tenant_id: UUID, user_id: UUID
+    ) -> ComplianceCheckerResponse:
+        if (
+            payload.destination_country not in SUPPORTED_COUNTRIES
+            or payload.category not in SUPPORTED_CATEGORIES
+        ):
+            response = self._unsupported_scope_response(payload)
+            chat_session = self._record_chat(
+                payload=payload,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                response=response,
+                matches=[],
+            )
+            response.session_id = str(chat_session.id)
+            self.session.commit()
+            return response
+
         store = get_compliance_knowledge_store(self.session, tenant_id)
         matches = store.retrieve(
             product=payload.product,
@@ -82,7 +100,11 @@ class CountryComplianceCheckerService:
             destination_country=payload.destination_country,
             category=payload.category,
         )
-        response = self._build_response(payload=payload, matches=matches)
+        context = store.review_context(
+            destination_country=payload.destination_country,
+            category=payload.category,
+        )
+        response = self._build_response(payload=payload, matches=matches, context=context)
         chat_session = self._record_chat(
             payload=payload,
             tenant_id=tenant_id,
@@ -99,30 +121,42 @@ class CountryComplianceCheckerService:
         *,
         payload: ComplianceCheckerRequest,
         matches: list[RequirementMatch],
+        context: EvidenceReviewContext,
     ) -> ComplianceCheckerResponse:
         assumptions = self._assumptions(payload)
         sections = self._sections(payload, assumptions, matches)
-        unresolved_questions = self._unresolved_questions(payload)
+        unresolved_questions = self._unresolved_questions(payload, matches)
         follow_up_questions = self._follow_up_questions(payload)
 
         if not matches:
-            response = ComplianceCheckerResponse(
-                status="insufficient_data",
-                answer=(
-                    "Insufficient verified data available for this country/category/product combination. "
-                    "Add official source records through the compliance ingestion endpoint or verify manually "
-                    "with the buyer/importer and destination authority."
-                ),
+            status_value: ComplianceStatus = (
+                "needs_review"
+                if context.pending_records or context.stale_records
+                else "insufficient_verified_data"
+            )
+            explanation = "No approved, fresh, source-backed compliance evidence was retrieved."
+            if context.stale_records:
+                unresolved_questions.append(
+                    "Approved evidence exists but is stale and requires review before use."
+                )
+            if context.pending_records:
+                unresolved_questions.append(
+                    "Pending or unreviewed evidence exists but is not used in final answers."
+                )
+            return ComplianceCheckerResponse(
+                status=status_value,
+                answer=INSUFFICIENT_MESSAGE,
                 follow_up_questions=follow_up_questions,
                 sections=sections,
                 confidence_level="Low",
-                confidence_explanation="No verified stored compliance records were retrieved.",
+                confidence_explanation=explanation,
+                last_checked_date=None,
                 unresolved_questions=unresolved_questions or follow_up_questions,
                 disclaimer=DISCLAIMER,
             )
-            return response
 
         confidence_level, confidence_explanation = self._confidence(matches, unresolved_questions)
+        last_checked_date = self._last_checked_date(matches)
         answer = self._format_answer(
             sections=sections,
             confidence_level=confidence_level,
@@ -135,7 +169,29 @@ class CountryComplianceCheckerService:
             sections=sections,
             confidence_level=confidence_level,
             confidence_explanation=confidence_explanation,
+            last_checked_date=last_checked_date,
             unresolved_questions=unresolved_questions,
+            disclaimer=DISCLAIMER,
+        )
+
+    def _unsupported_scope_response(
+        self, payload: ComplianceCheckerRequest
+    ) -> ComplianceCheckerResponse:
+        assumptions = self._assumptions(payload)
+        sections = self._sections(payload, assumptions, [])
+        unresolved = [
+            "Current V0 scope supports Canada, United Arab Emirates, and UK.",
+            "Current V0 categories support beverages, dry fruits, spices, and textiles.",
+        ]
+        return ComplianceCheckerResponse(
+            status="unsupported_scope",
+            answer=INSUFFICIENT_MESSAGE,
+            follow_up_questions=[],
+            sections=sections,
+            confidence_level="Low",
+            confidence_explanation="The requested country or category is outside the current V0 source-backed scope.",
+            last_checked_date=None,
+            unresolved_questions=unresolved,
             disclaimer=DISCLAIMER,
         )
 
@@ -150,12 +206,13 @@ class CountryComplianceCheckerService:
         for match in matches:
             requirement = match.requirement
             section_name = SECTION_BY_TYPE.get(requirement.requirement_type, "buyer_side_questions")
-            grouped[section_name].append(requirement.requirement_text)
+            grouped[section_name].append(requirement.extracted_requirement)
             source_key = (requirement.source_name, requirement.source_url)
             sources[source_key] = ComplianceSourceReference(
                 source_name=requirement.source_name,
                 source_url=requirement.source_url,
-                last_scraped_date=requirement.last_scraped_at.astimezone(UTC).date().isoformat(),
+                last_checked_date=self._date_string(requirement.last_checked_at),
+                expires_at=self._date_string(requirement.expires_at),
                 source_authority_level=requirement.source_authority_level,
             )
 
@@ -185,10 +242,12 @@ class CountryComplianceCheckerService:
     def _assumptions(payload: ComplianceCheckerRequest) -> list[str]:
         assumptions = [
             "Exporter is in India and the destination-country importer/buyer will complete importer-side filings.",
-            "Records are operator-seeded or ingested from verified source pages; missing facts require manual verification.",
+            "Only active, approved, non-stale source-backed records are used for final answers.",
         ]
         if not payload.hsn_code:
-            assumptions.append("HSN is not confirmed; classification must be verified before relying on this result.")
+            assumptions.append(
+                "HSN is not confirmed; classification must be verified before relying on this result."
+            )
         for key, value in payload.details.items():
             if value not in (None, ""):
                 assumptions.append(f"{key.replace('_', ' ').title()}: {value}")
@@ -208,19 +267,30 @@ class CountryComplianceCheckerService:
                 continue
             questions.append(question)
         if not payload.hsn_code:
-            questions.insert(0, "What is the confirmed HSN code? If unknown, describe the product for classification review.")
+            questions.insert(
+                0,
+                "What is the confirmed HSN code? If unknown, describe the product for classification review.",
+            )
         return questions[:6]
 
     @staticmethod
-    def _unresolved_questions(payload: ComplianceCheckerRequest) -> list[str]:
+    def _unresolved_questions(
+        payload: ComplianceCheckerRequest, matches: list[RequirementMatch]
+    ) -> list[str]:
         unresolved = []
         if not payload.hsn_code:
             unresolved.append("Confirm the HSN classification with your CHA/customs broker.")
-        if payload.category in {"food/agri", "spices", "dry fruits", "beverages"}:
-            unresolved.append("Confirm whether the destination buyer/importer needs product registration before shipment.")
+        if payload.category in {"spices", "dry fruits", "beverages"}:
+            unresolved.append(
+                "Confirm whether the destination buyer/importer needs product registration before shipment."
+            )
         if payload.category == "textiles":
-            unresolved.append("Confirm final fiber composition, care label, and children/baby use case before retail shipment.")
-        return unresolved
+            unresolved.append(
+                "Confirm final fiber composition, care label, and children/baby use case before retail shipment."
+            )
+        for match in matches:
+            unresolved.extend(match.requirement.unresolved_questions)
+        return list(dict.fromkeys(unresolved))
 
     @staticmethod
     def _confidence(
@@ -229,10 +299,19 @@ class CountryComplianceCheckerService:
     ) -> tuple[ConfidenceLevel, str]:
         average = sum(match.score for match in matches) / len(matches)
         if average >= 80 and not unresolved_questions:
-            return "High", "Official or high-confidence records matched the country, category, and product context."
+            return (
+                "High",
+                "Approved, fresh source-backed records matched the country, category, and product context.",
+            )
         if average >= 55:
-            return "Medium", "Stored records matched the country/category, but product-specific details still need confirmation."
-        return "Low", "Records were found, but confidence is limited by generic matching or unresolved product details."
+            return (
+                "Medium",
+                "Approved source-backed records matched, but product-specific or buyer-side checks remain.",
+            )
+        return (
+            "Low",
+            "Records were found, but confidence is limited by generic matching or unresolved product details.",
+        )
 
     @staticmethod
     def _format_answer(
@@ -243,7 +322,7 @@ class CountryComplianceCheckerService:
     ) -> str:
         def lines(title: str, values: list[str]) -> list[str]:
             if not values:
-                return [title, "- No verified stored requirement found; verification required."]
+                return [title, "- No approved fresh requirement found; verification required."]
             return [title, *[f"- {value}" for value in values]]
 
         summary = sections.product_summary
@@ -265,13 +344,15 @@ class CountryComplianceCheckerService:
             "",
             *lines("5. Restrictions / Prohibited Alerts", sections.restriction_alerts),
             "",
-            *lines("6. Inspection / Testing Requirements", sections.inspection_testing_requirements),
+            *lines(
+                "6. Inspection / Testing Requirements", sections.inspection_testing_requirements
+            ),
             "",
             *lines("7. Buyer-Side Questions to Confirm", sections.buyer_side_questions),
             "",
             "8. Source References",
             *[
-                f"- {source.source_name}: {source.source_url} (last scraped {source.last_scraped_date})"
+                f"- {source.source_name}: {source.source_url} (last checked {source.last_checked_date or 'unknown'})"
                 for source in sections.source_references
             ],
             "",
@@ -282,6 +363,25 @@ class CountryComplianceCheckerService:
             f"- {DISCLAIMER}",
         ]
         return "\n".join(parts)
+
+    @staticmethod
+    def _date_string(value: datetime | None) -> str | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(UTC).date().isoformat()
+
+    @classmethod
+    def _last_checked_date(cls, matches: list[RequirementMatch]) -> str | None:
+        values = [
+            match.requirement.last_checked_at
+            for match in matches
+            if match.requirement.last_checked_at
+        ]
+        if not values:
+            return None
+        return cls._date_string(max(values))
 
     def _record_chat(
         self,
