@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -77,7 +78,7 @@ class DocumentResponse(BaseModel):
     file_size_bytes: int | None
     mime_type: str | None
     upload_status: DocumentUploadStatus
-    extracted_fields: dict | None
+    extracted_fields: dict[str, Any] | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -116,7 +117,7 @@ class IncentiveEstimate(BaseModel):
     estimated_amount: float | None = None
     rate_percent: float | None = None
     notes: str = ""
-    action_items: list[str] = []
+    action_items: list[str] = Field(default_factory=list)
 
     @field_validator("eligible", mode="before")
     @classmethod
@@ -130,8 +131,12 @@ class IncentiveEstimate(BaseModel):
 
     @field_validator("action_items", mode="before")
     @classmethod
-    def coerce_action_items(cls, v: object) -> list:
-        return [] if v is None else v
+    def coerce_action_items(cls, v: object) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(item) for item in v]
+        return [str(v)]
 
 
 class VerificationReport(BaseModel):
@@ -156,7 +161,7 @@ class HsnRateLookupResponse(BaseModel):
     rodtep_rate: float | None = None
     rosctl_rate: float | None = None
     notes: str | None = None
-    estimated_amounts_inr: dict | None = None
+    estimated_amounts_inr: dict[str, float] | None = None
     fob_inr_basis: float | None = None
     exchange_rate_note: str | None = None
     message: str | None = None

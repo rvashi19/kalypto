@@ -21,6 +21,29 @@ class Settings(BaseSettings):
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
     upload_dir: str = Field(default="/tmp/kalypto_uploads", alias="UPLOAD_DIR")
+    compliance_scraper_provider: str = Field(default="manual", alias="COMPLIANCE_SCRAPER_PROVIDER")
+    compliance_store_backend: str = Field(default="postgres", alias="COMPLIANCE_STORE_BACKEND")
+    mongodb_url: str | None = Field(default=None, alias="MONGODB_URL")
+    mongodb_database: str = Field(default="kalypto", alias="MONGODB_DATABASE")
+    mongodb_requirements_collection: str = Field(
+        default="compliance_requirements",
+        alias="MONGODB_REQUIREMENTS_COLLECTION",
+    )
+    mongodb_source_snapshots_collection: str = Field(
+        default="compliance_source_snapshots",
+        alias="MONGODB_SOURCE_SNAPSHOTS_COLLECTION",
+    )
+    mongodb_source_changes_collection: str = Field(
+        default="compliance_source_changes",
+        alias="MONGODB_SOURCE_CHANGES_COLLECTION",
+    )
+    compliance_refresh_interval_days: int = Field(
+        default=3,
+        alias="COMPLIANCE_REFRESH_INTERVAL_DAYS",
+    )
+    firecrawl_api_key: str | None = Field(default=None, alias="FIRECRAWL_API_KEY")
+    tavily_api_key: str | None = Field(default=None, alias="TAVILY_API_KEY")
+    bright_data_api_key: str | None = Field(default=None, alias="BRIGHT_DATA_API_KEY")
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
     audit_logging_enabled: bool = True

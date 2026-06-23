@@ -51,6 +51,62 @@ export interface DocumentationAssistantResponse {
   model: string;
 }
 
+export interface ComplianceOptionsResponse {
+  countries: string[];
+  categories: string[];
+  recommended_scraping_stack: string[];
+  knowledge_store_backend: string;
+  refresh_interval_days: number;
+}
+
+export interface ComplianceCheckerRequest {
+  product: string;
+  hsn_code?: string | null;
+  destination_country: string;
+  category: string;
+  details?: Record<string, string | number | boolean | null>;
+}
+
+export interface ProductSummary {
+  product: string;
+  hsn: string | null;
+  destination: string;
+  category: string;
+  assumptions: string[];
+}
+
+export interface ComplianceSourceReference {
+  source_name: string;
+  source_url: string;
+  last_checked_date: string | null;
+  expires_at: string | null;
+  source_authority_level: string;
+}
+
+export interface ComplianceCheckerSections {
+  product_summary: ProductSummary;
+  required_import_documents: string[];
+  certificates_required: string[];
+  labeling_requirements: string[];
+  restriction_alerts: string[];
+  inspection_testing_requirements: string[];
+  buyer_side_questions: string[];
+  source_references: ComplianceSourceReference[];
+}
+
+export interface ComplianceCheckerResponse {
+  status: "answered" | "insufficient_verified_data" | "needs_review" | "unsupported_scope";
+  session_id: string | null;
+  answer: string;
+  follow_up_questions: string[];
+  sections: ComplianceCheckerSections;
+  confidence_level: "High" | "Medium" | "Low";
+  confidence_explanation: string;
+  last_checked_date: string | null;
+  unresolved_questions: string[];
+  disclaimer: string;
+}
+
 // ── Shipment types ─────────────────────────────────────────────────────────────
 
 export type ShipmentMode = "sea" | "air" | "courier";

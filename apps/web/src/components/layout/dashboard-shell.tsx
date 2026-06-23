@@ -4,6 +4,7 @@ import { Button } from "@repo/ui";
 
 const NAV = [
   { label: "Shipments", href: "/shipments" },
+  { label: "Compliance", href: "/compliance" },
   { label: "Dashboard", href: "/dashboard" },
 ];
 

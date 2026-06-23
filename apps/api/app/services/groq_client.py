@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any, cast
 
 from groq import Groq
 
@@ -11,7 +12,7 @@ class GroqClientError(Exception):
     pass
 
 
-def call_groq(*, system_prompt: str, user_message: str) -> dict:
+def call_groq(*, system_prompt: str, user_message: str) -> dict[str, Any]:
     settings = get_settings()
     if not settings.groq_api_key:
         raise GroqClientError("GROQ_API_KEY is not configured.")
@@ -32,6 +33,10 @@ def call_groq(*, system_prompt: str, user_message: str) -> dict:
 
     content = completion.choices[0].message.content or ""
     try:
-        return json.loads(content)
+        data: Any = json.loads(content)
     except json.JSONDecodeError as e:
         raise GroqClientError(f"Groq returned invalid JSON: {e}") from e
+
+    if not isinstance(data, dict):
+        raise GroqClientError("Groq returned JSON, but it was not an object.")
+    return cast(dict[str, Any], data)

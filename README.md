@@ -30,6 +30,7 @@ Built on a production-grade multi-tenant monorepo: FastAPI + PostgreSQL + React 
 - JWT authentication with RBAC (owner / staff / read_only)
 - Append-only audit log on every write
 - File upload with document-type tagging
+- Country Compliance Requirement Checker for approved, source-backed destination-country evidence
 - Dark-mode React dashboard shell
 
 ---
@@ -88,6 +89,10 @@ Or create a fresh tenant from the signup page.
 | `GROQ_API_KEY` | Groq API key for AI features |
 | `GROQ_MODEL` | Model to use (default: `llama-3.3-70b-versatile`) |
 | `UPLOAD_DIR` | Directory for uploaded documents (default: `/tmp/kalypto_uploads`) |
+| `COMPLIANCE_STORE_BACKEND` | Compliance evidence backend: `postgres` by default, `mongo` optional |
+| `COMPLIANCE_SCRAPER_PROVIDER` | Compliance source refresh provider: `manual` by default |
+| `COMPLIANCE_REFRESH_INTERVAL_DAYS` | Source refresh cadence for due-source checks |
+| `MONGODB_URL` | Optional MongoDB URL when `COMPLIANCE_STORE_BACKEND=mongo` |
 
 Copy `.env.example` to `.env` and fill in your values. The `.env` file is gitignored — never commit it.
 
@@ -148,8 +153,41 @@ pnpm typecheck
 | GET | `/api/v1/shipments/{id}/documents` | List uploaded documents |
 | POST | `/api/v1/shipments/{id}/documents` | Upload a document |
 | GET | `/api/v1/shipments/{id}/verify` | Run AI verification report |
+| GET | `/api/v1/compliance/options` | Supported countries/categories for compliance checker |
+| POST | `/api/v1/compliance/checker/answer` | Source-backed compliance checker answer |
+| POST | `/api/v1/compliance/scrape/run` | Capture source snapshot for review |
+| POST | `/api/v1/compliance/scrape/ingest` | Ingest manually reviewed compliance evidence |
 
 Full interactive docs at `http://localhost:8000/docs`.
+
+---
+
+## Country Compliance Requirement Checker
+
+The checker is available in the web app at `/compliance`.
+
+V0 scope is intentionally limited to:
+
+- Countries: Canada, United Arab Emirates, UK
+- Categories: beverages, dry fruits, spices, textiles
+
+The checker is cache-first and review-first:
+
+- Final answers use only tenant-scoped records with `status=active`, `review_status=approved`, and fresh `expires_at`.
+- Scraped source changes create snapshots/change records for review; they are not auto-published.
+- Pending, stale, unsupported, or missing evidence returns a low-confidence safe response instead of guessed compliance advice.
+- Every response includes sources, confidence, last checked date, unresolved questions, and this disclaimer:
+
+`This is compliance assistance based on available source-backed records. It is not legal, customs, or regulatory advice. Verify requirements with the importer, customs broker, or official authority before shipment.`
+
+To refresh due source snapshots:
+
+```bash
+cd apps/api
+python -m app.scripts.refresh_compliance_sources
+```
+
+`apps/api/local_kalypto.db` is local-only and ignored by git.
 
 ---
 

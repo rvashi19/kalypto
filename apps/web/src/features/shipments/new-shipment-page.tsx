@@ -8,16 +8,13 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { inputCls, selectCls, FieldError } from "../../lib/ui";
 
-const REQUIRED_FIELDS = [
-  "product_name",
-  "hsn_code",
-  "exporter_name",
-  "destination_country",
-  "buyer_country",
-  "payment_term",
-] as const;
-
-type RequiredField = (typeof REQUIRED_FIELDS)[number];
+type RequiredField =
+  | "product_name"
+  | "hsn_code"
+  | "exporter_name"
+  | "destination_country"
+  | "buyer_country"
+  | "payment_term";
 
 function getErrors(form: ShipmentCreate): Partial<Record<RequiredField, string>> {
   const e: Partial<Record<RequiredField, string>> = {};

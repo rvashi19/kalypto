@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from typing import Deque
 from threading import Lock
 from time import monotonic
 
@@ -12,7 +11,7 @@ from app.core.settings import get_settings
 
 class InMemoryRateLimiter:
     def __init__(self) -> None:
-        self._events: dict[str, Deque[float]] = defaultdict(deque)
+        self._events: dict[str, deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
     def enforce(self, *, bucket: str, key: str, limit: int, window_seconds: int = 60) -> None:

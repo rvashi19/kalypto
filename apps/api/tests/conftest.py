@@ -1,10 +1,12 @@
 import os
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session
 
-os.environ["DATABASE_URL"] = "sqlite:///./apps/api/tests/test_phase0.db"
+TEST_DATABASE_PATH = Path(__file__).resolve().with_name("test_phase0.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_PATH.as_posix()}"
 
 from app.db.base import Base
 from app.db.session import SessionLocal, engine

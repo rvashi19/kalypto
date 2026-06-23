@@ -1,5 +1,8 @@
 import type {
   AuthResponse,
+  ComplianceCheckerRequest,
+  ComplianceCheckerResponse,
+  ComplianceOptionsResponse,
   CurrentUserResponse,
   DashboardOverview,
   DocumentationAssistantResponse,
@@ -114,6 +117,16 @@ export const api = {
     request<DocumentationAssistantResponse>(
       "/assistant/docs/answer",
       { method: "POST", body: JSON.stringify({ question }) },
+      token
+    ),
+
+  complianceOptions: (token: string) =>
+    request<ComplianceOptionsResponse>("/compliance/options", {}, token),
+
+  askComplianceChecker: (payload: ComplianceCheckerRequest, token: string) =>
+    request<ComplianceCheckerResponse>(
+      "/compliance/checker/answer",
+      { method: "POST", body: JSON.stringify(payload) },
       token
     ),
 

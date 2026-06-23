@@ -43,9 +43,13 @@ def get_current_user_context(
             detail="Invalid or expired token.",
         ) from error
 
-    revoked_token = session.scalars(select(RevokedToken).where(RevokedToken.jti == token.jti)).first()
+    revoked_token = session.scalars(
+        select(RevokedToken).where(RevokedToken.jti == token.jti)
+    ).first()
     if revoked_token is not None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked."
+        )
 
     user = session.get(User, token.sub)
     organization = session.get(Organization, token.tenant_id)
@@ -62,7 +66,9 @@ def get_current_user_context(
             detail="The authenticated membership is no longer valid.",
         )
 
-    return CurrentUserContext(user=user, organization=organization, membership=membership, token=token)
+    return CurrentUserContext(
+        user=user, organization=organization, membership=membership, token=token
+    )
 
 
 DbSession = Annotated[Session, Depends(get_db_session)]

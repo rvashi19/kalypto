@@ -43,16 +43,20 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # ── HSN rate lookup (public — no auth required) ────────────────────────────────
 
+
 @router.get("/hsn-rates", response_model=HsnRateLookupResponse)
 def get_hsn_rates(hsn: str, fob_value: float | None = None) -> HsnRateLookupResponse:
     result = estimate_incentives(hsn_code=hsn, fob_value_usd=fob_value)
-    return HsnRateLookupResponse(**result)
+    return HsnRateLookupResponse.model_validate(result)
 
 
 # ── Shipment CRUD ──────────────────────────────────────────────────────────────
 
+
 @router.post("", response_model=ShipmentResponse, status_code=status.HTTP_201_CREATED)
-def create_shipment(payload: ShipmentCreate, session: DbSession, current_user: CurrentUser) -> ShipmentResponse:
+def create_shipment(
+    payload: ShipmentCreate, session: DbSession, current_user: CurrentUser
+) -> ShipmentResponse:
     repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,
@@ -76,7 +80,9 @@ def list_shipments(session: DbSession, current_user: CurrentUser) -> list[Shipme
 
 
 @router.get("/{shipment_id}", response_model=ShipmentResponse)
-def get_shipment(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> ShipmentResponse:
+def get_shipment(
+    shipment_id: UUID, session: DbSession, current_user: CurrentUser
+) -> ShipmentResponse:
     repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,
@@ -127,6 +133,7 @@ def delete_shipment(shipment_id: UUID, session: DbSession, current_user: Current
 
 # ── Document upload ────────────────────────────────────────────────────────────
 
+
 def _run_ocr_background(doc_id: UUID, file_path: str, mime_type: str | None) -> None:
     """Background task: extract fields from an uploaded document and persist results."""
     session = SessionLocal()
@@ -151,7 +158,9 @@ def _run_ocr_background(doc_id: UUID, file_path: str, mime_type: str | None) -> 
         session.close()
 
 
-@router.post("/{shipment_id}/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{shipment_id}/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_document(
     shipment_id: UUID,
     document_type: DocumentType,
@@ -173,7 +182,10 @@ async def upload_document(
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, JPEG, PNG, WEBP, Excel.",
+            detail=(
+                f"Unsupported file type: {file.content_type}. "
+                "Allowed: PDF, JPEG, PNG, WEBP, Excel."
+            ),
         )
 
     contents = await file.read()
@@ -183,7 +195,9 @@ async def upload_document(
             detail="File exceeds the 10 MB limit.",
         )
 
-    upload_dir = os.path.join(settings.upload_dir, str(current_user.organization.id), str(shipment_id))
+    upload_dir = os.path.join(
+        settings.upload_dir, str(current_user.organization.id), str(shipment_id)
+    )
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.filename or "upload")
     with open(file_path, "wb") as f:
@@ -214,7 +228,9 @@ async def upload_document(
 
 
 @router.get("/{shipment_id}/documents", response_model=list[DocumentResponse])
-def list_documents(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> list[DocumentResponse]:
+def list_documents(
+    shipment_id: UUID, session: DbSession, current_user: CurrentUser
+) -> list[DocumentResponse]:
     shipment_repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,
@@ -232,8 +248,11 @@ def list_documents(shipment_id: UUID, session: DbSession, current_user: CurrentU
 
 # ── AI endpoints ───────────────────────────────────────────────────────────────
 
+
 @router.get("/{shipment_id}/checklist", response_model=DocumentChecklist)
-def get_checklist(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> DocumentChecklist:
+def get_checklist(
+    shipment_id: UUID, session: DbSession, current_user: CurrentUser
+) -> DocumentChecklist:
     repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,
@@ -249,7 +268,9 @@ def get_checklist(shipment_id: UUID, session: DbSession, current_user: CurrentUs
 
 
 @router.get("/{shipment_id}/verify", response_model=VerificationReport)
-def verify_shipment(shipment_id: UUID, session: DbSession, current_user: CurrentUser) -> VerificationReport:
+def verify_shipment(
+    shipment_id: UUID, session: DbSession, current_user: CurrentUser
+) -> VerificationReport:
     shipment_repo = ShipmentRepository(
         session=session,
         tenant_id=current_user.organization.id,

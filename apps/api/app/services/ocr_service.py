@@ -1,9 +1,11 @@
 """OCR and field extraction for uploaded shipment documents."""
+
 from __future__ import annotations
 
 import base64
 import logging
 from pathlib import Path
+from typing import Any
 
 from app.services.groq_client import GroqClientError, call_groq
 
@@ -46,7 +48,7 @@ Return ONLY the JSON object. No markdown."""
 
 def _extract_text_from_pdf(file_path: str) -> str:
     try:
-        import pdfplumber  # noqa: PLC0415
+        import pdfplumber  # type: ignore[import-not-found] # noqa: PLC0415
     except ImportError:
         return ""
     text_parts: list[str] = []
@@ -60,8 +62,9 @@ def _extract_text_from_pdf(file_path: str) -> str:
 
 def _extract_text_from_image(file_path: str) -> str:
     """Use Groq vision to extract text from an image document."""
-    from app.core.settings import get_settings  # noqa: PLC0415
     from groq import Groq  # noqa: PLC0415
+
+    from app.core.settings import get_settings  # noqa: PLC0415
 
     settings = get_settings()
     if not settings.groq_api_key:
@@ -71,7 +74,12 @@ def _extract_text_from_image(file_path: str) -> str:
         image_data = base64.b64encode(f.read()).decode("utf-8")
 
     suffix = Path(file_path).suffix.lower()
-    media_type_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+    media_type_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
     media_type = media_type_map.get(suffix, "image/jpeg")
 
     client = Groq(api_key=settings.groq_api_key)
@@ -88,7 +96,10 @@ def _extract_text_from_image(file_path: str) -> str:
                         },
                         {
                             "type": "text",
-                            "text": "Extract all visible text from this export document. Return just the raw text content, preserving structure.",
+                            "text": (
+                                "Extract all visible text from this export document. "
+                                "Return just the raw text content, preserving structure."
+                            ),
                         },
                     ],
                 }
@@ -101,7 +112,7 @@ def _extract_text_from_image(file_path: str) -> str:
         return ""
 
 
-def extract_fields(file_path: str, mime_type: str | None) -> dict:
+def extract_fields(file_path: str, mime_type: str | None) -> dict[str, Any]:
     """Extract structured fields from a document file. Returns a dict of fields."""
     raw_text = ""
 

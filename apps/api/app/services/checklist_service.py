@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.models import ExportShipment
 from app.schemas.shipment import ChecklistItem, DocumentChecklist
 from app.services.groq_client import call_groq
@@ -72,7 +74,7 @@ def generate_checklist(shipment: ExportShipment) -> DocumentChecklist:
 
     data = call_groq(system_prompt=_SYSTEM_PROMPT, user_message=user_msg)
 
-    def parse_items(raw: list) -> list[ChecklistItem]:
+    def parse_items(raw: list[Any]) -> list[ChecklistItem]:
         return [ChecklistItem(**item) for item in (raw or [])]
 
     return DocumentChecklist(

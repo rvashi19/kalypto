@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ExportShipment, ShipmentDocument
@@ -11,8 +10,12 @@ from app.services.audit import AuditLogger
 
 
 class ShipmentRepository(TenantRepository[ExportShipment]):
-    def __init__(self, *, session: Session, tenant_id: UUID, actor_user_id: UUID | None = None) -> None:
-        super().__init__(session=session, model=ExportShipment, tenant_id=tenant_id, actor_user_id=actor_user_id)
+    def __init__(
+        self, *, session: Session, tenant_id: UUID, actor_user_id: UUID | None = None
+    ) -> None:
+        super().__init__(
+            session=session, model=ExportShipment, tenant_id=tenant_id, actor_user_id=actor_user_id
+        )
 
     def delete(self, shipment: ExportShipment) -> None:
         self.audit.log(
@@ -26,8 +29,15 @@ class ShipmentRepository(TenantRepository[ExportShipment]):
 
 
 class DocumentRepository(TenantRepository[ShipmentDocument]):
-    def __init__(self, *, session: Session, tenant_id: UUID, actor_user_id: UUID | None = None) -> None:
-        super().__init__(session=session, model=ShipmentDocument, tenant_id=tenant_id, actor_user_id=actor_user_id)
+    def __init__(
+        self, *, session: Session, tenant_id: UUID, actor_user_id: UUID | None = None
+    ) -> None:
+        super().__init__(
+            session=session,
+            model=ShipmentDocument,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+        )
 
     def list_for_shipment(self, shipment_id: UUID) -> list[ShipmentDocument]:
         rows = self.session.scalars(

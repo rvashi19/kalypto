@@ -1,4 +1,5 @@
 """HSN code incentive rate lookup — Duty Drawback and RoDTEP static tables."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,7 +34,9 @@ _RATE_TABLE: list[HsnRateEntry] = [
     # Chapter 26 — Ores
     HsnRateEntry("26", "Ores, slag and ash", 0.0, 0.0, None, "Generally not eligible for drawback"),
     # Chapter 27 — Mineral fuels
-    HsnRateEntry("27", "Mineral fuels, oils", 0.0, 0.0, None, "Export of petroleum products — check DFIA"),
+    HsnRateEntry(
+        "27", "Mineral fuels, oils", 0.0, 0.0, None, "Export of petroleum products — check DFIA"
+    ),
     # Chapter 28-29 — Chemicals
     HsnRateEntry("2801", "Fluorine, chlorine, bromine", 1.5, 0.5, None),
     HsnRateEntry("2901", "Acyclic hydrocarbons", 1.0, 0.5, None),
@@ -41,7 +44,14 @@ _RATE_TABLE: list[HsnRateEntry] = [
     HsnRateEntry("28", "Inorganic chemicals", 1.5, 0.5, None),
     HsnRateEntry("29", "Organic chemicals", 1.5, 0.5, None),
     # Chapter 30 — Pharma
-    HsnRateEntry("3004", "Medicaments (formulations)", 2.5, 1.0, None, "CDSCO NOC required for most destinations"),
+    HsnRateEntry(
+        "3004",
+        "Medicaments (formulations)",
+        2.5,
+        1.0,
+        None,
+        "CDSCO NOC required for most destinations",
+    ),
     HsnRateEntry("30", "Pharmaceutical products", 2.0, 0.75, None),
     # Chapter 33 — Cosmetics
     HsnRateEntry("3304", "Beauty / make-up preparations", 1.5, 0.7, None),
@@ -97,14 +107,25 @@ _RATE_TABLE: list[HsnRateEntry] = [
     # Chapter 90 — Optical / medical
     HsnRateEntry("90", "Optical, photographic, medical instruments", 1.5, 0.75, None),
     # Chapter 71 — Gems and jewellery
-    HsnRateEntry("7113", "Articles of jewellery", 2.0, 1.0, None, "Gems & Jewellery export promotion — verify with GJEPC"),
+    HsnRateEntry(
+        "7113",
+        "Articles of jewellery",
+        2.0,
+        1.0,
+        None,
+        "Gems & Jewellery export promotion — verify with GJEPC",
+    ),
     HsnRateEntry("71", "Pearls, precious stones, metals", 2.0, 1.0, None),
     # Chapter 10 — Cereals
-    HsnRateEntry("1006", "Rice", 0.0, 0.0, None, "Rice export may be restricted — check current MEP"),
+    HsnRateEntry(
+        "1006", "Rice", 0.0, 0.0, None, "Rice export may be restricted — check current MEP"
+    ),
     HsnRateEntry("1001", "Wheat", 0.0, 0.0, None, "Wheat export currently prohibited — verify"),
     HsnRateEntry("10", "Cereals", 0.5, 0.3, None),
     # Chapter 17 — Sugar
-    HsnRateEntry("1701", "Cane or beet sugar", 0.0, 0.0, None, "Sugar export subject to MEP and quota"),
+    HsnRateEntry(
+        "1701", "Cane or beet sugar", 0.0, 0.0, None, "Sugar export subject to MEP and quota"
+    ),
     HsnRateEntry("17", "Sugars and sugar confectionery", 0.5, 0.3, None),
     # Chapter 41 — Leather
     HsnRateEntry("41", "Raw hides, skins and leather", 1.5, 0.75, None),
@@ -129,17 +150,20 @@ def lookup(hsn_code: str) -> HsnRateEntry | None:
     return None
 
 
-def estimate_incentives(hsn_code: str, fob_value_usd: float | None) -> dict:
+def estimate_incentives(hsn_code: str, fob_value_usd: float | None) -> dict[str, object]:
     """Return incentive rate data and estimated INR amounts for a given HSN and FOB value."""
     entry = lookup(hsn_code)
     if entry is None:
         return {
             "found": False,
             "hsn_code": hsn_code,
-            "message": "No rate data found for this HSN code. Rates may still apply — consult your CHA.",
+            "message": (
+                "No rate data found for this HSN code. "
+                "Rates may still apply — consult your CHA."
+            ),
         }
 
-    result: dict = {
+    result: dict[str, object] = {
         "found": True,
         "hsn_code": hsn_code,
         "hsn_prefix_matched": entry.hsn_prefix,
@@ -163,6 +187,8 @@ def estimate_incentives(hsn_code: str, fob_value_usd: float | None) -> dict:
         if amounts:
             result["estimated_amounts_inr"] = amounts
             result["fob_inr_basis"] = round(fob_inr, 0)
-            result["exchange_rate_note"] = "Exchange rate ≈ ₹84/USD (indicative). Use actual rate on shipment date."
+            result["exchange_rate_note"] = (
+                "Exchange rate ≈ ₹84/USD (indicative). Use actual rate on shipment date."
+            )
 
     return result
