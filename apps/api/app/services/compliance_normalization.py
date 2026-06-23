@@ -6,16 +6,31 @@ from collections.abc import Iterable
 
 SUPPORTED_COUNTRIES = (
     "Canada",
+    "Netherlands/EU",
+    "Saudi Arabia",
     "United Arab Emirates",
+    "USA",
     "UK",
 )
 
 COUNTRY_ALIASES = {
     "canada": "Canada",
     "ca": "Canada",
+    "eu": "Netherlands/EU",
+    "european union": "Netherlands/EU",
+    "netherlands": "Netherlands/EU",
+    "nl": "Netherlands/EU",
+    "holland": "Netherlands/EU",
+    "saudi": "Saudi Arabia",
+    "saudi arabia": "Saudi Arabia",
+    "ksa": "Saudi Arabia",
     "uae": "United Arab Emirates",
     "united arab emirates": "United Arab Emirates",
     "emirates": "United Arab Emirates",
+    "usa": "USA",
+    "us": "USA",
+    "united states": "USA",
+    "united states of america": "USA",
     "uk": "UK",
     "united kingdom": "UK",
     "great britain": "UK",
@@ -24,11 +39,18 @@ COUNTRY_ALIASES = {
 SUPPORTED_CATEGORIES = (
     "beverages",
     "dry fruits",
+    "food/agri",
     "spices",
     "textiles",
 )
 
 CATEGORY_ALIASES = {
+    "agri": "food/agri",
+    "agriculture": "food/agri",
+    "food": "food/agri",
+    "food agri": "food/agri",
+    "food/agri": "food/agri",
+    "food and agriculture": "food/agri",
     "spice": "spices",
     "spices": "spices",
     "dry fruit": "dry fruits",

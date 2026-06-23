@@ -111,6 +111,58 @@ class ComplianceScrapeRun(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class ComplianceSourceSnapshot(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
+    __tablename__ = "compliance_source_snapshots"
+
+    source_url: Mapped[str] = mapped_column(String(2048), nullable=False, index=True)
+    country: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    previous_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    scraped_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+        index=True,
+    )
+
+
+class ComplianceSourceChange(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
+    __tablename__ = "compliance_source_changes"
+
+    source_url: Mapped[str] = mapped_column(String(2048), nullable=False, index=True)
+    country: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    previous_snapshot_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("compliance_source_snapshots.id"),
+        nullable=True,
+    )
+    current_snapshot_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("compliance_source_snapshots.id"),
+        nullable=False,
+    )
+    previous_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    current_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="needs_review", index=True
+    )
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+
+
 class ComplianceChatSession(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "compliance_chat_sessions"
 

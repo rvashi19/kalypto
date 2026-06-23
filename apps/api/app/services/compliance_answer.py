@@ -180,8 +180,11 @@ class CountryComplianceCheckerService:
         assumptions = self._assumptions(payload)
         sections = self._sections(payload, assumptions, [])
         unresolved = [
-            "Current V0 scope supports Canada, United Arab Emirates, and UK.",
-            "Current V0 categories support beverages, dry fruits, spices, and textiles.",
+            (
+                "Current source-backed scope supports Canada, USA, Netherlands/EU, UK, "
+                "United Arab Emirates, and Saudi Arabia."
+            ),
+            "Current categories support food/agri, spices, dry fruits, beverages, and textiles.",
         ]
         return ComplianceCheckerResponse(
             status="unsupported_scope",

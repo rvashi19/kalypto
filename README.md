@@ -177,11 +177,23 @@ The checker is retrieval-first. It does not trust live scraped text automaticall
 Environment variables:
 
 ```bash
-COMPLIANCE_SCRAPER_PROVIDER=manual
+COMPLIANCE_SCRAPER_PROVIDER=http
+COMPLIANCE_ALLOW_PRIVATE_SCRAPE=false
+COMPLIANCE_SCRAPER_USER_AGENT="KalyptoComplianceBot/0.1 (+https://kalypto.local; review-only)"
+COMPLIANCE_STORE_BACKEND=postgres
+COMPLIANCE_REFRESH_INTERVAL_DAYS=3
 FIRECRAWL_API_KEY=
 TAVILY_API_KEY=
 BRIGHT_DATA_API_KEY=
 ```
+
+Production scraper behavior:
+
+- `http` fetches live HTML/text pages, extracts readable text, hashes the source, and blocks localhost/private-network URLs by default.
+- `firecrawl` can be enabled for richer page/PDF extraction by setting `COMPLIANCE_SCRAPER_PROVIDER=firecrawl` and `FIRECRAWL_API_KEY`.
+- Scraped source text is stored as a review snapshot only. It never becomes approved compliance advice automatically.
+- Changed sources create `needs_review` records under `/api/v1/compliance/scrape/changes`.
+- Operators review or ignore source changes through `/api/v1/compliance/scrape/changes/{change_id}/review`.
 
 Recommended live data stack:
 
@@ -191,7 +203,7 @@ Recommended live data stack:
 
 ### How to add countries or product categories
 
-Add verified records through `/api/v1/compliance/scrape/ingest`. The ingestion service creates tenant-scoped country/category rows automatically. Current V0 scope is Canada, United Arab Emirates, and UK with beverages, dry fruits, spices, and textiles. Add new countries only after confirming source coverage, freshness rules, and review ownership.
+Add verified records through `/api/v1/compliance/scrape/ingest`. The ingestion service creates tenant-scoped country/category rows automatically. Current supported scope is Canada, USA, Netherlands/EU, UK, United Arab Emirates, and Saudi Arabia with food/agri, spices, dry fruits, beverages, and textiles. Add new countries only after confirming source coverage, freshness rules, and review ownership.
 
 ### Confidence scoring
 
@@ -206,16 +218,16 @@ Every answer includes sources, last checked date, unresolved questions, confiden
 
 Compliance requirements can now be served from MongoDB while the rest of the SaaS stays on Postgres. This keeps auth, audit logs, shipments, claims, and tenant records relational, but lets country compliance data remain flexible and fast.
 
-Local Docker defaults:
+Default local/Render mode:
 
 ```bash
-COMPLIANCE_STORE_BACKEND=mongo
-MONGODB_URL=mongodb://mongo:27017
+COMPLIANCE_STORE_BACKEND=postgres
+MONGODB_URL=
 MONGODB_DATABASE=kalypto
 COMPLIANCE_REFRESH_INTERVAL_DAYS=3
 ```
 
-Render defaults to `COMPLIANCE_STORE_BACKEND=postgres` so the live service does not break without MongoDB Atlas. To use MongoDB in production, create a MongoDB Atlas cluster, set `MONGODB_URL`, then change `COMPLIANCE_STORE_BACKEND` to `mongo`.
+To use MongoDB in production, create a MongoDB Atlas cluster, set `MONGODB_URL`, then change `COMPLIANCE_STORE_BACKEND` to `mongo`.
 
 The Mongo collections are:
 

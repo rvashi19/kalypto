@@ -162,6 +162,125 @@ def compliance_seed_records() -> list[ComplianceRequirementInput]:
             reviewed_at=datetime.now(UTC),
             notes="Seed/demo evidence for V0 workflow testing; verify official source before production reliance.",
         ),
+        ComplianceRequirementInput(
+            country="USA",
+            category="food/agri",
+            product_keywords=["food", "agri", "spices", "dry", "fruit", "beverage"],
+            requirement_type="import_document",
+            requirement_text=(
+                "For U.S. food imports, the importer/filing party should confirm FDA facility registration and prior notice readiness before shipment; CBP entry documents and product identity details must align with the food article."
+            ),
+            source_url="https://www.fda.gov/food/food-imports-exports/importing-food-products-united-states",
+            source_name="FDA importing food products into the United States",
+            source_authority_level="official",
+            confidence_score=78,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. FDA pages must be rechecked before production reliance.",
+        ),
+        ComplianceRequirementInput(
+            country="USA",
+            category="food/agri",
+            product_keywords=["food", "beverage", "spices", "dry", "fruit"],
+            requirement_type="inspection",
+            requirement_text=(
+                "FDA prior notice supports import screening and inspection targeting; confirm who will file prior notice and whether any product-specific FDA program, detention, or admissibility issue applies."
+            ),
+            source_url="https://www.fda.gov/industry/fda-import-process/prior-notice-imported-foods",
+            source_name="FDA prior notice of imported foods",
+            source_authority_level="official",
+            confidence_score=78,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Product-specific FDA admissibility checks remain importer/broker responsibility.",
+        ),
+        ComplianceRequirementInput(
+            country="USA",
+            category="textiles",
+            product_keywords=["textile", "garment", "clothing", "cotton", "wool"],
+            requirement_type="labeling",
+            requirement_text=(
+                "U.S. textile and wool products generally need labels for fiber content, country of origin, and manufacturer/marketer identity; care-label obligations may also apply for wearing apparel."
+            ),
+            source_url="https://www.ftc.gov/business-guidance/industry/clothing-and-textiles",
+            source_name="Federal Trade Commission clothing and textiles guidance",
+            source_authority_level="official",
+            confidence_score=78,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Confirm CBP and FTC treatment for the exact product stage.",
+        ),
+        ComplianceRequirementInput(
+            country="Netherlands/EU",
+            category="food/agri",
+            product_keywords=["food", "feed", "agri", "spices", "dry", "fruit", "beverage"],
+            requirement_type="inspection",
+            requirement_text=(
+                "EU food/feed imports are subject to official controls intended to verify safety, hygiene, animal/plant-health, and traceability requirements. Confirm TRACES/CHED or border-control obligations for the exact product."
+            ),
+            source_url="https://food.ec.europa.eu/horizontal-topics/official-controls-and-enforcement/imported-products_en",
+            source_name="European Commission official controls on imported products",
+            source_authority_level="official",
+            confidence_score=76,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Use Access2Markets/My Trade Assistant for exact CN/product checks.",
+        ),
+        ComplianceRequirementInput(
+            country="Netherlands/EU",
+            category="food/agri",
+            product_keywords=["food", "label", "packaging", "retail", "beverage", "spices"],
+            requirement_type="labeling",
+            requirement_text=(
+                "EU-wide labelling and packaging rules may apply, and additional destination-country requirements can apply; use product-specific Access2Markets checks before final label approval."
+            ),
+            source_url="https://trade.ec.europa.eu/access-to-markets/en/content/labelling-and-packaging",
+            source_name="European Commission Access2Markets labelling and packaging",
+            source_authority_level="official",
+            confidence_score=74,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Netherlands-specific importer advice may still be required.",
+        ),
+        ComplianceRequirementInput(
+            country="Saudi Arabia",
+            category="food/agri",
+            product_keywords=["food", "dry", "fruit", "spices", "agri", "beverage"],
+            requirement_type="import_document",
+            requirement_text=(
+                "Saudi food import clearance should be checked against SFDA requirements, including certificate-of-origin and any product-specific certificates requested by SFDA or the importer."
+            ),
+            source_url="https://www.sfda.gov.sa/en/imported-food",
+            source_name="Saudi Food and Drug Authority imported food",
+            source_authority_level="official",
+            confidence_score=74,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Arabic original/regulations and importer instructions should control.",
+        ),
+        ComplianceRequirementInput(
+            country="Saudi Arabia",
+            category="food/agri",
+            product_keywords=["fresh", "fruit", "vegetable", "grain", "agri", "phytosanitary"],
+            requirement_type="certificate",
+            requirement_text=(
+                "For grains/agricultural crops/fresh vegetables and fruits, confirm whether a phytosanitary certificate or related official certificate is required for the exact commodity."
+            ),
+            source_url="https://www.sfda.gov.sa/en/regulations/66195",
+            source_name="SFDA conditions and requirements for importing food",
+            source_authority_level="official",
+            confidence_score=72,
+            review_status="approved",
+            reviewed_by="demo-seed",
+            reviewed_at=datetime.now(UTC),
+            notes="Seed/demo evidence. Confirm latest SFDA document version before shipment.",
+        ),
     ]
 
 

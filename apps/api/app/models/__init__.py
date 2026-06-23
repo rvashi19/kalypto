@@ -36,6 +36,8 @@ from app.models.compliance import (
     ComplianceCountry,
     ComplianceRequirement,
     ComplianceScrapeRun,
+    ComplianceSourceChange,
+    ComplianceSourceSnapshot,
     ProductCategory,
 )
 
@@ -51,6 +53,8 @@ __all__ = [
     "ComplianceItem",
     "ComplianceRequirement",
     "ComplianceScrapeRun",
+    "ComplianceSourceChange",
+    "ComplianceSourceSnapshot",
     "ComplianceStatus",
     "ConsentRecord",
     "ConsentStatus",

@@ -3,10 +3,15 @@ import type {
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
   ComplianceOptionsResponse,
+  ComplianceScrapeRunRequest,
+  ComplianceScrapeRunResponse,
+  ComplianceSourceChangeResponse,
   CurrentUserResponse,
   DashboardOverview,
+  DueComplianceSourceResponse,
   DocumentationAssistantResponse,
-  DocumentationAssistantStatus
+  DocumentationAssistantStatus,
+  SourceChangeReviewRequest
 } from "@repo/shared";
 
 function normalizeBaseUrl(url: string) {
@@ -123,6 +128,32 @@ export const api = {
   askComplianceChecker: (payload: ComplianceCheckerRequest, token: string) =>
     request<ComplianceCheckerResponse>(
       "/compliance/checker/answer",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      token
+    ),
+  dueComplianceSources: (token: string) =>
+    request<DueComplianceSourceResponse[]>("/compliance/scrape/due", {}, token),
+  runComplianceScrape: (payload: ComplianceScrapeRunRequest, token: string) =>
+    request<ComplianceScrapeRunResponse>(
+      "/compliance/scrape/run",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      token
+    ),
+  sourceChanges: (token: string, statusFilter = "needs_review") =>
+    request<ComplianceSourceChangeResponse[]>(
+      `/compliance/scrape/changes?status_filter=${encodeURIComponent(statusFilter)}`,
+      {},
+      token
+    ),
+  reviewSourceChange: (changeId: string, payload: SourceChangeReviewRequest, token: string) =>
+    request<ComplianceSourceChangeResponse>(
+      `/compliance/scrape/changes/${changeId}/review`,
       {
         method: "POST",
         body: JSON.stringify(payload)

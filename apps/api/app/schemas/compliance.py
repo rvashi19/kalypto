@@ -18,6 +18,7 @@ ComplianceStatus = Literal[
 ]
 ConfidenceLevel = Literal["High", "Medium", "Low"]
 ReviewStatus = Literal["pending", "approved", "rejected"]
+SourceChangeStatus = Literal["needs_review", "reviewed", "ignored"]
 
 
 class ComplianceOptionsResponse(BaseModel):
@@ -173,3 +174,43 @@ class ComplianceScrapeRunResponse(BaseModel):
     status: str
     records_found: int
     message: str
+
+
+class DueComplianceSourceResponse(BaseModel):
+    source_url: str
+    country: str
+    category: str
+    last_checked_at: datetime | None
+
+
+class ComplianceSourceSnapshotResponse(BaseModel):
+    id: str
+    source_url: str
+    country: str
+    category: str
+    title: str
+    content_hash: str
+    previous_content_hash: str | None
+    status: str
+    scraped_at: datetime
+
+
+class ComplianceSourceChangeResponse(BaseModel):
+    id: str
+    source_url: str
+    country: str
+    category: str
+    previous_snapshot_id: str | None
+    current_snapshot_id: str
+    previous_content_hash: str | None
+    current_content_hash: str
+    status: str
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+    notes: str | None
+    created_at: datetime
+
+
+class SourceChangeReviewRequest(BaseModel):
+    status: SourceChangeStatus
+    notes: str | None = Field(default=None, max_length=2000)

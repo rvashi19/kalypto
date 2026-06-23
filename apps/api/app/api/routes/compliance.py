@@ -14,14 +14,19 @@ from app.schemas.compliance import (
     ComplianceOptionsResponse,
     ComplianceScrapeRunRequest,
     ComplianceScrapeRunResponse,
+    ComplianceSourceChangeResponse,
+    DueComplianceSourceResponse,
     ManualComplianceIngestRequest,
     ManualComplianceIngestResponse,
+    SourceChangeReviewRequest,
 )
 from app.services.compliance_answer import CountryComplianceCheckerService
 from app.services.compliance_normalization import SUPPORTED_CATEGORIES, SUPPORTED_COUNTRIES
 from app.services.compliance_scraper import ComplianceScraperError, get_compliance_scraper
 from app.services.compliance_store import (
+    ComplianceKnowledgeStore,
     ComplianceStoreConfigurationError,
+    StoredSourceChange,
     get_compliance_knowledge_store,
 )
 
@@ -71,6 +76,40 @@ def answer_country_compliance_checker(
         ) from error
 
 
+def _store_for_request(
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceKnowledgeStore:
+    try:
+        return get_compliance_knowledge_store(
+            session=session,
+            tenant_id=current_user.organization.id,
+        )
+    except ComplianceStoreConfigurationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error),
+        ) from error
+
+
+def _source_change_response(change: StoredSourceChange) -> ComplianceSourceChangeResponse:
+    return ComplianceSourceChangeResponse(
+        id=change.id,
+        source_url=change.source_url,
+        country=change.country,
+        category=change.category,
+        previous_snapshot_id=change.previous_snapshot_id,
+        current_snapshot_id=change.current_snapshot_id,
+        previous_content_hash=change.previous_content_hash,
+        current_content_hash=change.current_content_hash,
+        status=change.status,
+        reviewed_by=change.reviewed_by,
+        reviewed_at=change.reviewed_at,
+        notes=change.notes,
+        created_at=change.created_at,
+    )
+
+
 @router.post("/scrape/ingest", response_model=ManualComplianceIngestResponse)
 def ingest_compliance_records(
     payload: ManualComplianceIngestRequest,
@@ -78,14 +117,7 @@ def ingest_compliance_records(
     current_user: CurrentUser,
 ) -> ManualComplianceIngestResponse:
     require_editor(current_user)
-    try:
-        store = get_compliance_knowledge_store(
-            session=session, tenant_id=current_user.organization.id
-        )
-    except ComplianceStoreConfigurationError as error:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
-        ) from error
+    store = _store_for_request(session, current_user)
     created, updated = store.ingest(payload.records)
     session.commit()
     return ManualComplianceIngestResponse(
@@ -113,9 +145,7 @@ def run_compliance_scrape(
     session.flush()
     scraper = get_compliance_scraper()
     try:
-        store = get_compliance_knowledge_store(
-            session=session, tenant_id=current_user.organization.id
-        )
+        store = _store_for_request(session, current_user)
         document = scraper.scrape(payload.source_url)
         snapshot = store.record_source_snapshot(
             source_url=document.source_url,
@@ -147,3 +177,65 @@ def run_compliance_scrape(
         records_found=0,
         message=snapshot.message,
     )
+
+
+@router.get("/scrape/due", response_model=list[DueComplianceSourceResponse])
+def list_due_compliance_sources(
+    session: DbSession,
+    current_user: CurrentUser,
+    limit: int = 25,
+) -> list[DueComplianceSourceResponse]:
+    require_editor(current_user)
+    store = _store_for_request(session, current_user)
+    return [
+        DueComplianceSourceResponse(
+            source_url=source.source_url,
+            country=source.country,
+            category=source.category,
+            last_checked_at=source.last_checked_at,
+        )
+        for source in store.due_sources(limit=max(1, min(limit, 100)))
+    ]
+
+
+@router.get("/scrape/changes", response_model=list[ComplianceSourceChangeResponse])
+def list_source_changes(
+    session: DbSession,
+    current_user: CurrentUser,
+    status_filter: str = "needs_review",
+    limit: int = 50,
+) -> list[ComplianceSourceChangeResponse]:
+    require_editor(current_user)
+    store = _store_for_request(session, current_user)
+    return [
+        _source_change_response(change)
+        for change in store.list_source_changes(
+            status=status_filter,
+            limit=max(1, min(limit, 100)),
+        )
+    ]
+
+
+@router.post(
+    "/scrape/changes/{change_id}/review",
+    response_model=ComplianceSourceChangeResponse,
+)
+def review_source_change(
+    change_id: str,
+    payload: SourceChangeReviewRequest,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceSourceChangeResponse:
+    require_editor(current_user)
+    store = _store_for_request(session, current_user)
+    try:
+        change = store.review_source_change(
+            change_id=change_id,
+            status=payload.status,
+            reviewed_by=current_user.user.email,
+            notes=payload.notes,
+        )
+    except (ComplianceStoreConfigurationError, ValueError) as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    session.commit()
+    return _source_change_response(change)

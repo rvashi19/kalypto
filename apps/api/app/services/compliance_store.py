@@ -11,7 +11,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
-from app.models import ComplianceCountry, ComplianceRequirement, ProductCategory
+from app.models import (
+    ComplianceCountry,
+    ComplianceRequirement,
+    ComplianceSourceChange,
+    ComplianceSourceSnapshot,
+    ProductCategory,
+)
 from app.schemas.compliance import ComplianceRequirementInput
 from app.services.compliance_freshness import calculate_expires_at, is_stale
 from app.services.compliance_normalization import (
@@ -51,6 +57,36 @@ class DueComplianceSource:
     last_checked_at: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class StoredSourceSnapshot:
+    id: str
+    source_url: str
+    country: str
+    category: str
+    title: str
+    content_hash: str
+    previous_content_hash: str | None
+    status: str
+    scraped_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class StoredSourceChange:
+    id: str
+    source_url: str
+    country: str
+    category: str
+    previous_snapshot_id: str | None
+    current_snapshot_id: str
+    previous_content_hash: str | None
+    current_content_hash: str
+    status: str
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+    notes: str | None
+    created_at: datetime
+
+
 class ComplianceKnowledgeStore(Protocol):
     def ingest(self, records: list[ComplianceRequirementInput]) -> tuple[int, int]: ...
 
@@ -79,6 +115,14 @@ class ComplianceKnowledgeStore(Protocol):
     ) -> SourceSnapshotResult: ...
 
     def due_sources(self, *, limit: int = 25) -> list[DueComplianceSource]: ...
+
+    def list_source_changes(
+        self, *, status: str = "needs_review", limit: int = 50
+    ) -> list[StoredSourceChange]: ...
+
+    def review_source_change(
+        self, *, change_id: str, status: str, reviewed_by: str, notes: str | None
+    ) -> StoredSourceChange: ...
 
 
 class PostgresComplianceKnowledgeStore:
@@ -125,19 +169,76 @@ class PostgresComplianceKnowledgeStore:
         content_hash = source_snapshot_fingerprint(
             source_url=source_url, title=title, markdown=markdown
         )
+        latest = self.session.scalars(
+            select(ComplianceSourceSnapshot)
+            .where(
+                ComplianceSourceSnapshot.tenant_id == self.tenant_id,
+                ComplianceSourceSnapshot.source_url == source_url,
+            )
+            .order_by(ComplianceSourceSnapshot.scraped_at.desc()),
+        ).first()
+        previous_hash = latest.content_hash if latest else None
+        if previous_hash is None:
+            status = "new_snapshot"
+            pending_review_created = False
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=new "
+                "pending_review_created=false"
+            )
+        elif previous_hash == content_hash:
+            status = "unchanged"
+            pending_review_created = False
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=false "
+                "pending_review_created=false"
+            )
+        else:
+            status = "needs_review"
+            pending_review_created = True
+            message = (
+                f"source={source_url} content_hash={content_hash} changed=true "
+                "pending_review_created=true"
+            )
+
+        snapshot = ComplianceSourceSnapshot(
+            tenant_id=self.tenant_id,
+            source_url=source_url,
+            country=country,
+            category=category,
+            title=title,
+            markdown=markdown,
+            content_hash=content_hash,
+            previous_content_hash=previous_hash,
+            status=status,
+            scraped_at=datetime.now(UTC),
+        )
+        self.session.add(snapshot)
+        self.session.flush()
+        if pending_review_created:
+            self.session.add(
+                ComplianceSourceChange(
+                    tenant_id=self.tenant_id,
+                    source_url=source_url,
+                    country=country,
+                    category=category,
+                    previous_snapshot_id=latest.id if latest else None,
+                    current_snapshot_id=snapshot.id,
+                    previous_content_hash=previous_hash,
+                    current_content_hash=content_hash,
+                    status="needs_review",
+                ),
+            )
         return SourceSnapshotResult(
             source_url=source_url,
             title=title,
             content_hash=content_hash,
-            previous_content_hash=None,
-            status="needs_review",
-            message=(
-                f"source={source_url} content_hash={content_hash} changed=unknown "
-                "pending_review_created=true. Persistent snapshot diffing requires MongoDB."
-            ),
+            previous_content_hash=previous_hash,
+            status=status,
+            message=message,
         )
 
     def due_sources(self, *, limit: int = 25) -> list[DueComplianceSource]:
+        cutoff = datetime.now(UTC) - timedelta(days=get_settings().compliance_refresh_interval_days)
         rows = self.session.execute(
             select(ComplianceRequirement, ComplianceCountry, ProductCategory)
             .join(ComplianceCountry, ComplianceRequirement.country_id == ComplianceCountry.id)
@@ -154,17 +255,80 @@ class PostgresComplianceKnowledgeStore:
             if requirement.source_url in seen:
                 continue
             seen.add(requirement.source_url)
+            latest = self.session.scalars(
+                select(ComplianceSourceSnapshot)
+                .where(
+                    ComplianceSourceSnapshot.tenant_id == self.tenant_id,
+                    ComplianceSourceSnapshot.source_url == requirement.source_url,
+                )
+                .order_by(ComplianceSourceSnapshot.scraped_at.desc()),
+            ).first()
+            last_checked_at = latest.scraped_at if latest else requirement.last_checked_at
+            if last_checked_at is not None:
+                checked_at = last_checked_at
+                if checked_at.tzinfo is None:
+                    checked_at = checked_at.replace(tzinfo=UTC)
+                if checked_at > cutoff:
+                    continue
             due.append(
                 DueComplianceSource(
                     source_url=requirement.source_url,
                     country=country.name,
                     category=category.name,
-                    last_checked_at=requirement.last_checked_at,
+                    last_checked_at=last_checked_at,
                 ),
             )
             if len(due) >= limit:
                 break
         return due
+
+    def list_source_changes(
+        self, *, status: str = "needs_review", limit: int = 50
+    ) -> list[StoredSourceChange]:
+        rows = self.session.scalars(
+            select(ComplianceSourceChange)
+            .where(
+                ComplianceSourceChange.tenant_id == self.tenant_id,
+                ComplianceSourceChange.status == status,
+            )
+            .order_by(ComplianceSourceChange.created_at.desc())
+            .limit(limit),
+        ).all()
+        return [self._source_change_from_row(row) for row in rows]
+
+    def review_source_change(
+        self, *, change_id: str, status: str, reviewed_by: str, notes: str | None
+    ) -> StoredSourceChange:
+        change = self.session.get(ComplianceSourceChange, UUID(change_id))
+        if change is None or change.tenant_id != self.tenant_id:
+            raise ComplianceStoreConfigurationError("Source change was not found for this tenant.")
+        change.status = status
+        change.reviewed_by = reviewed_by
+        change.reviewed_at = datetime.now(UTC)
+        change.notes = notes
+        self.session.add(change)
+        self.session.flush()
+        return self._source_change_from_row(change)
+
+    @staticmethod
+    def _source_change_from_row(row: ComplianceSourceChange) -> StoredSourceChange:
+        return StoredSourceChange(
+            id=str(row.id),
+            source_url=row.source_url,
+            country=row.country,
+            category=row.category,
+            previous_snapshot_id=str(row.previous_snapshot_id)
+            if row.previous_snapshot_id
+            else None,
+            current_snapshot_id=str(row.current_snapshot_id),
+            previous_content_hash=row.previous_content_hash,
+            current_content_hash=row.current_content_hash,
+            status=row.status,
+            reviewed_by=row.reviewed_by,
+            reviewed_at=row.reviewed_at,
+            notes=row.notes,
+            created_at=row.created_at,
+        )
 
 
 class MongoComplianceKnowledgeStore:
@@ -412,6 +576,35 @@ class MongoComplianceKnowledgeStore:
                 break
         return due
 
+    def list_source_changes(
+        self, *, status: str = "needs_review", limit: int = 50
+    ) -> list[StoredSourceChange]:
+        documents = self.source_changes.find(
+            {"tenant_id": str(self.tenant_id), "status": status},
+        )
+        changes = [self._document_to_source_change(document) for document in documents]
+        return sorted(changes, key=lambda change: change.created_at, reverse=True)[:limit]
+
+    def review_source_change(
+        self, *, change_id: str, status: str, reviewed_by: str, notes: str | None
+    ) -> StoredSourceChange:
+        existing = self.source_changes.find_one(
+            {"tenant_id": str(self.tenant_id), "_id": change_id},
+        )
+        if existing is None:
+            raise ComplianceStoreConfigurationError("Source change was not found for this tenant.")
+        updated = existing.copy()
+        updated["status"] = status
+        updated["reviewed_by"] = reviewed_by
+        updated["reviewed_at"] = datetime.now(UTC)
+        updated["notes"] = notes
+        self.source_changes.replace_one(
+            {"tenant_id": str(self.tenant_id), "_id": change_id},
+            updated,
+            upsert=False,
+        )
+        return self._document_to_source_change(updated)
+
     def _record_to_document(
         self, record: ComplianceRequirementInput, *, now: datetime
     ) -> dict[str, Any]:
@@ -487,6 +680,27 @@ class MongoComplianceKnowledgeStore:
             notes=document.get("notes"),
             unresolved_questions=list(document.get("unresolved_questions") or []),
             content_hash=str(document.get("content_hash", "")),
+        )
+
+    def _document_to_source_change(self, document: dict[str, Any]) -> StoredSourceChange:
+        created_at = document.get("created_at")
+        if not isinstance(created_at, datetime):
+            created_at = datetime.now(UTC)
+        reviewed_at = document.get("reviewed_at")
+        return StoredSourceChange(
+            id=str(document.get("_id", "")),
+            source_url=str(document.get("source_url", "")),
+            country=str(document.get("country", "")),
+            category=str(document.get("category", "")),
+            previous_snapshot_id=document.get("previous_snapshot_id"),
+            current_snapshot_id=str(document.get("current_snapshot_id", "")),
+            previous_content_hash=document.get("previous_content_hash"),
+            current_content_hash=str(document.get("current_content_hash", "")),
+            status=str(document.get("status", "")),
+            reviewed_by=document.get("reviewed_by"),
+            reviewed_at=reviewed_at if isinstance(reviewed_at, datetime) else None,
+            notes=document.get("notes"),
+            created_at=created_at,
         )
 
 

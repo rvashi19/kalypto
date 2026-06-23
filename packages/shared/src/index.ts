@@ -106,3 +106,44 @@ export interface ComplianceCheckerResponse {
   unresolved_questions: string[];
   disclaimer: string;
 }
+
+export interface ComplianceScrapeRunRequest {
+  source_url: string;
+  country: string;
+  category: string;
+}
+
+export interface ComplianceScrapeRunResponse {
+  run_id: string;
+  status: string;
+  records_found: number;
+  message: string;
+}
+
+export interface DueComplianceSourceResponse {
+  source_url: string;
+  country: string;
+  category: string;
+  last_checked_at: string | null;
+}
+
+export interface ComplianceSourceChangeResponse {
+  id: string;
+  source_url: string;
+  country: string;
+  category: string;
+  previous_snapshot_id: string | null;
+  current_snapshot_id: string;
+  previous_content_hash: string | null;
+  current_content_hash: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface SourceChangeReviewRequest {
+  status: "needs_review" | "reviewed" | "ignored";
+  notes?: string | null;
+}

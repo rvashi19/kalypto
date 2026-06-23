@@ -29,8 +29,16 @@ class Settings(BaseSettings):
         alias="XAI_BASE_URL",
     )
     compliance_scraper_provider: str = Field(
-        default="manual",
+        default="http",
         alias="COMPLIANCE_SCRAPER_PROVIDER",
+    )
+    compliance_allow_private_scrape: bool = Field(
+        default=False,
+        alias="COMPLIANCE_ALLOW_PRIVATE_SCRAPE",
+    )
+    compliance_scraper_user_agent: str = Field(
+        default="KalyptoComplianceBot/0.1 (+https://kalypto.local; review-only)",
+        alias="COMPLIANCE_SCRAPER_USER_AGENT",
     )
     compliance_store_backend: str = Field(default="postgres", alias="COMPLIANCE_STORE_BACKEND")
     mongodb_url: str | None = Field(default=None, alias="MONGODB_URL")
