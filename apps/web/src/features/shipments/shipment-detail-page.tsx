@@ -44,6 +44,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 
 const FIELD_LABELS: Record<string, string> = {
   document_number: "Doc No.",
+  invoice_number: "Invoice No.",
   document_date: "Date",
   buyer_name: "Buyer",
   seller_name: "Seller",
@@ -66,6 +67,7 @@ const FIELD_LABELS: Record<string, string> = {
   igst_amount: "IGST Amount",
   gstin: "GSTIN",
   iec_code: "IEC Code",
+  ad_code: "AD Code",
   marks_and_numbers: "Marks & Nos.",
 };
 
@@ -373,6 +375,21 @@ export function ShipmentDetailPage() {
     },
   });
 
+  const generateMutation = useMutation({
+    mutationFn: (documentType: DocumentType) =>
+      api.generateDocument(id!, documentType, token!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", id] });
+    },
+  });
+
+  const reconciliationMutation = useMutation({
+    mutationFn: () => api.reconcileShipment(id!, token!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["discrepancy-dashboard"] });
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (token) await api.logout(token);
@@ -484,6 +501,40 @@ export function ShipmentDetailPage() {
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
+              <CardTitle>Generate export documents</CardTitle>
+              <CardDescription>
+                Create editable-draft PDFs from the shipment profile, then review and sign them.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["proforma_invoice", "Generate proforma invoice"],
+                  ["commercial_invoice", "Generate commercial invoice"],
+                  ["packing_list", "Generate packing list"],
+                ] as Array<[DocumentType, string]>
+              ).map(([documentType, label]) => (
+                <Button
+                  key={documentType}
+                  variant="secondary"
+                  disabled={generateMutation.isPending}
+                  onClick={() => generateMutation.mutate(documentType)}
+                >
+                  {label}
+                </Button>
+              ))}
+              {generateMutation.isError ? (
+                <p className="w-full text-sm text-rose-400">
+                  {generateMutation.error instanceof Error
+                    ? generateMutation.error.message
+                    : "Document generation failed."}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Upload Document</CardTitle>
               <CardDescription>PDF, JPEG, PNG, or Excel. Max 10 MB per file.</CardDescription>
             </CardHeader>
@@ -568,12 +619,20 @@ export function ShipmentDetailPage() {
                           </p>
                         </div>
                         {statusCfg && (
-                          <span
-                            className={`flex items-center gap-1 text-xs ${statusCfg.cls}`}
-                          >
-                            <span aria-hidden="true">{statusCfg.icon}</span>
-                            {statusCfg.label}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className={`flex items-center gap-1 text-xs ${statusCfg.cls}`}>
+                              <span aria-hidden="true">{statusCfg.icon}</span>
+                              {statusCfg.label}
+                            </span>
+                            <button
+                              className="text-xs font-medium text-indigo-300 hover:text-indigo-200"
+                              onClick={() =>
+                                api.downloadDocument(id!, doc.id, doc.file_name, token!)
+                              }
+                            >
+                              Download
+                            </button>
+                          </div>
                         )}
                       </div>
                       <ExtractedFieldsPanel doc={doc} />
@@ -603,6 +662,49 @@ export function ShipmentDetailPage() {
               </Button>
             </div>
           )}
+          {hasDocs ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Deterministic reconciliation</CardTitle>
+                <CardDescription>
+                  Checks required documents and extracted cross-document values without asking AI
+                  to invent rules or rates.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  disabled={reconciliationMutation.isPending}
+                  onClick={() => reconciliationMutation.mutate()}
+                >
+                  {reconciliationMutation.isPending
+                    ? "Reconciling..."
+                    : "Run reconciliation"}
+                </Button>
+                {reconciliationMutation.data ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-slate-200">
+                      {reconciliationMutation.data.discrepancies.length} findings / potential INR{" "}
+                      {reconciliationMutation.data.potential_amount.toLocaleString("en-IN")}
+                    </p>
+                    {reconciliationMutation.data.discrepancies.map((item) => (
+                      <div
+                        className="rounded-lg border border-white/8 bg-slate-950/50 p-3"
+                        key={item.id}
+                      >
+                        <p className="text-sm text-slate-200">{item.message}</p>
+                        <p className="mt-1 text-xs capitalize text-slate-500">
+                          {item.severity} / {item.type.replaceAll("_", " ")}
+                        </p>
+                      </div>
+                    ))}
+                    <p className="text-xs text-slate-600">
+                      {reconciliationMutation.data.disclaimer}
+                    </p>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
           {hasDocs && reportQuery.isLoading && (
             <Card>
               <CardContent className="py-8 text-center text-sm text-slate-400">

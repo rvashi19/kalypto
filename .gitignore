@@ -1,5 +1,19 @@
 .env
 *.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+uploads/
+apps/api/uploads/
+apps/api/storage/
+storage/
+*.sqlite
+*.sqlite3
 # results/ (Currently allowing for curated baseline artifacts)
 __pycache__/
 *.pyc

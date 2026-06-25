@@ -1,6 +1,6 @@
 import type { ComplianceCheckerRequest, ComplianceCheckerResponse } from "@repo/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
@@ -21,7 +21,9 @@ const DEFAULT_FORM: ComplianceCheckerRequest = {
 
 export function CompliancePage() {
   const { session, token, setSession } = useAuth();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<ComplianceCheckerRequest>(DEFAULT_FORM);
+  const [rateFile, setRateFile] = useState<File | null>(null);
 
   const optionsQuery = useQuery({
     queryKey: ["compliance-options", token],
@@ -31,6 +33,54 @@ export function CompliancePage() {
 
   const mutation = useMutation({
     mutationFn: async () => api.askComplianceChecker(form, token!),
+  });
+
+  const dueSourcesQuery = useQuery({
+    queryKey: ["compliance-due-sources", token],
+    queryFn: () => api.dueComplianceSources(token!),
+    enabled: Boolean(token && session?.membership.role !== "read_only"),
+  });
+
+  const sourceChangesQuery = useQuery({
+    queryKey: ["compliance-source-changes", token],
+    queryFn: () => api.sourceChanges(token!),
+    enabled: Boolean(token && session?.membership.role !== "read_only"),
+  });
+
+  const scrapeMutation = useMutation({
+    mutationFn: (source: { source_url: string; country: string; category: string }) =>
+      api.runComplianceScrape(source, token!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compliance-due-sources"] });
+      queryClient.invalidateQueries({ queryKey: ["compliance-source-changes"] });
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({
+      changeId,
+      status,
+    }: {
+      changeId: string;
+      status: "reviewed" | "ignored";
+    }) => api.reviewSourceChange(changeId, { status }, token!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compliance-source-changes"] });
+    },
+  });
+
+  const ratesQuery = useQuery({
+    queryKey: ["rate-table", token],
+    queryFn: () => api.listRates(token!),
+    enabled: Boolean(token),
+  });
+
+  const rateImportMutation = useMutation({
+    mutationFn: () => api.importRates(rateFile!, token!),
+    onSuccess: () => {
+      setRateFile(null);
+      queryClient.invalidateQueries({ queryKey: ["rate-table"] });
+    },
   });
 
   const logoutMutation = useMutation({
@@ -144,6 +194,143 @@ export function CompliancePage() {
           </Card>
         )}
       </div>
+
+      {session?.membership.role !== "read_only" ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Source refresh queue</CardTitle>
+              <CardDescription>
+                Official sources due for the configured three-day freshness check.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {dueSourcesQuery.isLoading ? (
+                <p className="text-sm text-slate-500">Loading source queue...</p>
+              ) : null}
+              {dueSourcesQuery.data?.length === 0 ? (
+                <p className="text-sm text-emerald-300">All monitored sources are current.</p>
+              ) : null}
+              {dueSourcesQuery.data?.map((source) => (
+                <div
+                  key={`${source.source_url}-${source.country}-${source.category}`}
+                  className="rounded-lg border border-white/8 bg-slate-950/50 p-3"
+                >
+                  <p className="truncate text-sm font-medium text-slate-200">{source.source_url}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {source.country} / {source.category} / last checked{" "}
+                    {source.last_checked_at ?? "never"}
+                  </p>
+                  <Button
+                    className="mt-2"
+                    size="sm"
+                    variant="secondary"
+                    disabled={scrapeMutation.isPending}
+                    onClick={() => scrapeMutation.mutate(source)}
+                  >
+                    Refresh source
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Compliance change review</CardTitle>
+              <CardDescription>
+                Scraped changes remain review-only until an operator accepts or ignores them.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {sourceChangesQuery.isLoading ? (
+                <p className="text-sm text-slate-500">Loading review queue...</p>
+              ) : null}
+              {sourceChangesQuery.data?.length === 0 ? (
+                <p className="text-sm text-emerald-300">No source changes need review.</p>
+              ) : null}
+              {sourceChangesQuery.data?.map((change) => (
+                <div
+                  key={change.id}
+                  className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3"
+                >
+                  <p className="truncate text-sm font-medium text-slate-200">{change.source_url}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {change.country} / {change.category} / detected{" "}
+                    {new Date(change.created_at).toLocaleString()}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={reviewMutation.isPending}
+                      onClick={() =>
+                        reviewMutation.mutate({ changeId: change.id, status: "reviewed" })
+                      }
+                    >
+                      Mark reviewed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={reviewMutation.isPending}
+                      onClick={() =>
+                        reviewMutation.mutate({ changeId: change.id, status: "ignored" })
+                      }
+                    >
+                      Ignore
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Versioned incentive rate table</CardTitle>
+              <CardDescription>
+                Operator-only CSV import. Required columns: scheme, hsn, rate, source,
+                effective_date, version_stamp, confidence.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(event) => setRateFile(event.target.files?.[0] ?? null)}
+                  className="flex-1 text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:text-slate-300"
+                />
+                <Button
+                  disabled={!rateFile || rateImportMutation.isPending}
+                  onClick={() => rateImportMutation.mutate()}
+                >
+                  {rateImportMutation.isPending ? "Importing..." : "Import verified rates"}
+                </Button>
+              </div>
+              <p className="text-xs text-amber-300">
+                Every displayed rate remains decision support. Verify with your CHA/customs broker.
+              </p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {ratesQuery.data?.slice(0, 12).map((rate) => (
+                  <div
+                    className="rounded-lg border border-white/8 bg-slate-950/50 p-3"
+                    key={rate.id}
+                  >
+                    <p className="text-sm font-medium text-slate-200">
+                      {rate.scheme} / HSN {rate.hsn} / {rate.rate}%
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {rate.source} / {rate.version_stamp} /{" "}
+                      {new Date(rate.effective_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }

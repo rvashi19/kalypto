@@ -19,8 +19,10 @@ do
   sleep "$SLEEP_SECONDS"
 done
 
-echo "Seeding demo tenant..."
-python -m app.scripts.seed_demo
+if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+  echo "Seeding demo tenant..."
+  python -m app.scripts.seed_demo
+fi
 
 echo "Starting API server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"

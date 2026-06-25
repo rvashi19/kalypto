@@ -47,10 +47,18 @@ function Field({
   );
 }
 
-function HsnRateCard({ hsn, fobValue }: { hsn: string; fobValue: number | null | undefined }) {
+function HsnRateCard({
+  hsn,
+  fobValue,
+  token,
+}: {
+  hsn: string;
+  fobValue: number | null | undefined;
+  token: string;
+}) {
   const { data, isLoading } = useQuery({
     queryKey: ["hsn-rates", hsn, fobValue],
-    queryFn: () => api.getHsnRates(hsn, fobValue ?? undefined),
+    queryFn: () => api.getHsnRates(hsn, token, fobValue ?? undefined),
     enabled: hsn.length >= 4,
     staleTime: 60_000,
   });
@@ -96,6 +104,7 @@ function HsnRateCard({ hsn, fobValue }: { hsn: string; fobValue: number | null |
       {data.exchange_rate_note && (
         <p className="mt-1 text-xs italic text-slate-600">{data.exchange_rate_note}</p>
       )}
+      <p className="mt-2 text-xs font-medium text-amber-300">{data.disclaimer}</p>
     </div>
   );
 }
@@ -205,7 +214,9 @@ export function NewShipmentPage() {
                 placeholder="e.g. 09042220"
               />
               <FieldError message={errorFor("hsn_code")} />
-              <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} />
+                {token ? (
+                  <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} token={token} />
+                ) : null}
             </Field>
             <Field label="Exporter name" required>
               <input

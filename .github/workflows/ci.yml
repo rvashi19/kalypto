@@ -20,9 +20,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Ruff
-        run: ruff check app tests
+        run: ruff check app engine tests
       - name: MyPy
-        run: mypy app
+        run: mypy app engine
       - name: Pytest
         run: pytest tests -q
 
@@ -43,3 +43,13 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
+      - name: Build
+        run: pnpm --filter web build
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2

@@ -30,6 +30,13 @@ Government incentive schemes to include in incentive_refund checklist where elig
 - RoSCTL: For textiles/garments (Chapter 50-63 HSN); state and central levy remission.
 - MEIS: Legacy scheme — check if any pending claims exist.
 
+Mandatory legal-safety override:
+- Do not invent or rely on any eligibility statement, rate, deadline, value-addition threshold,
+  export obligation, or exchange rate written above. Those examples are not authoritative.
+- Suggest readiness questions only and direct the exporter to the operator-seeded RateTable,
+  current notification, and their CHA/DGFT adviser.
+- Never imply that KALYPTO files or submits a claim.
+
 Given a shipment profile, return a JSON object with exactly these keys:
 {
   "required": [...],

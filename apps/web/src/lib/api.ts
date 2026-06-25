@@ -3,8 +3,13 @@ import type {
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
   ComplianceOptionsResponse,
+  ComplianceScrapeRunRequest,
+  ComplianceScrapeRunResponse,
+  ComplianceSourceChangeResponse,
   CurrentUserResponse,
   DashboardOverview,
+  DiscrepancyDashboardResponse,
+  DueComplianceSourceResponse,
   DocumentationAssistantResponse,
   DocumentationAssistantStatus,
   DocumentChecklist,
@@ -12,7 +17,12 @@ import type {
   DocumentType,
   HsnRateLookupResponse,
   ShipmentCreate,
+  ShipmentImportResponse,
+  ReconciliationResponse,
+  RateImportResponse,
+  RateRecordResponse,
   ShipmentResponse,
+  SourceChangeReviewRequest,
   VerificationReport,
 } from "@repo/shared";
 
@@ -110,6 +120,9 @@ export const api = {
   dashboardOverview: (token: string) =>
     request<DashboardOverview>("/dashboard/overview", {}, token),
 
+  discrepancyDashboard: (token: string) =>
+    request<DiscrepancyDashboardResponse>("/dashboard/discrepancies", {}, token),
+
   documentationAssistantStatus: (token: string) =>
     request<DocumentationAssistantStatus>("/assistant/docs/status", {}, token),
 
@@ -130,6 +143,47 @@ export const api = {
       token
     ),
 
+  dueComplianceSources: (token: string) =>
+    request<DueComplianceSourceResponse[]>("/compliance/scrape/due", {}, token),
+
+  runComplianceScrape: (payload: ComplianceScrapeRunRequest, token: string) =>
+    request<ComplianceScrapeRunResponse>(
+      "/compliance/scrape/run",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  sourceChanges: (token: string, statusFilter = "needs_review") =>
+    request<ComplianceSourceChangeResponse[]>(
+      `/compliance/scrape/changes?status_filter=${encodeURIComponent(statusFilter)}`,
+      {},
+      token
+    ),
+
+  reviewSourceChange: (changeId: string, payload: SourceChangeReviewRequest, token: string) =>
+    request<ComplianceSourceChangeResponse>(
+      `/compliance/scrape/changes/${changeId}/review`,
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  listRates: (token: string) => request<RateRecordResponse[]>("/rates", {}, token),
+
+  importRates: async (file: File, token: string): Promise<RateImportResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch(`${API_BASE_URL}/rates/import`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
+    });
+    const body = await response.json().catch(() => ({ detail: "Rate import failed." }));
+    if (!response.ok) {
+      throw new Error((body as { detail?: string }).detail ?? "Rate import failed.");
+    }
+    return body as RateImportResponse;
+  },
+
   // ── Shipments ────────────────────────────────────────────────────────────────
 
   createShipment: (payload: ShipmentCreate, token: string) =>
@@ -137,6 +191,21 @@ export const api = {
 
   listShipments: (token: string) =>
     request<ShipmentResponse[]>("/shipments", {}, token),
+
+  importShipments: async (file: File, token: string): Promise<ShipmentImportResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch(`${API_BASE_URL}/shipments/import`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
+    });
+    const body = await response.json().catch(() => ({ detail: "Import failed." }));
+    if (!response.ok) {
+      throw new Error((body as { detail?: string }).detail ?? "Import failed.");
+    }
+    return body as ShipmentImportResponse;
+  },
 
   getShipment: (id: string, token: string) =>
     request<ShipmentResponse>(`/shipments/${id}`, {}, token),
@@ -168,11 +237,48 @@ export const api = {
     return response.json() as Promise<DocumentResponse>;
   },
 
+  generateDocument: (shipmentId: string, documentType: DocumentType, token: string) =>
+    request<DocumentResponse>(
+      `/shipments/${shipmentId}/documents/generate/${documentType}`,
+      { method: "POST" },
+      token
+    ),
+
+  downloadDocument: async (
+    shipmentId: string,
+    documentId: string,
+    fileName: string,
+    token: string
+  ): Promise<void> => {
+    const response = await fetch(
+      `${API_BASE_URL}/shipments/${shipmentId}/documents/${documentId}/download`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!response.ok) {
+      throw new Error("Document download failed.");
+    }
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  },
+
   verifyShipment: (shipmentId: string, token: string) =>
     request<VerificationReport>(`/shipments/${shipmentId}/verify`, {}, token),
 
-  getHsnRates: (hsn: string, fobValue?: number) =>
+  reconcileShipment: (shipmentId: string, token: string) =>
+    request<ReconciliationResponse>(
+      `/shipments/${shipmentId}/reconcile`,
+      { method: "POST" },
+      token
+    ),
+
+  getHsnRates: (hsn: string, token: string, fobValue?: number) =>
     request<HsnRateLookupResponse>(
       `/shipments/hsn-rates?hsn=${encodeURIComponent(hsn)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
+      {},
+      token
     ),
 };

@@ -39,7 +39,7 @@ DOCUMENTATION_CONTEXT = dedent(
     Current live deployment expectations:
     - The frontend calls the backend API on /api/v1.
     - The health check endpoint is /api/v1/health.
-    - The AI documentation helper requires OPENAI_API_KEY to be configured on the API service.
+    - The AI documentation helper requires XAI_API_KEY to be configured on the API service.
     - The AI helper is for product guidance and onboarding, not legal advice.
     """
 ).strip()
@@ -66,7 +66,7 @@ SYSTEM_PROMPT = dedent(
 
 
 class DocumentationAssistantNotConfiguredError(RuntimeError):
-    """Raised when the assistant is requested before OPENAI_API_KEY is configured."""
+    """Raised when the assistant is requested before XAI_API_KEY is configured."""
 
 
 class DocumentationAssistantService:
@@ -75,22 +75,25 @@ class DocumentationAssistantService:
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.settings.openai_api_key)
+        return bool(self.settings.xai_api_key)
 
     def status_message(self) -> str:
         if self.is_configured:
             return "AI documentation helper is ready."
-        return "Set OPENAI_API_KEY on the API service to enable the AI documentation helper."
+        return "Set XAI_API_KEY on the API service to enable the AI documentation helper."
 
     def answer(self, question: str) -> str:
         if not self.is_configured:
             raise DocumentationAssistantNotConfiguredError(self.status_message())
 
         openai_module: Any = importlib.import_module("openai")
-        client = openai_module.OpenAI(api_key=self.settings.openai_api_key)
+        client = openai_module.OpenAI(
+            api_key=self.settings.xai_api_key,
+            base_url=self.settings.xai_base_url,
+        )
 
         response = client.responses.create(
-            model=self.settings.openai_model,
+            model=self.settings.xai_model,
             instructions=f"{SYSTEM_PROMPT}\n\nReference context:\n{DOCUMENTATION_CONTEXT}",
             input=question,
         )

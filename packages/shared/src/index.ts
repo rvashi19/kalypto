@@ -109,6 +109,67 @@ export interface ComplianceCheckerResponse {
 
 // ── Shipment types ─────────────────────────────────────────────────────────────
 
+export interface ComplianceScrapeRunRequest {
+  source_url: string;
+  country: string;
+  category: string;
+}
+
+export interface ComplianceScrapeRunResponse {
+  run_id: string;
+  status: string;
+  records_found: number;
+  message: string;
+}
+
+export interface DiscrepancyDashboardResponse {
+  total: number;
+  critical: number;
+  warning: number;
+  lock_risk: number;
+  potential_amount: number;
+  items: Array<{
+    id: string;
+    shipment_id: string;
+    type: string;
+    severity: "info" | "warn" | "critical";
+    message: string;
+    suggested_fix: string | null;
+    lock_risk: boolean;
+    potential_amount: number | null;
+    created_at: string;
+  }>;
+  disclaimer: string;
+}
+
+export interface DueComplianceSourceResponse {
+  source_url: string;
+  country: string;
+  category: string;
+  last_checked_at: string | null;
+}
+
+export interface ComplianceSourceChangeResponse {
+  id: string;
+  source_url: string;
+  country: string;
+  category: string;
+  previous_snapshot_id: string | null;
+  current_snapshot_id: string;
+  previous_content_hash: string | null;
+  current_content_hash: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface SourceChangeReviewRequest {
+  status: "needs_review" | "reviewed" | "ignored";
+  notes?: string | null;
+}
+
 export type ShipmentMode = "sea" | "air" | "courier";
 export type ShipmentStage = "pre_shipment" | "post_shipment";
 export type DocumentType =
@@ -165,6 +226,13 @@ export interface ShipmentResponse {
   shipment_date: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ShipmentImportResponse {
+  created: number;
+  failed: number;
+  shipments: ShipmentResponse[];
+  errors: Array<{ row: number; message: string }>;
 }
 
 export interface DocumentResponse {
@@ -242,4 +310,37 @@ export interface HsnRateLookupResponse {
   fob_inr_basis: number | null;
   exchange_rate_note: string | null;
   message: string | null;
+  rate_evidence: Array<{
+    scheme: string;
+    rate: number;
+    source: string;
+    effective_date: string;
+    version_stamp: string;
+    confidence: string | null;
+  }>;
+  disclaimer: string;
+}
+
+export interface RateRecordResponse {
+  id: string;
+  scheme: string;
+  hsn: string;
+  rate: number;
+  source: string;
+  effective_date: string;
+  version_stamp: string;
+  confidence: string | null;
+}
+
+export interface RateImportResponse {
+  created: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
+export interface ReconciliationResponse {
+  shipment_id: string;
+  discrepancies: DiscrepancyDashboardResponse["items"];
+  potential_amount: number;
+  disclaimer: string;
 }

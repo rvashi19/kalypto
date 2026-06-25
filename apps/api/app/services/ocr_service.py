@@ -18,6 +18,7 @@ Only include fields that are clearly present in the text. Return null for missin
 Return a JSON object with these fields (use null if absent):
 {
   "document_number": null,
+  "invoice_number": null,
   "document_date": null,
   "buyer_name": null,
   "seller_name": null,
@@ -40,6 +41,7 @@ Return a JSON object with these fields (use null if absent):
   "igst_amount": null,
   "gstin": null,
   "iec_code": null,
+  "ad_code": null,
   "marks_and_numbers": null
 }
 
@@ -48,7 +50,7 @@ Return ONLY the JSON object. No markdown."""
 
 def _extract_text_from_pdf(file_path: str) -> str:
     try:
-        import pdfplumber  # type: ignore[import-not-found] # noqa: PLC0415
+        import pdfplumber  # noqa: PLC0415
     except ImportError:
         return ""
     text_parts: list[str] = []

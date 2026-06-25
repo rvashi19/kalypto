@@ -69,6 +69,18 @@ class ShipmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ShipmentImportError(BaseModel):
+    row: int
+    message: str
+
+
+class ShipmentImportResponse(BaseModel):
+    created: int
+    failed: int
+    shipments: list[ShipmentResponse]
+    errors: list[ShipmentImportError]
+
+
 class DocumentResponse(BaseModel):
     id: UUID
     shipment_id: UUID
@@ -165,3 +177,26 @@ class HsnRateLookupResponse(BaseModel):
     fob_inr_basis: float | None = None
     exchange_rate_note: str | None = None
     message: str | None = None
+    rate_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    disclaimer: str
+
+
+class ReconciliationIssueResponse(BaseModel):
+    id: UUID
+    shipment_id: UUID
+    type: str
+    severity: str
+    message: str
+    suggested_fix: str | None
+    lock_risk: bool
+    potential_amount: float | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReconciliationResponse(BaseModel):
+    shipment_id: UUID
+    discrepancies: list[ReconciliationIssueResponse]
+    potential_amount: float
+    disclaimer: str

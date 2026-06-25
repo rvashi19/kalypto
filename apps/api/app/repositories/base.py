@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Generic, TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.services.audit import AuditLogger
@@ -26,7 +26,7 @@ class TenantRepository(Generic[TenantModelT]):
         self.actor_user_id = actor_user_id
         self.audit = AuditLogger(session)
 
-    def scoped_query(self) -> Any:
+    def scoped_query(self) -> Select[tuple[TenantModelT]]:
         model = cast(Any, self.model)
         return select(self.model).where(model.tenant_id == self.tenant_id)
 
@@ -56,14 +56,14 @@ class TenantRepository(Generic[TenantModelT]):
         return row
 
     def add(self, instance: TenantModelT) -> TenantModelT:
-        instance_record = cast(Any, instance)
-        if instance_record.tenant_id != self.tenant_id:
+        record = cast(Any, instance)
+        if record.tenant_id != self.tenant_id:
             raise ValueError("Cross-tenant writes are blocked at the repository layer.")
         self.session.add(instance)
         self.audit.log(
             action="repository.add",
             entity_type=self.model.__name__,
-            entity_id=str(instance_record.id),
+            entity_id=str(record.id),
             tenant_id=self.tenant_id,
             actor_user_id=self.actor_user_id,
         )

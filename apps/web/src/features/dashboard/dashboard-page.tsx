@@ -21,6 +21,12 @@ export function DashboardPage() {
     enabled: Boolean(token),
   });
 
+  const discrepancyQuery = useQuery({
+    queryKey: ["discrepancy-dashboard", token],
+    queryFn: () => api.discrepancyDashboard(token!),
+    enabled: Boolean(token),
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => { if (token) await api.logout(token); },
     onSettled: () => setSession(null),
@@ -50,10 +56,19 @@ export function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Total shipments" value={shipmentsQuery.isLoading ? "—" : String(shipments.length)} />
         <StatCard label="Pre-shipment" value={shipmentsQuery.isLoading ? "—" : String(preCount)} accent="text-indigo-300" />
         <StatCard label="Post-shipment" value={shipmentsQuery.isLoading ? "—" : String(postCount)} accent="text-emerald-300" />
+        <StatCard
+          label="Potential amount"
+          value={
+            discrepancyQuery.isLoading
+              ? "—"
+              : `INR ${(discrepancyQuery.data?.potential_amount ?? 0).toLocaleString("en-IN")}`
+          }
+          accent="text-amber-300"
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
@@ -122,6 +137,42 @@ export function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Discrepancy overview</CardTitle>
+            <span className="text-xs text-slate-500">
+              {discrepancyQuery.data?.total ?? 0} findings
+            </span>
+          </div>
+          <CardDescription>
+            Persisted deterministic findings from shipment reconciliation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Row label="Critical" value={String(discrepancyQuery.data?.critical ?? 0)} />
+            <Row label="Warnings" value={String(discrepancyQuery.data?.warning ?? 0)} />
+            <Row label="Lock risk" value={String(discrepancyQuery.data?.lock_risk ?? 0)} />
+          </div>
+          {discrepancyQuery.data?.items.slice(0, 5).map((item) => (
+            <Link
+              className="mt-2 block rounded-lg border border-white/6 bg-slate-950/40 p-3 hover:border-indigo-500/30"
+              key={item.id}
+              to={`/shipments/${item.shipment_id}`}
+            >
+              <p className="text-sm font-medium text-slate-200">{item.message}</p>
+              <p className="mt-1 text-xs capitalize text-slate-500">
+                {item.severity} / {item.type.replaceAll("_", " ")}
+              </p>
+            </Link>
+          ))}
+          <p className="mt-3 text-xs text-slate-600">
+            {discrepancyQuery.data?.disclaimer}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Documentation assistant — gated */}
       <Card className="mt-4">

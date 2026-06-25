@@ -40,6 +40,7 @@ def main() -> None:
                         title=document.title,
                         markdown=document.markdown,
                     )
+                    session.commit()
                     refreshed += 1
                     print(
                         "source_checked "
@@ -49,6 +50,7 @@ def main() -> None:
                         f"message={snapshot.message}"
                     )
                 except ComplianceScraperError as error:
+                    session.rollback()
                     failures += 1
                     print(
                         "source_check_failed "

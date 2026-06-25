@@ -1,6 +1,8 @@
 # ExportPilot AI — Export Document & Incentive Audit Platform
 
-An AI-powered SaaS for Indian exporters to audit shipment documents, catch cross-document discrepancies, and maximize government incentive recovery (Duty Drawback, RoDTEP, IGST, EPCG, and more).
+An AI-assisted SaaS for Indian exporters to prepare shipment documents, identify discrepancies,
+and review source-backed compliance requirements. Incentive and compliance outputs are
+decision support only and require human verification.
 
 Built on a production-grade multi-tenant monorepo: FastAPI + PostgreSQL + React + Groq AI.
 
@@ -20,7 +22,8 @@ Built on a production-grade multi-tenant monorepo: FastAPI + PostgreSQL + React 
 
 - Generates document checklists tailored to Incoterm, shipment mode, destination country, HSN category, and payment terms
 - Detects mismatches across documents — the exact fields Indian Customs checks during assessment and examination
-- Estimates eligible incentive amounts for Duty Drawback, RoDTEP, IGST Refund, RoSCTL, Advance Authorisation, EPCG, and Interest Equalisation Scheme
+- Uses only operator-seeded, versioned rate records for incentive calculations; missing rates are
+  reported instead of invented
 - Produces a Finance Readiness Score (0–100) and prioritised action list
 - Generates eBRC and GST filing reminders
 
@@ -30,7 +33,10 @@ Built on a production-grade multi-tenant monorepo: FastAPI + PostgreSQL + React 
 - JWT authentication with RBAC (owner / staff / read_only)
 - Append-only audit log on every write
 - File upload with document-type tagging
+- CSV/XLSX bulk shipment import with row-level error reporting
+- Stored PDF generation for proforma invoices, commercial invoices, and packing lists
 - Country Compliance Requirement Checker for approved, source-backed destination-country evidence
+- Automated source snapshots, change detection, and an operator review queue
 - Dark-mode React dashboard shell
 
 ---
@@ -90,7 +96,7 @@ Or create a fresh tenant from the signup page.
 | `GROQ_MODEL` | Model to use (default: `llama-3.3-70b-versatile`) |
 | `UPLOAD_DIR` | Directory for uploaded documents (default: `/tmp/kalypto_uploads`) |
 | `COMPLIANCE_STORE_BACKEND` | Compliance evidence backend: `postgres` by default, `mongo` optional |
-| `COMPLIANCE_SCRAPER_PROVIDER` | Compliance source refresh provider: `manual` by default |
+| `COMPLIANCE_SCRAPER_PROVIDER` | Compliance source refresh provider: built-in `http` by default |
 | `COMPLIANCE_REFRESH_INTERVAL_DAYS` | Source refresh cadence for due-source checks |
 | `MONGODB_URL` | Optional MongoDB URL when `COMPLIANCE_STORE_BACKEND=mongo` |
 
@@ -147,16 +153,25 @@ pnpm typecheck
 | POST | `/api/v1/auth/login` | Login, returns JWT |
 | GET | `/api/v1/shipments` | List shipments for current organisation |
 | POST | `/api/v1/shipments` | Create a new shipment |
+| POST | `/api/v1/shipments/import` | Import CSV/XLSX shipments with row-level errors |
 | GET | `/api/v1/shipments/{id}` | Get shipment details |
 | DELETE | `/api/v1/shipments/{id}` | Delete a shipment |
 | GET | `/api/v1/shipments/{id}/checklist` | AI-generated document checklist |
 | GET | `/api/v1/shipments/{id}/documents` | List uploaded documents |
 | POST | `/api/v1/shipments/{id}/documents` | Upload a document |
+| POST | `/api/v1/shipments/{id}/documents/generate/{type}` | Generate and store a draft PDF |
+| GET | `/api/v1/shipments/{id}/documents/{document_id}/download` | Download a tenant-scoped document |
+| POST | `/api/v1/shipments/{id}/reconcile` | Run and persist deterministic reconciliation |
 | GET | `/api/v1/shipments/{id}/verify` | Run AI verification report |
+| GET | `/api/v1/dashboard/discrepancies` | Aggregate persisted discrepancy and potential-amount data |
+| GET | `/api/v1/rates` | List operator-seeded versioned rates |
+| POST | `/api/v1/rates/import` | Import a reviewed rate CSV |
 | GET | `/api/v1/compliance/options` | Supported countries/categories for compliance checker |
 | POST | `/api/v1/compliance/checker/answer` | Source-backed compliance checker answer |
 | POST | `/api/v1/compliance/scrape/run` | Capture source snapshot for review |
 | POST | `/api/v1/compliance/scrape/ingest` | Ingest manually reviewed compliance evidence |
+| GET | `/api/v1/compliance/scrape/due` | List sources due for refresh |
+| GET | `/api/v1/compliance/scrape/changes` | List source changes awaiting review |
 
 Full interactive docs at `http://localhost:8000/docs`.
 
@@ -166,10 +181,10 @@ Full interactive docs at `http://localhost:8000/docs`.
 
 The checker is available in the web app at `/compliance`.
 
-V0 scope is intentionally limited to:
+Initial scope is intentionally limited to:
 
-- Countries: Canada, United Arab Emirates, UK
-- Categories: beverages, dry fruits, spices, textiles
+- Countries: Canada, USA, Netherlands/EU, UK, United Arab Emirates, Saudi Arabia
+- Categories: food/agri, spices, dry fruits, beverages, textiles
 
 The checker is cache-first and review-first:
 
@@ -196,25 +211,36 @@ python -m app.scripts.refresh_compliance_sources
 A `render.yaml` Blueprint is included for one-click Render deployment.
 
 Resources provisioned:
-- `kalypto-postgres` — managed Postgres
-- `kalypto-redis` — managed Redis
-- `kalypto-api` — Docker-based web service
-- `kalypto-web` — static site
+- `kalypto-postgres` - private managed Postgres
+- `kalypto-redis` - private persistent Key Value
+- `kalypto-api` - Docker service with persistent document storage
+- `kalypto-web` - static site with security headers
+- `kalypto-compliance-refresh` - daily compliance refresh cron
 
 After the Blueprint import, set these manually in the Render dashboard:
 - `FRONTEND_URL` → your static site URL (e.g. `https://kalypto-web.onrender.com`)
 - `VITE_API_BASE_URL` → your API URL + `/api/v1`
 - `GROQ_API_KEY` → your Groq API key
+- `XAI_API_KEY` → your xAI key for the documentation assistant
 
 Then trigger a redeploy of both services.
 
 ---
 
-## Phase 2 roadmap
+## Production safeguards
 
-- OCR-based field extraction from uploaded PDFs (auto-populate discrepancy checker)
-- HSN code lookup and rate tables for Duty Drawback and RoDTEP
-- eBRC tracking and GST refund status monitoring
-- Shipping Bill generation assistance
-- Buyer verification workflow
-- Email alerts for upcoming EPCG/Advance Authorisation obligation deadlines
+- Never commit `.env`, keys, credentials, uploads, generated documents, or local databases.
+- Production startup does not create the demo account unless `SEED_DEMO_DATA=true`.
+- Scraped compliance text is quarantined as a snapshot and never auto-published as approved advice.
+- Rate and HSN results must come from tenant-scoped `RateTable` records with source, effective date,
+  version stamp, confidence, and a visible CHA/customs-broker verification warning.
+- Government portal submission is intentionally not implemented.
+- Render paid services and the persistent disk incur charges; review the Blueprint before syncing.
+
+## Remaining roadmap
+
+- Persist deterministic reconciliation results and money-at-risk history instead of relying only on
+  an on-demand AI verification response.
+- Add operator CRUD/import UI for versioned incentive rate notifications.
+- Add government connector adapters with mocks and manual-upload fallbacks only.
+- Add external uptime, error tracking, backup restore drills, and an independent penetration test.

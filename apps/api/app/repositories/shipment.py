@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from app.models import ExportShipment, ShipmentDocument
+from app.models import ExportDiscrepancy, ExportShipment, ShipmentDocument
 from app.repositories.base import TenantRepository
 from app.services.audit import AuditLogger
 
@@ -62,3 +63,30 @@ class DocumentRepository(TenantRepository[ShipmentDocument]):
             actor_user_id=self.actor_user_id,
         )
         self.session.delete(doc)
+
+
+class ExportDiscrepancyRepository(TenantRepository[ExportDiscrepancy]):
+    def __init__(
+        self, *, session: Session, tenant_id: UUID, actor_user_id: UUID | None = None
+    ) -> None:
+        super().__init__(
+            session=session,
+            model=ExportDiscrepancy,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+        )
+
+    def replace_for_shipment(
+        self,
+        *,
+        shipment_id: UUID,
+        discrepancies: list[ExportDiscrepancy],
+    ) -> None:
+        self.session.execute(
+            delete(ExportDiscrepancy).where(
+                ExportDiscrepancy.tenant_id == self.tenant_id,
+                ExportDiscrepancy.shipment_id == shipment_id,
+            )
+        )
+        for discrepancy in discrepancies:
+            self.add(discrepancy)

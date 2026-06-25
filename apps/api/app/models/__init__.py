@@ -12,6 +12,7 @@ from app.models.base import (
     DiscrepancySeverity,
     DocumentType,
     DocumentUploadStatus,
+    ExportDiscrepancy,
     ExportShipment,
     GstExportInvoice,
     IncentiveClaim,
@@ -42,6 +43,8 @@ from app.models.compliance import (
     ComplianceCountry,
     ComplianceRequirement,
     ComplianceScrapeRun,
+    ComplianceSourceChange,
+    ComplianceSourceSnapshot,
     ProductCategory,
 )
 
@@ -57,6 +60,8 @@ __all__ = [
     "ComplianceItem",
     "ComplianceRequirement",
     "ComplianceScrapeRun",
+    "ComplianceSourceChange",
+    "ComplianceSourceSnapshot",
     "ComplianceStatus",
     "ConsentRecord",
     "ConsentStatus",
@@ -64,6 +69,7 @@ __all__ = [
     "DiscrepancySeverity",
     "DocumentType",
     "DocumentUploadStatus",
+    "ExportDiscrepancy",
     "ExportShipment",
     "GstExportInvoice",
     "IncentiveClaim",

@@ -43,6 +43,13 @@ Finance readiness score (0-100):
 - eBRC linkage ready: +10 points
 Deduct proportionally for issues found.
 
+Mandatory legal-safety override:
+- Do not invent or rely on any eligibility statement, rate, deadline, value-addition threshold,
+  export obligation, or exchange rate written above. Those examples are not authoritative.
+- If operator-verified rate evidence is not explicitly included in the user message, set every
+  estimated_amount and rate_percent to null and describe the scheme as requiring verification.
+- Never imply that KALYPTO files or submits a claim. A human exporter/CA/CHA must file.
+
 Given a shipment profile and uploaded documents, return a JSON object with exactly this structure:
 {
   "overall_risk": "low | medium | high | critical",

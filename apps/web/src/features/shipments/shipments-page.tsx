@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Card, CardContent } from "@repo/ui";
 import type { ShipmentResponse } from "@repo/shared";
+import { useState } from "react";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -92,6 +93,7 @@ export function ShipmentsPage() {
   const { session, token, setSession } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const shipmentsQuery = useQuery({
     queryKey: ["shipments", token],
@@ -102,6 +104,14 @@ export function ShipmentsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteShipment(id, token!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["shipments"] }),
+  });
+
+  const importMutation = useMutation({
+    mutationFn: () => api.importShipments(importFile!, token!),
+    onSuccess: () => {
+      setImportFile(null);
+      qc.invalidateQueries({ queryKey: ["shipments"] });
+    },
   });
 
   const logoutMutation = useMutation({
@@ -126,6 +136,44 @@ export function ShipmentsPage() {
           + New shipment
         </Button>
       </div>
+
+      <Card className="mb-5">
+        <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-slate-200">Bulk shipment import</p>
+            <p className="text-xs text-slate-500">
+              Upload CSV or XLSX using the shipment field names. Invalid rows are reported without
+              blocking valid rows.
+            </p>
+          </div>
+          <input
+            type="file"
+            accept=".csv,.xlsx"
+            onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+            className="text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:text-slate-300"
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!importFile || importMutation.isPending}
+            onClick={() => importMutation.mutate()}
+          >
+            {importMutation.isPending ? "Importing..." : "Import"}
+          </Button>
+          {importMutation.data ? (
+            <p className="text-xs text-emerald-300">
+              {importMutation.data.created} created, {importMutation.data.failed} failed
+            </p>
+          ) : null}
+          {importMutation.isError ? (
+            <p className="text-xs text-rose-300">
+              {importMutation.error instanceof Error
+                ? importMutation.error.message
+                : "Import failed."}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {shipmentsQuery.isError && (
         <div

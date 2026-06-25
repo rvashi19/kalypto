@@ -21,7 +21,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         settings = get_settings()
         if not settings.audit_logging_enabled or not request.url.path.startswith(
-            settings.api_v1_prefix
+            settings.api_v1_prefix,
         ):
             return response
 

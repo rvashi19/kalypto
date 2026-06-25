@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,8 +21,25 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    xai_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("XAI_API_KEY", "OPENAI_API_KEY"),
+    )
+    xai_model: str = Field(
+        default="grok-4.3",
+        validation_alias=AliasChoices("XAI_MODEL", "OPENAI_MODEL"),
+    )
+    xai_base_url: str = Field(default="https://api.x.ai/v1", alias="XAI_BASE_URL")
     upload_dir: str = Field(default="/tmp/kalypto_uploads", alias="UPLOAD_DIR")
-    compliance_scraper_provider: str = Field(default="manual", alias="COMPLIANCE_SCRAPER_PROVIDER")
+    compliance_scraper_provider: str = Field(default="http", alias="COMPLIANCE_SCRAPER_PROVIDER")
+    compliance_allow_private_scrape: bool = Field(
+        default=False,
+        alias="COMPLIANCE_ALLOW_PRIVATE_SCRAPE",
+    )
+    compliance_scraper_user_agent: str = Field(
+        default="KalyptoComplianceBot/0.1 (+https://kalypto.local; review-only)",
+        alias="COMPLIANCE_SCRAPER_USER_AGENT",
+    )
     compliance_store_backend: str = Field(default="postgres", alias="COMPLIANCE_STORE_BACKEND")
     mongodb_url: str | None = Field(default=None, alias="MONGODB_URL")
     mongodb_database: str = Field(default="kalypto", alias="MONGODB_DATABASE")
@@ -65,6 +83,17 @@ class Settings(BaseSettings):
         if value.startswith("postgresql://") and "+psycopg" not in value:
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
         return value
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> Self:
+        if self.environment.lower() == "production":
+            if self.jwt_secret_key == "change-me-in-production" or len(self.jwt_secret_key) < 32:
+                raise ValueError(
+                    "Production JWT_SECRET_KEY must be a unique value of 32+ characters."
+                )
+            if not self.frontend_url.startswith("https://"):
+                raise ValueError("Production FRONTEND_URL must use HTTPS.")
+        return self
 
 
 @lru_cache(maxsize=1)

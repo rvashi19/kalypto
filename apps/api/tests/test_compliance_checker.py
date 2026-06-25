@@ -10,6 +10,7 @@ from app.scripts.seed_demo import compliance_seed_records
 from app.services.compliance_answer import CountryComplianceCheckerService
 from app.services.compliance_normalization import normalize_country, normalize_hsn
 from app.services.compliance_retrieval import ComplianceDataWriter, ComplianceRetriever
+from app.services.compliance_store import PostgresComplianceKnowledgeStore
 
 DISCLAIMER = (
     "This is compliance assistance based on available source-backed records. It is not legal, "
@@ -69,7 +70,7 @@ def _requirement(**overrides) -> ComplianceRequirementInput:
 
 def test_country_and_hsn_normalization() -> None:
     assert normalize_country("UAE") == "United Arab Emirates"
-    assert normalize_country(" usa ") == "usa"
+    assert normalize_country(" usa ") == "USA"
     assert normalize_hsn(" 2009.89 ") == "200989"
     assert normalize_hsn("unknown") is None
 
@@ -206,10 +207,71 @@ def test_unsupported_scope_returns_safe_response(session) -> None:
         session,
         organization,
         user,
-        destination_country="USA",
+        destination_country="Australia",
         category="beverages",
     )
 
     assert response.status == "unsupported_scope"
     assert "Insufficient verified data available" in response.answer
     assert response.sections.source_references == []
+
+
+def test_postgres_store_detects_source_snapshot_changes_and_review(session) -> None:
+    organization, _ = _tenant(session)
+    store = PostgresComplianceKnowledgeStore(session=session, tenant_id=organization.id)
+
+    first = store.record_source_snapshot(
+        source_url="https://example.gov/rules",
+        country="Canada",
+        category="beverages",
+        title="Rules",
+        markdown="Current label rules for import review.",
+    )
+    unchanged = store.record_source_snapshot(
+        source_url="https://example.gov/rules",
+        country="Canada",
+        category="beverages",
+        title="Rules",
+        markdown="Current label rules for import review.",
+    )
+    changed = store.record_source_snapshot(
+        source_url="https://example.gov/rules",
+        country="Canada",
+        category="beverages",
+        title="Rules",
+        markdown="Updated label rules for import review.",
+    )
+    session.flush()
+
+    changes = store.list_source_changes(status="needs_review")
+    reviewed = store.review_source_change(
+        change_id=changes[0].id,
+        status="reviewed",
+        reviewed_by="owner@example.com",
+        notes="Reviewed source update.",
+    )
+
+    assert first.status == "new_snapshot"
+    assert unchanged.status == "unchanged"
+    assert changed.status == "needs_review"
+    assert len(changes) == 1
+    assert reviewed.status == "reviewed"
+    assert reviewed.reviewed_by == "owner@example.com"
+
+
+def test_postgres_due_sources_uses_latest_snapshot_freshness(session) -> None:
+    organization, _ = _tenant(session)
+    store = PostgresComplianceKnowledgeStore(session=session, tenant_id=organization.id)
+    store.ingest([_requirement()])
+    store.record_source_snapshot(
+        source_url="https://www.cbsa-asfc.gc.ca/import/guide-eng.html",
+        country="Canada",
+        category="beverages",
+        title="CBSA",
+        markdown="Fresh source snapshot for compliance monitoring.",
+    )
+    session.commit()
+
+    due = store.due_sources(limit=10)
+
+    assert due == []

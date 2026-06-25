@@ -460,3 +460,25 @@ class ShipmentDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMi
         nullable=False,
         default=DocumentUploadStatus.PENDING,
     )
+
+
+class ExportDiscrepancy(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Persisted output from the deterministic export-shipment reconciliation engine."""
+
+    __tablename__ = "export_discrepancies"
+
+    shipment_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("export_shipments.id"),
+        nullable=False,
+        index=True,
+    )
+    type: Mapped[str] = mapped_column(String(120), nullable=False)
+    severity: Mapped[DiscrepancySeverity] = mapped_column(
+        SqlEnum(DiscrepancySeverity),
+        nullable=False,
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_fix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lock_risk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    potential_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)

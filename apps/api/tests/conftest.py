@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import os
 from collections.abc import Generator
 from pathlib import Path
