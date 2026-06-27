@@ -22,9 +22,9 @@ def _authenticated_client(email: str = "quote@example.com") -> tuple[TestClient,
 def test_export_quote_uses_tenant_verified_rates() -> None:
     client, headers = _authenticated_client()
     csv_content = (
-        "scheme,hsn,rate,source,effective_date,version_stamp,confidence\n"
-        "RoDTEP,0904,1.40,Operator notification,2026-01-01T00:00:00Z,v1,verified\n"
-        "Duty Drawback,0904,0.75,Drawback schedule,2026-01-01T00:00:00Z,v1,verified\n"
+        "scheme,hsn,rate,source,effective_date,version_stamp,confidence,review_status\n"
+        "RoDTEP,0904,1.40,Operator notification,2026-01-01T00:00:00Z,v1,verified,approved\n"
+        "Duty Drawback,0904,0.75,Drawback schedule,2026-01-01T00:00:00Z,v1,verified,approved\n"
     )
     imported = client.post(
         "/api/v1/rates/import",

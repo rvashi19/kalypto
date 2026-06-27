@@ -8,6 +8,7 @@ import re
 import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from io import BytesIO
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -105,6 +106,42 @@ def html_to_readable_document(*, source_url: str, raw_html: str) -> ScrapedSourc
     )
 
 
+def pdf_to_readable_document(*, source_url: str, raw_pdf: bytes) -> ScrapedSourceDocument:
+    try:
+        import pdfplumber  # type: ignore[import-untyped]  # noqa: PLC0415
+    except ImportError as error:
+        raise ComplianceScraperError(
+            "PDF extraction requires pdfplumber. Install the API requirements first.",
+        ) from error
+
+    text_parts: list[str] = []
+    try:
+        with pdfplumber.open(BytesIO(raw_pdf)) as pdf:
+            for page_number, page in enumerate(pdf.pages, start=1):
+                text = page.extract_text(x_tolerance=1, y_tolerance=3) or ""
+                cleaned = "\n".join(
+                    line
+                    for line in (normalize_scraped_text(line) for line in text.splitlines())
+                    if line
+                )
+                if cleaned:
+                    text_parts.append(f"Page {page_number}\n{cleaned}")
+    except Exception as error:  # pragma: no cover - pdfplumber raises varied parser errors
+        raise ComplianceScraperError(f"PDF extraction failed: {error}") from error
+
+    markdown = "\n\n".join(text_parts).strip()
+    if len(markdown) < MIN_EXTRACTED_CHARS:
+        raise ComplianceScraperError(
+            "The PDF was fetched but did not contain enough extractable text for review.",
+        )
+    title = urlparse(source_url).path.rsplit("/", maxsplit=1)[-1] or "PDF source"
+    return ScrapedSourceDocument(
+        source_url=source_url,
+        title=title,
+        markdown=markdown[:100_000],
+    )
+
+
 def validate_public_source_url(source_url: str, *, allow_private: bool) -> None:
     parsed = urlparse(source_url)
     if parsed.scheme not in {"http", "https"}:
@@ -173,10 +210,9 @@ class HttpComplianceScraper:
 
         if len(raw) > MAX_SOURCE_BYTES:
             raise ComplianceScraperError("Source response is too large to scrape safely.")
-        if "pdf" in content_type.lower():
-            raise ComplianceScraperError(
-                "PDF extraction is not supported by the built-in HTTP scraper. Use Firecrawl or manual review.",
-            )
+        parsed = urlparse(source_url)
+        if "pdf" in content_type.lower() or parsed.path.lower().endswith(".pdf"):
+            return pdf_to_readable_document(source_url=source_url, raw_pdf=raw)
 
         encoding = "utf-8"
         match = re.search(r"charset=([\w.-]+)", content_type, flags=re.IGNORECASE)

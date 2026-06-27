@@ -20,7 +20,6 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.settings import get_settings
@@ -31,7 +30,6 @@ from app.models import (
     DocumentUploadStatus,
     ExportDiscrepancy,
     ExportShipment,
-    RateTable,
     ShipmentDocument,
 )
 from app.repositories.shipment import (
@@ -57,6 +55,7 @@ from app.services.checklist_service import generate_checklist
 from app.services.groq_client import GroqClientError
 from app.services.hsn_rate_service import lookup_rates
 from app.services.pdf_document_service import generate_shipment_pdf
+from app.services.rate_governance import approved_current_rate_rows, latest_rate_by_scheme
 from app.services.rate_limit import rate_limit_upload_requests
 from app.services.verification_service import run_verification
 from engine.reconciliation import ReconciliationInput, StructuredDocument, reconcile_shipment
@@ -529,13 +528,13 @@ def reconcile_export_shipment(
         actor_user_id=current_user.user.id,
     )
     documents = document_repository.list_for_shipment(shipment_id)
-    rate_rows = session.scalars(
-        select(RateTable).where(RateTable.tenant_id == current_user.organization.id)
-    ).all()
     verified_rates = {
         row.scheme: Decimal(str(row.rate))
-        for row in rate_rows
-        if shipment.hsn_code.startswith(row.hsn)
+        for row in approved_current_rate_rows(
+            session=session,
+            tenant_id=current_user.organization.id,
+            hsn_code=shipment.hsn_code,
+        )
     }
     result = reconcile_shipment(
         ReconciliationInput(
@@ -640,25 +639,28 @@ def verify_shipment(
         actor_user_id=current_user.user.id,
     )
     documents = doc_repo.list_for_shipment(shipment_id)
-    rate_rows = session.scalars(
-        select(RateTable)
-        .where(RateTable.tenant_id == current_user.organization.id)
-        .order_by(RateTable.effective_date.desc())
-    ).all()
-    latest_by_scheme: dict[str, RateTable] = {}
-    for row in sorted(rate_rows, key=lambda item: len(item.hsn), reverse=True):
-        if shipment.hsn_code.startswith(row.hsn):
-            latest_by_scheme.setdefault(row.scheme.strip().lower(), row)
+    latest_rows = latest_rate_by_scheme(
+        approved_current_rate_rows(
+            session=session,
+            tenant_id=current_user.organization.id,
+            hsn_code=shipment.hsn_code,
+        )
+    )
     rate_evidence = [
         {
             "scheme": row.scheme,
             "rate_percent": float(row.rate),
             "source": row.source,
+            "source_url": row.source_url,
             "effective_date": row.effective_date.isoformat(),
             "version_stamp": row.version_stamp,
             "confidence": row.confidence,
+            "review_status": row.review_status,
+            "reviewed_by": row.reviewed_by,
+            "reviewed_at": row.reviewed_at.isoformat() if row.reviewed_at else None,
+            "expires_at": row.expires_at.isoformat() if row.expires_at else None,
         }
-        for row in latest_by_scheme.values()
+        for row in latest_rows
     ]
 
     try:

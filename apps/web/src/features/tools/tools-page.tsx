@@ -551,27 +551,70 @@ function HsnFinderPanel({
               Finder status
             </p>
             <p className={`mt-3 text-2xl font-black ${result.found ? "text-emerald-300" : "text-amber-300"}`}>
-              {result.found ? "Verified match" : "No verified rate"}
+              {result.found ? "Approved source found" : "No approved source"}
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-400">{result.message ?? result.notes}</p>
+            {!result.found ? (
+              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
+                Import the latest official DGFT/CBIC schedule, keep it as pending, and approve it
+                only after operator review. Client screens never show pending or expired rows.
+              </div>
+            ) : null}
             <p className="mt-4 text-xs leading-5 text-amber-300">{result.disclaimer}</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Metric label="RoDTEP" value={result.rodtep_rate != null ? `${result.rodtep_rate}%` : "N/A"} />
-            <Metric
-              label="Drawback AIR"
-              value={result.duty_drawback_rate != null ? `${result.duty_drawback_rate}%` : "N/A"}
-            />
-            <Metric label="RoSCTL" value={result.rosctl_rate != null ? `${result.rosctl_rate}%` : "N/A"} />
-            {result.estimated_amounts_inr
-              ? Object.entries(result.estimated_amounts_inr).map(([scheme, amount]) => (
-                  <Metric
-                    key={scheme}
-                    label={`Est. ${scheme.replaceAll("_", " ")}`}
-                    value={formatMoney(amount)}
-                  />
-                ))
-              : null}
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Metric label="RoDTEP" value={result.rodtep_rate != null ? `${result.rodtep_rate}%` : "N/A"} />
+              <Metric
+                label="Drawback AIR"
+                value={result.duty_drawback_rate != null ? `${result.duty_drawback_rate}%` : "N/A"}
+              />
+              <Metric label="RoSCTL" value={result.rosctl_rate != null ? `${result.rosctl_rate}%` : "N/A"} />
+              {result.estimated_amounts_inr
+                ? Object.entries(result.estimated_amounts_inr).map(([scheme, amount]) => (
+                    <Metric
+                      key={scheme}
+                      label={`Est. ${scheme.replaceAll("_", " ")}`}
+                      value={formatMoney(amount)}
+                    />
+                  ))
+                : null}
+            </div>
+            {result.rate_evidence?.length ? (
+              <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                  Source evidence
+                </p>
+                <div className="mt-3 grid gap-3">
+                  {result.rate_evidence.map((row) => (
+                    <div key={`${row.scheme}-${row.version_stamp}`} className="rounded-xl bg-white/[0.03] p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-semibold text-slate-100">
+                          {row.scheme} · {row.rate}%
+                        </p>
+                        <span className="rounded-full border border-emerald-300/25 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
+                          {row.review_status}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">
+                        {row.source} · effective {row.effective_date}
+                        {row.expires_at ? ` · expires ${row.expires_at}` : ""}
+                      </p>
+                      {row.source_url ? (
+                        <a
+                          className="mt-2 inline-block text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+                          href={row.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open official/source evidence
+                        </a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

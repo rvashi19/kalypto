@@ -8,10 +8,9 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import RateTable
+from app.services.rate_governance import approved_current_rate_rows, latest_rate_by_scheme
 
 DISCLAIMER = (
     "Decision-support only. Verify the HSN classification, eligibility, and current rate "
@@ -35,26 +34,25 @@ def lookup_rates(
             "disclaimer": DISCLAIMER,
         }
 
-    tenant_rows = session.scalars(
-        select(RateTable)
-        .where(RateTable.tenant_id == tenant_id)
-        .order_by(RateTable.effective_date.desc())
-    ).all()
-    rows = [row for row in tenant_rows if cleaned_hsn.startswith(row.hsn)]
+    rows = approved_current_rate_rows(
+        session=session,
+        tenant_id=tenant_id,
+        hsn_code=cleaned_hsn,
+    )
     if not rows:
         return {
             "found": False,
             "hsn_code": cleaned_hsn,
             "message": (
                 "No operator-verified rate is available for this HSN. "
-                "Ask an authorized operator to seed the current notification."
+                "Import and approve the current official rate schedule before showing values."
             ),
             "disclaimer": DISCLAIMER,
         }
 
-    latest_by_scheme: dict[str, RateTable] = {}
-    for row in sorted(rows, key=lambda item: len(item.hsn), reverse=True):
-        latest_by_scheme.setdefault(row.scheme.strip().lower(), row)
+    latest_by_scheme = {
+        row.scheme.strip().lower(): row for row in latest_rate_by_scheme(rows)
+    }
 
     def rate_for(*names: str) -> float | None:
         for name in names:
@@ -69,9 +67,15 @@ def lookup_rates(
             "scheme": row.scheme,
             "rate": float(row.rate),
             "source": row.source,
+            "source_url": row.source_url,
             "effective_date": row.effective_date.isoformat(),
             "version_stamp": row.version_stamp,
             "confidence": row.confidence,
+            "review_status": row.review_status,
+            "reviewed_by": row.reviewed_by,
+            "reviewed_at": row.reviewed_at.isoformat() if row.reviewed_at else None,
+            "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+            "notes": row.notes,
         }
         for row in latest_by_scheme.values()
     ]

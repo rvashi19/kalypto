@@ -375,9 +375,15 @@ export interface HsnRateLookupResponse {
     scheme: string;
     rate: number;
     source: string;
+    source_url: string | null;
     effective_date: string;
     version_stamp: string;
     confidence: string | null;
+    review_status: string;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    expires_at: string | null;
+    notes: string | null;
   }>;
   disclaimer: string;
 }
@@ -388,9 +394,15 @@ export interface RateRecordResponse {
   hsn: string;
   rate: number;
   source: string;
+  source_url: string | null;
   effective_date: string;
   version_stamp: string;
   confidence: string | null;
+  review_status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  expires_at: string | null;
+  notes: string | null;
 }
 
 export interface RateImportResponse {

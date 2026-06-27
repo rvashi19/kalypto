@@ -91,8 +91,8 @@ def test_csv_import_reports_invalid_rows_without_losing_valid_rows() -> None:
 def test_operator_rate_import_drives_hsn_lookup() -> None:
     client, headers = _authenticated_client()
     csv_content = (
-        "scheme,hsn,rate,source,effective_date,version_stamp,confidence\n"
-        "RoDTEP,0902,1.25,Operator notification,2026-01-01T00:00:00Z,v1,verified\n"
+        "scheme,hsn,rate,source,effective_date,version_stamp,confidence,review_status\n"
+        "RoDTEP,0902,1.25,Operator notification,2026-01-01T00:00:00Z,v1,verified,approved\n"
     )
     imported = client.post(
         "/api/v1/rates/import",

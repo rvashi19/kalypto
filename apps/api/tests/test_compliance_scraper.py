@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any
 
 import pytest
+from reportlab.pdfgen import canvas
 
 from app.services import compliance_scraper
 from app.services.compliance_scraper import (
     ComplianceScraperError,
     HttpComplianceScraper,
     html_to_readable_document,
+    pdf_to_readable_document,
     validate_public_source_url,
 )
 
@@ -74,3 +77,21 @@ def test_http_scraper_fetches_and_normalizes_html(monkeypatch: pytest.MonkeyPatc
     assert document.source_url == "https://example.gov/import-rules"
     assert document.title == "Food import rules"
     assert "Commercial food imports require importer-side review" in document.markdown
+
+
+def test_pdf_to_readable_document_extracts_official_source_text() -> None:
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.drawString(72, 720, "Official import notice")
+    pdf.drawString(72, 700, "Certificate and labeling requirements must be verified before export.")
+    pdf.drawString(72, 680, "Inspection requirements are product and destination specific.")
+    pdf.save()
+
+    document = pdf_to_readable_document(
+        source_url="https://example.gov/notices/import-notice.pdf",
+        raw_pdf=buffer.getvalue(),
+    )
+
+    assert document.title == "import-notice.pdf"
+    assert "Official import notice" in document.markdown
+    assert "labeling requirements" in document.markdown

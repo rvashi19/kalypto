@@ -314,9 +314,15 @@ class RateTable(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     hsn: Mapped[str] = mapped_column(String(20), nullable=False)
     rate: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     effective_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     version_stamp: Mapped[str] = mapped_column(String(80), nullable=False)
     confidence: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    review_status: Mapped[str] = mapped_column(String(40), default="approved", nullable=False)
+    reviewed_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RuleDefinition(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):

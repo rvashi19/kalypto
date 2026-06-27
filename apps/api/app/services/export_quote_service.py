@@ -9,7 +9,6 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import RateTable
@@ -19,6 +18,7 @@ from app.schemas.tools import (
     ExportQuoteRequest,
     ExportQuoteResponse,
 )
+from app.services.rate_governance import approved_current_rate_rows, latest_rate_by_scheme
 
 DISCLAIMER = (
     "Decision-support only. Destination duty is a user-entered assumption, and Indian incentive "
@@ -34,21 +34,13 @@ def _money(value: Decimal) -> float:
 def _rate_rows_for_hsn(
     *, session: Session, tenant_id: UUID, hsn_code: str
 ) -> list[RateTable]:
-    rows = session.scalars(
-        select(RateTable)
-        .where(RateTable.tenant_id == tenant_id)
-        .order_by(RateTable.effective_date.desc())
-    ).all()
-    matching_rows = [row for row in rows if hsn_code.startswith(row.hsn)]
-
-    latest_by_scheme: dict[str, RateTable] = {}
-    for row in sorted(
-        matching_rows,
-        key=lambda item: (len(item.hsn), item.effective_date),
-        reverse=True,
-    ):
-        latest_by_scheme.setdefault(row.scheme.strip().lower(), row)
-    return list(latest_by_scheme.values())
+    return latest_rate_by_scheme(
+        approved_current_rate_rows(
+            session=session,
+            tenant_id=tenant_id,
+            hsn_code=hsn_code,
+        )
+    )
 
 
 def calculate_export_quote(

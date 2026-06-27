@@ -21,9 +21,15 @@ class _RateRow(BaseModel):
     hsn: str = Field(min_length=2, max_length=20, pattern=r"^\d+$")
     rate: float = Field(ge=0, le=100)
     source: str = Field(min_length=5, max_length=255)
+    source_url: str | None = Field(default=None, max_length=2048)
     effective_date: datetime
     version_stamp: str = Field(min_length=2, max_length=80)
     confidence: str | None = Field(default=None, max_length=40)
+    review_status: str = Field(default="pending", max_length=40)
+    reviewed_by: str | None = Field(default=None, max_length=320)
+    reviewed_at: datetime | None = None
+    expires_at: datetime | None = None
+    notes: str | None = None
 
 
 def _require_editor(current_user: CurrentUser) -> None:

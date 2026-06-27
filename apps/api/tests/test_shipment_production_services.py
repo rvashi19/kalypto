@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.models import (
     DocumentType,
@@ -76,3 +76,46 @@ def test_rate_lookup_is_tenant_scoped_and_source_backed(session) -> None:
     assert visible["rodtep_rate"] == 1.25
     assert visible["rate_evidence"][0]["source"] == "Operator uploaded notification"
     assert hidden["found"] is False
+
+
+def test_rate_lookup_hides_pending_and_expired_rates(session) -> None:
+    organization = Organization(name="Governed Rates", slug="governed-rates")
+    session.add(organization)
+    session.flush()
+    session.add_all(
+        [
+            RateTable(
+                tenant_id=organization.id,
+                scheme="RoDTEP",
+                hsn="0904",
+                rate=2.0,
+                source="Pending operator upload",
+                effective_date=datetime(2026, 1, 1, tzinfo=UTC),
+                version_stamp="pending-v1",
+                confidence="pending",
+                review_status="pending",
+            ),
+            RateTable(
+                tenant_id=organization.id,
+                scheme="Drawback AIR",
+                hsn="0904",
+                rate=1.0,
+                source="Expired notification",
+                effective_date=datetime(2025, 1, 1, tzinfo=UTC),
+                version_stamp="expired-v1",
+                confidence="verified",
+                review_status="approved",
+                expires_at=datetime.now(UTC) - timedelta(days=1),
+            ),
+        ]
+    )
+    session.commit()
+
+    result = lookup_rates(
+        session=session,
+        tenant_id=organization.id,
+        hsn_code="090422",
+        fob_value=100000,
+    )
+
+    assert result["found"] is False
