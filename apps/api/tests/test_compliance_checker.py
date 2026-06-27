@@ -259,6 +259,34 @@ def test_postgres_store_detects_source_snapshot_changes_and_review(session) -> N
     assert reviewed.reviewed_by == "owner@example.com"
 
 
+def test_postgres_source_change_detail_includes_review_excerpts(session) -> None:
+    organization, _ = _tenant(session)
+    store = PostgresComplianceKnowledgeStore(session=session, tenant_id=organization.id)
+    store.record_source_snapshot(
+        source_url="https://example.gov/rules",
+        country="Canada",
+        category="beverages",
+        title="Old Rules",
+        markdown="Old label rules for import review.",
+    )
+    store.record_source_snapshot(
+        source_url="https://example.gov/rules",
+        country="Canada",
+        category="beverages",
+        title="Updated Rules",
+        markdown="Updated label rules for import review with new certificate reminder.",
+    )
+    session.flush()
+
+    change = store.list_source_changes(status="needs_review")[0]
+    detail = store.get_source_change_detail(change_id=change.id)
+
+    assert detail.current_title == "Updated Rules"
+    assert "new certificate reminder" in detail.current_markdown_excerpt
+    assert detail.previous_title == "Old Rules"
+    assert "Old label rules" in (detail.previous_markdown_excerpt or "")
+
+
 def test_postgres_due_sources_uses_latest_snapshot_freshness(session) -> None:
     organization, _ = _tenant(session)
     store = PostgresComplianceKnowledgeStore(session=session, tenant_id=organization.id)

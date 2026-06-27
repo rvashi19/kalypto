@@ -1,6 +1,7 @@
 import type {
   ComplianceCheckerRequest,
   ComplianceCoverageResponse,
+  ComplianceRequirementInput,
   ExportQuoteRequest,
   HsnRateLookupResponse,
 } from "@repo/shared";
@@ -148,6 +149,8 @@ export function ToolsPage() {
   const [complianceForm, setComplianceForm] =
     useState<ComplianceCheckerRequest>(DEFAULT_COMPLIANCE_FORM);
   const [quoteForm, setQuoteForm] = useState<QuoteForm>(DEFAULT_QUOTE_FORM);
+  const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null);
+  const [evidenceJson, setEvidenceJson] = useState("");
 
   const shipmentsQuery = useQuery({
     queryKey: ["shipments", token],
@@ -185,6 +188,12 @@ export function ToolsPage() {
     enabled: Boolean(token && session?.membership.role !== "read_only"),
   });
 
+  const sourceChangeDetailQuery = useQuery({
+    queryKey: ["compliance-source-change-detail", selectedChangeId, token],
+    queryFn: () => api.sourceChangeDetail(selectedChangeId!, token!),
+    enabled: Boolean(token && selectedChangeId),
+  });
+
   const hsnMutation = useMutation({
     mutationFn: () => api.getHsnRates(hsn, token!, toNumber(hsnFobValue)),
   });
@@ -217,6 +226,28 @@ export function ToolsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["compliance-source-changes"] });
       queryClient.invalidateQueries({ queryKey: ["compliance-coverage"] });
+    },
+  });
+
+  const ingestEvidenceMutation = useMutation({
+    mutationFn: () => {
+      const parsed = JSON.parse(evidenceJson) as unknown;
+      const records = (
+        Array.isArray(parsed)
+          ? parsed
+          : typeof parsed === "object" && parsed !== null && "records" in parsed
+            ? (parsed as { records: unknown }).records
+            : null
+      ) as ComplianceRequirementInput[] | null;
+      if (!Array.isArray(records) || records.length === 0) {
+        throw new Error("Paste a JSON array of reviewed compliance requirement records.");
+      }
+      return api.ingestComplianceRecords(records, token!);
+    },
+    onSuccess: () => {
+      setEvidenceJson("");
+      queryClient.invalidateQueries({ queryKey: ["compliance-coverage"] });
+      queryClient.invalidateQueries({ queryKey: ["compliance-options"] });
     },
   });
 
@@ -378,13 +409,22 @@ export function ToolsPage() {
               dueSources={dueSources}
               sourceChanges={sourceChanges}
               coverage={coverageQuery.data}
+              selectedChangeId={selectedChangeId}
+              selectedChangeDetail={sourceChangeDetailQuery.data}
+              evidenceJson={evidenceJson}
               discrepancyTotal={discrepancyQuery.data?.total ?? 0}
               critical={criticalAlerts}
               lockRisk={lockRisk}
               isScraping={scrapeMutation.isPending}
               isReviewing={reviewMutation.isPending}
+              isIngesting={ingestEvidenceMutation.isPending}
+              ingestResult={ingestEvidenceMutation.data}
+              ingestError={ingestEvidenceMutation.error}
               onScrape={(source) => scrapeMutation.mutate(source)}
+              onSelectChange={setSelectedChangeId}
               onReview={(changeId, status) => reviewMutation.mutate({ changeId, status })}
+              onEvidenceJsonChange={setEvidenceJson}
+              onIngestEvidence={() => ingestEvidenceMutation.mutate()}
             />
           ) : null}
         </section>
@@ -889,24 +929,44 @@ function AlertsPanel({
   dueSources,
   sourceChanges,
   coverage,
+  selectedChangeId,
+  selectedChangeDetail,
+  evidenceJson,
   discrepancyTotal,
   critical,
   lockRisk,
   isScraping,
   isReviewing,
+  isIngesting,
+  ingestResult,
+  ingestError,
   onScrape,
+  onSelectChange,
   onReview,
+  onEvidenceJsonChange,
+  onIngestEvidence,
 }: {
   dueSources: Array<{ source_url: string; country: string; category: string; last_checked_at: string | null }>;
   sourceChanges: Array<{ id: string; source_url: string; country: string; category: string; created_at: string }>;
   coverage: ComplianceCoverageResponse | undefined;
+  selectedChangeId: string | null;
+  selectedChangeDetail:
+    | Awaited<ReturnType<typeof api.sourceChangeDetail>>
+    | undefined;
+  evidenceJson: string;
   discrepancyTotal: number;
   critical: number;
   lockRisk: number;
   isScraping: boolean;
   isReviewing: boolean;
+  isIngesting: boolean;
+  ingestResult: Awaited<ReturnType<typeof api.ingestComplianceRecords>> | undefined;
+  ingestError: unknown;
   onScrape: (source: { source_url: string; country: string; category: string }) => void;
+  onSelectChange: (changeId: string | null) => void;
   onReview: (changeId: string, status: "reviewed" | "ignored") => void;
+  onEvidenceJsonChange: (value: string) => void;
+  onIngestEvidence: () => void;
 }) {
   const coverageCells = coverage?.cells ?? [];
   const statusStyles = {
@@ -1003,6 +1063,15 @@ function AlertsPanel({
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        onSelectChange(selectedChangeId === change.id ? null : change.id)
+                      }
+                    >
+                      {selectedChangeId === change.id ? "Hide evidence" : "View evidence"}
+                    </Button>
+                    <Button
+                      size="sm"
                       disabled={isReviewing}
                       onClick={() => onReview(change.id, "reviewed")}
                     >
@@ -1017,6 +1086,33 @@ function AlertsPanel({
                       Ignore change
                     </Button>
                   </div>
+                  {selectedChangeId === change.id && selectedChangeDetail ? (
+                    <div className="mt-3 grid gap-3 text-xs">
+                      <div className="rounded-xl border border-white/8 bg-slate-950/70 p-3">
+                        <p className="font-semibold text-slate-200">
+                          Current snapshot: {selectedChangeDetail.current_title}
+                        </p>
+                        <p className="mt-1 text-slate-500">
+                          Scraped{" "}
+                          {new Date(selectedChangeDetail.current_scraped_at).toLocaleString()}
+                        </p>
+                        <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-slate-300">
+                          {selectedChangeDetail.current_markdown_excerpt}
+                        </pre>
+                      </div>
+                      {selectedChangeDetail.previous_markdown_excerpt ? (
+                        <div className="rounded-xl border border-white/8 bg-slate-950/70 p-3">
+                          <p className="font-semibold text-slate-200">
+                            Previous snapshot: {selectedChangeDetail.previous_title ?? "Untitled"}
+                          </p>
+                          <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-slate-500">
+                            {selectedChangeDetail.previous_markdown_excerpt}
+                          </pre>
+                        </div>
+                      ) : null}
+                      <p className="text-amber-200">{selectedChangeDetail.excerpt_notice}</p>
+                    </div>
+                  ) : null}
                 </div>
               ))
             ) : (
@@ -1024,6 +1120,54 @@ function AlertsPanel({
             )}
           </div>
         </div>
+      </div>
+      <div className="mt-5 rounded-2xl border border-white/8 bg-slate-950/60 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-100">Reviewed evidence ingest</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+              Paste reviewed compliance requirement JSON after checking the official source. Use
+              `review_status: "approved"` only when a human operator has verified the wording.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            disabled={isIngesting || !evidenceJson.trim()}
+            onClick={onIngestEvidence}
+          >
+            {isIngesting ? "Ingesting..." : "Ingest evidence"}
+          </Button>
+        </div>
+        <textarea
+          className="mt-4 min-h-48 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 font-mono text-xs leading-5 text-slate-200 outline-none focus:ring-2 focus:ring-cyan-300/50"
+          value={evidenceJson}
+          onChange={(event) => onEvidenceJsonChange(event.target.value)}
+          placeholder={`[
+  {
+    "country": "USA",
+    "category": "spices",
+    "hsn_code": "0904",
+    "product_keywords": ["chilli", "spice"],
+    "requirement_type": "labeling",
+    "requirement_text": "Operator-reviewed requirement text from the official source.",
+    "source_url": "https://official-source.example/page",
+    "source_name": "Official authority page",
+    "source_authority_level": "official",
+    "confidence_score": 80,
+    "review_status": "approved",
+    "reviewed_by": "operator@example.com"
+  }
+]`}
+        />
+        {ingestResult ? (
+          <p className="mt-3 text-sm text-emerald-300">
+            Ingested {ingestResult.total} record(s): {ingestResult.created} created,{" "}
+            {ingestResult.updated} updated.
+          </p>
+        ) : null}
+        {ingestError instanceof Error ? (
+          <p className="mt-3 text-sm text-rose-300">{ingestError.message}</p>
+        ) : null}
       </div>
     </PanelFrame>
   );

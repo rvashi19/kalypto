@@ -211,6 +211,16 @@ class ComplianceSourceChangeResponse(BaseModel):
     created_at: datetime
 
 
+class ComplianceSourceChangeDetailResponse(ComplianceSourceChangeResponse):
+    current_title: str
+    current_scraped_at: datetime
+    current_markdown_excerpt: str
+    previous_title: str | None
+    previous_scraped_at: datetime | None
+    previous_markdown_excerpt: str | None
+    excerpt_notice: str
+
+
 class ComplianceCoverageCell(BaseModel):
     country: str
     category: str

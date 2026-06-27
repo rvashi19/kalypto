@@ -16,6 +16,7 @@ from app.schemas.compliance import (
     ComplianceOptionsResponse,
     ComplianceScrapeRunRequest,
     ComplianceScrapeRunResponse,
+    ComplianceSourceChangeDetailResponse,
     ComplianceSourceChangeResponse,
     DueComplianceSourceResponse,
     ManualComplianceIngestRequest,
@@ -29,6 +30,7 @@ from app.services.compliance_store import (
     ComplianceKnowledgeStore,
     ComplianceStoreConfigurationError,
     StoredSourceChange,
+    StoredSourceChangeDetail,
     get_compliance_knowledge_store,
 )
 
@@ -109,6 +111,36 @@ def _source_change_response(change: StoredSourceChange) -> ComplianceSourceChang
         reviewed_at=change.reviewed_at,
         notes=change.notes,
         created_at=change.created_at,
+    )
+
+
+def _source_change_detail_response(
+    change: StoredSourceChangeDetail,
+) -> ComplianceSourceChangeDetailResponse:
+    return ComplianceSourceChangeDetailResponse(
+        id=change.id,
+        source_url=change.source_url,
+        country=change.country,
+        category=change.category,
+        previous_snapshot_id=change.previous_snapshot_id,
+        current_snapshot_id=change.current_snapshot_id,
+        previous_content_hash=change.previous_content_hash,
+        current_content_hash=change.current_content_hash,
+        status=change.status,
+        reviewed_by=change.reviewed_by,
+        reviewed_at=change.reviewed_at,
+        notes=change.notes,
+        created_at=change.created_at,
+        current_title=change.current_title,
+        current_scraped_at=change.current_scraped_at,
+        current_markdown_excerpt=change.current_markdown_excerpt,
+        previous_title=change.previous_title,
+        previous_scraped_at=change.previous_scraped_at,
+        previous_markdown_excerpt=change.previous_markdown_excerpt,
+        excerpt_notice=(
+            "Review excerpts are for operator triage. Open the official source before approving "
+            "or changing compliance requirements."
+        ),
     )
 
 
@@ -216,6 +248,24 @@ def list_source_changes(
             limit=max(1, min(limit, 100)),
         )
     ]
+
+
+@router.get(
+    "/scrape/changes/{change_id}",
+    response_model=ComplianceSourceChangeDetailResponse,
+)
+def get_source_change_detail(
+    change_id: str,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceSourceChangeDetailResponse:
+    require_editor(current_user)
+    store = _store_for_request(session, current_user)
+    try:
+        change = store.get_source_change_detail(change_id=change_id)
+    except (ComplianceStoreConfigurationError, ValueError) as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return _source_change_detail_response(change)
 
 
 @router.get("/coverage", response_model=ComplianceCoverageResponse)

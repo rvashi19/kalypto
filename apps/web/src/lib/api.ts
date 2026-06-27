@@ -6,6 +6,8 @@ import type {
   ComplianceOptionsResponse,
   ComplianceScrapeRunRequest,
   ComplianceScrapeRunResponse,
+  ComplianceRequirementInput,
+  ComplianceSourceChangeDetailResponse,
   ComplianceSourceChangeResponse,
   CurrentUserResponse,
   DashboardOverview,
@@ -163,8 +165,22 @@ export const api = {
       token
     ),
 
+  sourceChangeDetail: (changeId: string, token: string) =>
+    request<ComplianceSourceChangeDetailResponse>(
+      `/compliance/scrape/changes/${changeId}`,
+      {},
+      token
+    ),
+
   complianceCoverage: (token: string) =>
     request<ComplianceCoverageResponse>("/compliance/coverage", {}, token),
+
+  ingestComplianceRecords: (records: ComplianceRequirementInput[], token: string) =>
+    request<{ created: number; updated: number; total: number }>(
+      "/compliance/scrape/ingest",
+      { method: "POST", body: JSON.stringify({ records }) },
+      token
+    ),
 
   reviewSourceChange: (changeId: string, payload: SourceChangeReviewRequest, token: string) =>
     request<ComplianceSourceChangeResponse>(

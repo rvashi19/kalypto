@@ -165,6 +165,16 @@ export interface ComplianceSourceChangeResponse {
   created_at: string;
 }
 
+export interface ComplianceSourceChangeDetailResponse extends ComplianceSourceChangeResponse {
+  current_title: string;
+  current_scraped_at: string;
+  current_markdown_excerpt: string;
+  previous_title: string | null;
+  previous_scraped_at: string | null;
+  previous_markdown_excerpt: string | null;
+  excerpt_notice: string;
+}
+
 export interface ComplianceCoverageCell {
   country: string;
   category: string;
@@ -190,6 +200,35 @@ export interface ComplianceCoverageResponse {
 export interface SourceChangeReviewRequest {
   status: "needs_review" | "reviewed" | "ignored";
   notes?: string | null;
+}
+
+export interface ComplianceRequirementInput {
+  country: string;
+  category: string;
+  hsn_code?: string | null;
+  product_keywords?: string[];
+  requirement_type: string;
+  requirement_text: string;
+  extracted_requirement?: string | null;
+  source_url: string;
+  source_name: string;
+  source_authority_level?: "official" | "trade_body" | "operator_seeded" | "unknown";
+  effective_date?: string | null;
+  last_checked_at?: string | null;
+  expires_at?: string | null;
+  confidence_score?: number;
+  status?: "draft" | "active" | "archived";
+  review_status?: "pending" | "approved" | "rejected";
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  notes?: string | null;
+  unresolved_questions?: string[];
+}
+
+export interface ManualComplianceIngestResponse {
+  created: number;
+  updated: number;
+  total: number;
 }
 
 export type ShipmentMode = "sea" | "air" | "courier";

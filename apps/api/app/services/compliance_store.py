@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import importlib
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 from uuid import UUID, uuid4
@@ -37,6 +37,13 @@ from app.services.compliance_retrieval import (
 
 class ComplianceStoreConfigurationError(RuntimeError):
     """Raised when the configured compliance knowledge store is unavailable."""
+
+
+def _excerpt(markdown: str, *, limit: int = 3200) -> str:
+    text = "\n".join(line.strip() for line in markdown.splitlines() if line.strip())
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit].rstrip()}\n\n[Excerpt truncated for review UI.]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +95,16 @@ class StoredSourceChange:
 
 
 @dataclass(frozen=True, slots=True)
+class StoredSourceChangeDetail(StoredSourceChange):
+    current_title: str
+    current_scraped_at: datetime
+    current_markdown_excerpt: str
+    previous_title: str | None
+    previous_scraped_at: datetime | None
+    previous_markdown_excerpt: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ComplianceCoverageCellResult:
     country: str
     category: str
@@ -136,6 +153,8 @@ class ComplianceKnowledgeStore(Protocol):
     def review_source_change(
         self, *, change_id: str, status: str, reviewed_by: str, notes: str | None
     ) -> StoredSourceChange: ...
+
+    def get_source_change_detail(self, *, change_id: str) -> StoredSourceChangeDetail: ...
 
     def coverage_cells(
         self, *, countries: list[str], categories: list[str]
@@ -326,6 +345,29 @@ class PostgresComplianceKnowledgeStore:
         self.session.add(change)
         self.session.flush()
         return self._source_change_from_row(change)
+
+    def get_source_change_detail(self, *, change_id: str) -> StoredSourceChangeDetail:
+        change = self.session.get(ComplianceSourceChange, UUID(change_id))
+        if change is None or change.tenant_id != self.tenant_id:
+            raise ComplianceStoreConfigurationError("Source change was not found for this tenant.")
+        current = self.session.get(ComplianceSourceSnapshot, change.current_snapshot_id)
+        previous = (
+            self.session.get(ComplianceSourceSnapshot, change.previous_snapshot_id)
+            if change.previous_snapshot_id
+            else None
+        )
+        if current is None or current.tenant_id != self.tenant_id:
+            raise ComplianceStoreConfigurationError("Current source snapshot was not found.")
+        base = self._source_change_from_row(change)
+        return StoredSourceChangeDetail(
+            **asdict(base),
+            current_title=current.title,
+            current_scraped_at=current.scraped_at,
+            current_markdown_excerpt=_excerpt(current.markdown),
+            previous_title=previous.title if previous else None,
+            previous_scraped_at=previous.scraped_at if previous else None,
+            previous_markdown_excerpt=_excerpt(previous.markdown) if previous else None,
+        )
 
     def coverage_cells(
         self, *, countries: list[str], categories: list[str]
@@ -694,6 +736,41 @@ class MongoComplianceKnowledgeStore:
             upsert=False,
         )
         return self._document_to_source_change(updated)
+
+    def get_source_change_detail(self, *, change_id: str) -> StoredSourceChangeDetail:
+        change = self.source_changes.find_one(
+            {"tenant_id": str(self.tenant_id), "_id": change_id},
+        )
+        if change is None:
+            raise ComplianceStoreConfigurationError("Source change was not found for this tenant.")
+        current = self.source_snapshots.find_one(
+            {"tenant_id": str(self.tenant_id), "_id": change.get("current_snapshot_id")},
+        )
+        previous = None
+        if change.get("previous_snapshot_id"):
+            previous = self.source_snapshots.find_one(
+                {"tenant_id": str(self.tenant_id), "_id": change.get("previous_snapshot_id")},
+            )
+        if current is None:
+            raise ComplianceStoreConfigurationError("Current source snapshot was not found.")
+        base = self._document_to_source_change(change)
+        current_scraped_at = current.get("scraped_at")
+        if not isinstance(current_scraped_at, datetime):
+            current_scraped_at = datetime.now(UTC)
+        previous_scraped_at = previous.get("scraped_at") if previous else None
+        return StoredSourceChangeDetail(
+            **asdict(base),
+            current_title=str(current.get("title", "")),
+            current_scraped_at=current_scraped_at,
+            current_markdown_excerpt=_excerpt(str(current.get("markdown", ""))),
+            previous_title=str(previous.get("title", "")) if previous else None,
+            previous_scraped_at=(
+                previous_scraped_at if isinstance(previous_scraped_at, datetime) else None
+            ),
+            previous_markdown_excerpt=(
+                _excerpt(str(previous.get("markdown", ""))) if previous else None
+            ),
+        )
 
     def coverage_cells(
         self, *, countries: list[str], categories: list[str]
