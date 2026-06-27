@@ -68,6 +68,49 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(status: number, message: string, detail?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function detailToMessage(detail: unknown): string {
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return "Some fields need attention. Please review the form and try again.";
+  }
+
+  return "Unexpected API error.";
+}
+
+export function isUnauthorizedError(error: unknown) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+export function userMessageForError(error: unknown) {
+  if (isUnauthorizedError(error)) {
+    return "Your session has expired. Please sign in again.";
+  }
+
+  if (error instanceof Error) {
+    if (error.message.toLowerCase().includes("failed to fetch")) {
+      return "We could not reach the KALYPTO API. Please make sure the backend is running, then try again.";
+    }
+    return error.message;
+  }
+
+  return "Something went wrong. Please try again.";
+}
+
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -101,9 +144,9 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({ detail: "Unexpected API error." }))) as {
-      detail?: string;
+      detail?: unknown;
     };
-    throw new Error(body.detail ?? "Unexpected API error.");
+    throw new ApiError(response.status, detailToMessage(body.detail), body.detail);
   }
 
   return (await response.json()) as T;
@@ -206,7 +249,7 @@ export const api = {
     return body as RateImportResponse;
   },
 
-  // ── Shipments ────────────────────────────────────────────────────────────────
+  // Shipments
 
   createShipment: (payload: ShipmentCreate, token: string) =>
     request<ShipmentResponse>("/shipments", { method: "POST", body: JSON.stringify(payload) }, token),

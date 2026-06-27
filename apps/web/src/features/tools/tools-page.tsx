@@ -25,14 +25,14 @@ const MODULES = [
   {
     id: "compliance",
     title: "Country Compliance Checker",
-    eyebrow: "CCR",
-    summary: "Check destination-country docs, labels, certificates, and buyer questions.",
+    eyebrow: "Requirements",
+    summary: "Check destination documents, labels, certificates, inspections, and buyer questions.",
   },
   {
     id: "quote",
     title: "Landed Cost / Export Quote",
     eyebrow: "Calculator",
-    summary: "Estimate buyer landed basis and exporter net realization.",
+    summary: "Estimate buyer landed cost and exporter net realization from quote inputs.",
   },
   {
     id: "documents",
@@ -56,7 +56,7 @@ const MODULES = [
     id: "alerts",
     title: "Compliance Alerts",
     eyebrow: "Monitor",
-    summary: "Review critical discrepancies and source changes that need operator attention.",
+    summary: "Review source changes, stale evidence, critical findings, and lock-risk signals.",
   },
 ] as const;
 
@@ -271,20 +271,20 @@ export function ToolsPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="relative mb-6 overflow-hidden rounded-3xl border border-cyan-300/20 bg-slate-950 px-5 py-6 shadow-2xl shadow-cyan-950/20 md:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(34,211,238,0.18),transparent_28%),radial-gradient(circle_at_80%_5%,rgba(16,185,129,0.14),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(2,6,23,0.95))]" />
+      <section className="relative mb-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 px-5 py-6 shadow-2xl shadow-slate-950/20 md:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_86%_8%,rgba(20,184,166,0.1),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.35),rgba(2,6,23,0.92))]" />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.42em] text-cyan-300">
-              Kalypto command center
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-200">
+              Export assurance workspace
             </p>
-            <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-white md:text-5xl">
-              Seven export tools, one evidence-backed workflow.
+            <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.035em] text-white md:text-5xl">
+              Practical tools for documentation, compliance, incentives, and claims.
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-              Use this workspace like a control panel: find incentives, check destination
-              compliance, build quotes, generate documents, verify files, and track claim risk
-              without losing source context.
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+              Work through the export lifecycle without losing evidence: rate lookup, destination
+              requirements, quote calculations, document generation, verification, claim tracking,
+              and compliance review.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -304,8 +304,8 @@ export function ToolsPage() {
               onClick={() => setActiveModule(module.id)}
               className={`group w-full rounded-2xl border p-4 text-left transition-all ${
                 activeModule === module.id
-                  ? "border-cyan-300/40 bg-cyan-300/10 shadow-lg shadow-cyan-950/20"
-                  : "border-white/8 bg-slate-900/60 hover:border-white/16 hover:bg-slate-900"
+                  ? "border-cyan-300/35 bg-cyan-300/10 shadow-lg shadow-cyan-950/20"
+                  : "border-white/10 bg-slate-900/65 hover:border-white/20 hover:bg-slate-900"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -313,7 +313,7 @@ export function ToolsPage() {
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${
                     activeModule === module.id
                       ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-200"
-                      : "border-white/8 bg-slate-950 text-slate-500 group-hover:text-slate-300"
+                      : "border-white/10 bg-slate-950 text-slate-500 group-hover:text-slate-300"
                   }`}
                 >
                   {String(index + 1).padStart(2, "0")}
@@ -443,16 +443,16 @@ function SignalCard({
   tone: "cyan" | "rose" | "amber" | "emerald";
 }) {
   const toneClass = {
-    cyan: "text-cyan-200 border-cyan-300/20 bg-cyan-300/10",
-    rose: "text-rose-200 border-rose-300/20 bg-rose-300/10",
-    amber: "text-amber-200 border-amber-300/20 bg-amber-300/10",
-    emerald: "text-emerald-200 border-emerald-300/20 bg-emerald-300/10",
+    cyan: "text-cyan-100 border-cyan-300/20 bg-cyan-300/10",
+    rose: "text-rose-100 border-rose-300/20 bg-rose-300/10",
+    amber: "text-amber-100 border-amber-300/20 bg-amber-300/10",
+    emerald: "text-emerald-100 border-emerald-300/20 bg-emerald-300/10",
   }[tone];
 
   return (
     <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <p className="text-[10px] font-bold uppercase tracking-[0.24em] opacity-70">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-black">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] opacity-75">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
     </div>
   );
 }
@@ -470,10 +470,10 @@ function PanelFrame({
 }) {
   return (
     <Card className="overflow-hidden border-white/10 bg-slate-900/80">
-      <div className="h-1 bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-300" />
+      <div className="h-px bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent" />
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardTitle className="text-xl tracking-[-0.02em]">{title}</CardTitle>
           {badge}
         </div>
         <CardDescription>{description}</CardDescription>
@@ -1207,7 +1207,7 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-200">
+    <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm leading-6 text-rose-100">
       {message}
     </div>
   );

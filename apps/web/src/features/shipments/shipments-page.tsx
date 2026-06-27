@@ -14,7 +14,7 @@ function StageBadge({ stage }: { stage: string }) {
     <span
       className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${
         isPre
-          ? "border-indigo-500/20 bg-indigo-500/10 text-indigo-300"
+          ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
           : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
       }`}
     >
@@ -37,12 +37,12 @@ function ShipmentCard({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-white/8 bg-slate-900/70 p-5 backdrop-blur transition-colors hover:border-indigo-500/20">
+    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900/75 p-5 shadow-xl shadow-slate-950/10 backdrop-blur transition-colors hover:border-cyan-300/25">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-semibold text-slate-100">{shipment.product_name}</p>
           <p className="mt-0.5 text-sm text-slate-500">
-            HSN {shipment.hsn_code} · {shipment.destination_country}
+            HSN {shipment.hsn_code} / {shipment.destination_country}
           </p>
         </div>
         <StageBadge stage={shipment.shipment_stage} />
@@ -56,7 +56,7 @@ function ShipmentCard({
           value={
             shipment.fob_value
               ? `${shipment.invoice_currency} ${shipment.fob_value.toLocaleString()}`
-              : "—"
+              : "-"
           }
         />
       </div>
@@ -64,7 +64,7 @@ function ShipmentCard({
       <div className="flex gap-2">
         <Link to={`/shipments/${shipment.id}`} className="flex-1">
           <Button className="w-full" variant="secondary" size="sm">
-            Open →
+            Open
           </Button>
         </Link>
         <Button
@@ -129,7 +129,7 @@ export function ShipmentsPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-50">Shipments</h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            Each shipment walks through checklist → documents → AI verification.
+            Each shipment walks through checklist, documents, and AI verification.
           </p>
         </div>
         <Button size="sm" onClick={() => navigate("/shipments/new")}>
@@ -180,7 +180,7 @@ export function ShipmentsPage() {
           className="mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300"
           role="alert"
         >
-          <span aria-hidden="true">✕</span>
+          <span aria-hidden="true">!</span>
           {shipmentsQuery.error instanceof Error
             ? shipmentsQuery.error.message
             : "Failed to load shipments."}
@@ -196,7 +196,9 @@ export function ShipmentsPage() {
       {!shipmentsQuery.isLoading && shipmentsQuery.data?.length === 0 && (
         <Card>
           <CardContent className="py-16 text-center">
-            <p className="text-3xl" aria-hidden="true">📦</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">
+              Shipment workspace
+            </p>
             <p className="mt-4 font-medium text-slate-300">No shipments yet</p>
             <p className="mt-1 text-sm text-slate-500">
               Create a shipment profile to generate a document checklist and run AI verification.

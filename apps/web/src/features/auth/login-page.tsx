@@ -1,8 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+
 import { AuthShell } from "../../components/layout/auth-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 export function LoginPage() {
@@ -10,6 +11,7 @@ export function LoginPage() {
   const location = useLocation();
   const { setSession } = useAuth();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const reason = (location.state as { reason?: string } | null)?.reason;
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) =>
@@ -23,26 +25,27 @@ export function LoginPage() {
     },
   });
 
-  const errorMessage =
-    mutation.isError && mutation.error instanceof Error ? mutation.error.message : null;
+  const errorMessage = mutation.isError ? userMessageForError(mutation.error) : null;
+  const sessionMessage =
+    reason === "session-expired" ? "Your session expired for security. Please sign in again." : null;
 
   return (
     <AuthShell
-      eyebrow="Indian export compliance"
-      title="Catch document errors before they cost you."
-      description="AI-powered audit of your export documents — catch discrepancies, estimate incentives, and submit with confidence."
+      eyebrow="Export assurance platform"
+      title="Control export documents, incentives, and compliance from one workspace."
+      description="KALYPTO helps Indian exporters prepare shipment records, verify documentation, monitor destination requirements, and keep incentive claims visible."
     >
       <Card>
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Enter your organization account to continue.</CardDescription>
+          <CardTitle>Sign in to KALYPTO</CardTitle>
+          <CardDescription>Access your secure export assurance workspace.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
             className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              mutation.mutate(new FormData(e.currentTarget));
+            onSubmit={(event) => {
+              event.preventDefault();
+              mutation.mutate(new FormData(event.currentTarget));
             }}
           >
             <div className="space-y-1.5">
@@ -54,22 +57,31 @@ export function LoginPage() {
               <Input id="password" name="password" type="password" placeholder="Your password" required />
             </div>
 
-            {errorMessage && (
+            {sessionMessage ? (
               <p
-                className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/8 px-3 py-2 text-sm text-rose-300"
+                className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100"
+                role="status"
+              >
+                {sessionMessage}
+              </p>
+            ) : null}
+
+            {errorMessage ? (
+              <p
+                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
                 role="alert"
               >
-                <span aria-hidden="true">✕</span> {errorMessage}
+                {errorMessage}
               </p>
-            )}
+            ) : null}
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Signing in…" : "Sign in"}
+              {mutation.isPending ? "Signing in..." : "Sign in"}
             </Button>
             <p className="text-center text-sm text-slate-500">
-              No account?{" "}
-              <Link className="text-indigo-400 hover:text-indigo-300" to="/signup">
-                Create your workspace
+              New to KALYPTO?{" "}
+              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/signup">
+                Create a workspace
               </Link>
             </p>
           </form>

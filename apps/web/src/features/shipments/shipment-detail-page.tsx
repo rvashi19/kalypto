@@ -71,7 +71,7 @@ const FIELD_LABELS: Record<string, string> = {
   marks_and_numbers: "Marks & Nos.",
 };
 
-// ── Stepper ────────────────────────────────────────────────────────────────────
+// Stepper
 
 const STEPS: { key: Tab; label: string }[] = [
   { key: "checklist", label: "Checklist" },
@@ -102,13 +102,13 @@ function StepBubble({
   onClick?: () => void;
 }) {
   const circleCls: Record<StepState, string> = {
-    done: "bg-indigo-500 text-white",
-    active: "border-2 border-indigo-400 bg-indigo-500/10 text-indigo-300",
-    available: "border-2 border-slate-700 bg-slate-900 text-slate-400 hover:border-indigo-500/50",
+    done: "bg-cyan-300 text-slate-950",
+    active: "border-2 border-cyan-300 bg-cyan-300/10 text-cyan-100",
+    available: "border-2 border-slate-700 bg-slate-900 text-slate-400 hover:border-cyan-300/50",
     locked: "border-2 border-slate-800 bg-slate-950 text-slate-600",
   };
   const labelCls: Record<StepState, string> = {
-    done: "text-indigo-300",
+    done: "text-cyan-200",
     active: "font-semibold text-slate-100",
     available: "text-slate-400",
     locked: "text-slate-600",
@@ -125,7 +125,7 @@ function StepBubble({
       <span
         className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleCls[state]}`}
       >
-        {state === "done" ? "✓" : n}
+        {state === "done" ? "OK" : n}
       </span>
       <span
         className={`whitespace-nowrap text-[10px] font-medium uppercase tracking-wide transition-colors ${labelCls[state]}`}
@@ -171,7 +171,7 @@ function Stepper({
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// Sub-components
 
 function ExtractedFieldsPanel({ doc }: { doc: DocumentResponse }) {
   const [open, setOpen] = useState(false);
@@ -214,9 +214,9 @@ function ExtractedFieldsPanel({ doc }: { doc: DocumentResponse }) {
     <div className="mt-2">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+        className="flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200"
       >
-        {open ? "▾" : "▸"} {fields.length} fields extracted
+        {open ? "Hide" : "Show"} {fields.length} fields extracted
       </button>
       {open && (
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
@@ -252,10 +252,10 @@ function ChecklistSection({
             className="flex items-start gap-3 rounded-xl border border-white/8 bg-slate-950/60 px-4 py-3"
           >
             <span
-              className={`mt-0.5 text-sm ${item.required ? "text-indigo-400" : "text-slate-500"}`}
+              className={`mt-0.5 text-xs font-semibold uppercase tracking-wide ${item.required ? "text-cyan-200" : "text-slate-500"}`}
               aria-hidden="true"
             >
-              {item.required ? "✓" : "○"}
+              {item.required ? "Required" : "Optional"}
             </span>
             <div>
               <p className="text-sm font-medium text-slate-100">{item.label}</p>
@@ -285,7 +285,7 @@ function DiscrepancyCard({ d }: { d: DiscrepancyItem }) {
         </div>
         {d.document_b != null && (
           <div>
-            <span className="font-medium">{d.document_b}:</span> {d.value_b ?? "—"}
+            <span className="font-medium">{d.document_b}:</span> {d.value_b ?? "-"}
           </div>
         )}
       </div>
@@ -306,12 +306,12 @@ function IncentiveCard({ e }: { e: IncentiveEstimate }) {
       <div className="flex items-center justify-between">
         <p className="font-semibold text-slate-100">{e.scheme}</p>
         <span className={`text-xs font-bold ${e.eligible ? "text-emerald-400" : "text-slate-500"}`}>
-          {e.eligible ? "✓ Eligible" : "Not eligible"}
+          {e.eligible ? "Eligible" : "Not eligible"}
         </span>
       </div>
       {e.eligible && e.estimated_amount != null && (
         <p className="mt-1 text-lg font-bold text-emerald-400">
-          ₹{e.estimated_amount.toLocaleString("en-IN")}
+          INR {e.estimated_amount.toLocaleString("en-IN")}
           {e.rate_percent != null && (
             <span className="ml-2 text-sm font-normal text-emerald-600">@ {e.rate_percent}%</span>
           )}
@@ -329,7 +329,7 @@ function IncentiveCard({ e }: { e: IncentiveEstimate }) {
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// Page
 
 export function ShipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -410,7 +410,7 @@ export function ShipmentDetailPage() {
         onClick={() => navigate("/shipments")}
         className="mb-3 text-sm text-slate-500 hover:text-slate-300"
       >
-        ← Back to shipments
+        Back to shipments
       </button>
 
       {s && (
@@ -419,11 +419,11 @@ export function ShipmentDetailPage() {
             <div>
               <h2 className="text-lg font-semibold text-slate-50">{s.product_name}</h2>
               <p className="text-sm text-slate-400">
-                HSN {s.hsn_code} · {s.destination_country} · {s.incoterm} · {s.payment_term}
+                HSN {s.hsn_code} / {s.destination_country} / {s.incoterm} / {s.payment_term}
               </p>
             </div>
             <span className="rounded-md border border-white/10 px-3 py-1 text-xs capitalize text-slate-400">
-              {s.shipment_mode} · {s.shipment_stage.replace("_", " ")}
+              {s.shipment_mode} / {s.shipment_stage.replace("_", " ")}
             </span>
           </div>
           {s.fob_value && (
@@ -436,7 +436,7 @@ export function ShipmentDetailPage() {
 
       <Stepper current={tab} hasDocs={hasDocs} onSelect={setTab} />
 
-      {/* ── Checklist ──────────────────────────────────────────────────────── */}
+      {/* Checklist */}
       {tab === "checklist" && (
         <Card>
           <CardHeader>
@@ -450,7 +450,7 @@ export function ShipmentDetailPage() {
           </CardHeader>
           <CardContent>
             {checklistQuery.isLoading && (
-              <p className="text-sm text-slate-400">Generating checklist…</p>
+              <p className="text-sm text-slate-400">Generating checklist...</p>
             )}
             {checklistQuery.isError && (
               <p className="text-sm text-rose-400">
@@ -464,7 +464,7 @@ export function ShipmentDetailPage() {
                 <ChecklistSection
                   title="Required documents"
                   items={checklistQuery.data.required}
-                  color="text-indigo-400"
+                  color="text-cyan-300"
                 />
                 <ChecklistSection
                   title="Country-specific"
@@ -488,7 +488,7 @@ export function ShipmentDetailPage() {
                 />
                 <p className="mt-4 text-xs text-slate-600">{checklistQuery.data.disclaimer}</p>
                 <Button className="mt-4" onClick={() => setTab("documents")}>
-                  Upload documents →
+                  Upload documents
                 </Button>
               </>
             )}
@@ -496,7 +496,7 @@ export function ShipmentDetailPage() {
         </Card>
       )}
 
-      {/* ── Documents ──────────────────────────────────────────────────────── */}
+      {/* Documents */}
       {tab === "documents" && (
         <div className="flex flex-col gap-4">
           <Card>
@@ -570,12 +570,12 @@ export function ShipmentDetailPage() {
                 disabled={!uploadFile || uploadMutation.isPending}
                 onClick={() => uploadMutation.mutate()}
               >
-                {uploadMutation.isPending ? "Uploading…" : "Upload"}
+                {uploadMutation.isPending ? "Uploading..." : "Upload"}
               </Button>
             </CardContent>
             {uploadMutation.isError && (
               <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-3 py-2 text-sm text-rose-300">
-                <span aria-hidden="true">✕</span>
+                <span aria-hidden="true">!</span>
                 {uploadMutation.error instanceof Error
                   ? uploadMutation.error.message
                   : "Upload failed."}
@@ -583,7 +583,7 @@ export function ShipmentDetailPage() {
             )}
             {uploadMutation.isSuccess && (
               <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-2 text-sm text-emerald-300">
-                <span aria-hidden="true">✓</span> Document uploaded successfully.
+                <span aria-hidden="true">OK</span> Document uploaded successfully.
               </div>
             )}
           </Card>
@@ -593,7 +593,7 @@ export function ShipmentDetailPage() {
               <CardTitle>Uploaded documents</CardTitle>
             </CardHeader>
             <CardContent>
-              {docsQuery.isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+              {docsQuery.isLoading && <p className="text-sm text-slate-400">Loading...</p>}
               {!docsQuery.isLoading && docsQuery.data?.length === 0 && (
                 <p className="text-sm text-slate-500">No documents uploaded yet.</p>
               )}
@@ -614,7 +614,7 @@ export function ShipmentDetailPage() {
                           <p className="text-xs text-slate-500">
                             {doc.file_name}
                             {doc.file_size_bytes
-                              ? ` · ${(doc.file_size_bytes / 1024).toFixed(0)} KB`
+                              ? ` / ${(doc.file_size_bytes / 1024).toFixed(0)} KB`
                               : ""}
                           </p>
                         </div>
@@ -625,7 +625,7 @@ export function ShipmentDetailPage() {
                               {statusCfg.label}
                             </span>
                             <button
-                              className="text-xs font-medium text-indigo-300 hover:text-indigo-200"
+                              className="text-xs font-medium text-cyan-300 hover:text-cyan-200"
                               onClick={() =>
                                 api.downloadDocument(id!, doc.id, doc.file_name, token!)
                               }
@@ -642,7 +642,7 @@ export function ShipmentDetailPage() {
               </div>
               {hasDocs && (
                 <Button className="mt-4" onClick={() => setTab("report")}>
-                  Run verification →
+                  Run verification
                 </Button>
               )}
             </CardContent>
@@ -650,12 +650,12 @@ export function ShipmentDetailPage() {
         </div>
       )}
 
-      {/* ── Report ─────────────────────────────────────────────────────────── */}
+      {/* Report */}
       {tab === "report" && (
         <div className="flex flex-col gap-4">
           {!hasDocs && (
             <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-5 py-4 text-sm text-amber-300">
-              <span aria-hidden="true">⚠</span>
+              <span aria-hidden="true">!</span>
               Upload at least one document before running verification.
               <Button size="sm" variant="secondary" onClick={() => setTab("documents")}>
                 Upload docs
@@ -708,13 +708,13 @@ export function ShipmentDetailPage() {
           {hasDocs && reportQuery.isLoading && (
             <Card>
               <CardContent className="py-8 text-center text-sm text-slate-400">
-                Running AI verification…
+                Running AI verification...
               </CardContent>
             </Card>
           )}
           {hasDocs && reportQuery.isError && (
             <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300">
-              <span aria-hidden="true">✕</span>
+              <span aria-hidden="true">!</span>
               {reportQuery.error instanceof Error
                 ? reportQuery.error.message
                 : "Verification failed."}
@@ -804,8 +804,8 @@ export function ShipmentDetailPage() {
                       <CardContent className="flex flex-col gap-2">
                         {r.recommendations.map((rec, i) => (
                           <div key={i} className="flex gap-2 text-sm text-slate-300">
-                            <span className="mt-0.5 text-indigo-400" aria-hidden="true">
-                              →
+                            <span className="mt-0.5 text-cyan-300" aria-hidden="true">
+                              Action
                             </span>
                             {rec}
                           </div>
@@ -813,7 +813,7 @@ export function ShipmentDetailPage() {
                         {r.ebrc_gst_reminders.map((rem, i) => (
                           <div key={i} className="flex gap-2 text-sm text-amber-300">
                             <span className="mt-0.5" aria-hidden="true">
-                              ⚠
+                              Alert
                             </span>
                             {rem}
                           </div>
@@ -823,14 +823,14 @@ export function ShipmentDetailPage() {
                   )}
 
                   <p className="text-xs text-slate-600">{r.disclaimer}</p>
-                  <Button onClick={() => setTab("expert")}>Get expert review →</Button>
+                  <Button onClick={() => setTab("expert")}>Get expert review</Button>
                 </>
               );
             })()}
         </div>
       )}
 
-      {/* ── Expert review (coming soon) ─────────────────────────────────────── */}
+      {/* Expert review */}
       {tab === "expert" && (
         <Card>
           <CardHeader>
@@ -847,19 +847,19 @@ export function ShipmentDetailPage() {
               {[
                 {
                   tier: "Basic AI check",
-                  price: "₹999",
+                  price: "INR 999",
                   desc: "AI report with priority support response within 24 hrs.",
                   highlight: false,
                 },
                 {
                   tier: "Expert audit",
-                  price: "₹4,999",
+                  price: "INR 4,999",
                   desc: "Licensed CHA reviews your documents and report. Written feedback within 48 hrs.",
                   highlight: true,
                 },
                 {
                   tier: "Full advisory",
-                  price: "₹9,999",
+                  price: "INR 9,999",
                   desc: "CHA + CA review. Includes RoDTEP claim filing guidance and eBRC tracking.",
                   highlight: false,
                 },
@@ -868,8 +868,8 @@ export function ShipmentDetailPage() {
                   key={plan.tier}
                   className={`flex flex-col gap-3 rounded-xl border p-5 ${
                     plan.highlight
-                      ? "border-indigo-500/20 bg-indigo-500/5"
-                      : "border-white/8 bg-slate-950/60"
+                      ? "border-cyan-300/20 bg-cyan-300/10"
+                      : "border-white/10 bg-slate-950/60"
                   }`}
                 >
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
@@ -877,7 +877,7 @@ export function ShipmentDetailPage() {
                   </p>
                   <p
                     className={`text-2xl font-bold ${
-                      plan.highlight ? "text-indigo-300" : "text-slate-100"
+                      plan.highlight ? "text-cyan-100" : "text-slate-100"
                     }`}
                   >
                     {plan.price}

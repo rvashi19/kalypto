@@ -64,7 +64,7 @@ function HsnRateCard({
   });
 
   if (!hsn || hsn.length < 4) return null;
-  if (isLoading) return <p className="mt-1.5 text-xs text-slate-500">Looking up HSN rates…</p>;
+  if (isLoading) return <p className="mt-1.5 text-xs text-slate-500">Looking up HSN rates...</p>;
   if (!data) return null;
   if (!data.found) return <p className="mt-1.5 text-xs text-slate-500">{data.message}</p>;
 
@@ -78,7 +78,7 @@ function HsnRateCard({
           </span>
         )}
         {data.rodtep_rate != null && data.rodtep_rate > 0 && (
-          <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-indigo-300">
+          <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-0.5 text-cyan-100">
             RoDTEP {data.rodtep_rate}%
           </span>
         )}
@@ -94,7 +94,7 @@ function HsnRateCard({
             <span key={scheme}>
               Est. {scheme.replace("_", " ")}:{" "}
               <span className="font-semibold text-emerald-400">
-                ₹{amount.toLocaleString("en-IN")}
+                INR {amount.toLocaleString("en-IN")}
               </span>
             </span>
           ))}
@@ -180,7 +180,7 @@ export function NewShipmentPage() {
           onClick={() => navigate("/shipments")}
           className="text-sm text-slate-500 hover:text-slate-300"
         >
-          ← Back to shipments
+          Back to shipments
         </button>
         <h2 className="mt-2 text-xl font-semibold text-slate-50">New Shipment Profile</h2>
         <p className="mt-0.5 text-sm text-slate-400">
@@ -370,7 +370,7 @@ export function NewShipmentPage() {
             className="mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300"
             role="alert"
           >
-            <span aria-hidden="true">✕</span>
+            <span aria-hidden="true">!</span>
             {mutation.error instanceof Error ? mutation.error.message : "Something went wrong."}
           </div>
         )}
@@ -380,7 +380,7 @@ export function NewShipmentPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Creating…" : "Create & get checklist →"}
+            {mutation.isPending ? "Creating..." : "Create and get checklist"}
           </Button>
         </div>
       </form>

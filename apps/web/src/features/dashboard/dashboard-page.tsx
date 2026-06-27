@@ -4,14 +4,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { AiBadge } from "../../lib/ui";
 
 export function DashboardPage() {
   const { session, token, setSession } = useAuth();
   const [assistantQuestion, setAssistantQuestion] = useState(
-    "What can KALYPTO do for my next export shipment?",
+    "What should I verify before my next export shipment?",
   );
 
   const shipmentsQuery = useQuery({
@@ -50,8 +50,8 @@ export function DashboardPage() {
   });
 
   const shipments = shipmentsQuery.data ?? [];
-  const preCount = shipments.filter((s) => s.shipment_stage === "pre_shipment").length;
-  const postCount = shipments.filter((s) => s.shipment_stage === "post_shipment").length;
+  const preCount = shipments.filter((shipment) => shipment.shipment_stage === "pre_shipment").length;
+  const postCount = shipments.filter((shipment) => shipment.shipment_stage === "post_shipment").length;
   const recentShipments = shipments.slice(0, 3);
 
   const user = meQuery.data?.user ?? session?.user;
@@ -64,12 +64,27 @@ export function DashboardPage() {
       role={role}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-50">
-          {user?.full_name ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Dashboard"}
-        </h2>
-        <p className="mt-0.5 text-sm text-slate-500">{org?.name}</p>
-      </div>
+      <section className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/75 p-6 shadow-2xl shadow-slate-950/20">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200">
+              Export assurance overview
+            </p>
+            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.035em] text-white md:text-4xl">
+              {user?.full_name
+                ? `Welcome back, ${user.full_name.split(" ")[0]}.`
+                : "Welcome to your KALYPTO workspace."}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+              Monitor shipment readiness, claim exposure, compliance evidence, and AI-assisted
+              document checks from one tenant-isolated workspace.
+            </p>
+          </div>
+          <Link to="/shipments/new">
+            <Button>Create shipment</Button>
+          </Link>
+        </div>
+      </section>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
@@ -79,7 +94,7 @@ export function DashboardPage() {
         <StatCard
           label="Pre-shipment"
           value={shipmentsQuery.isLoading ? "-" : String(preCount)}
-          accent="text-indigo-300"
+          accent="text-cyan-200"
         />
         <StatCard
           label="Post-shipment"
@@ -87,7 +102,7 @@ export function DashboardPage() {
           accent="text-emerald-300"
         />
         <StatCard
-          label="Potential amount"
+          label="Money at risk"
           value={
             discrepancyQuery.isLoading
               ? "-"
@@ -97,15 +112,15 @@ export function DashboardPage() {
         />
       </div>
 
-      <Card className="mb-6 overflow-hidden border-cyan-300/20 bg-slate-950/80">
-        <div className="h-1 bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-300" />
+      <Card className="mb-6 overflow-hidden border-cyan-300/20 bg-slate-900/80">
+        <div className="h-px bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent" />
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle>KALYPTO tool workspace</CardTitle>
+              <CardTitle>Assurance toolkit</CardTitle>
               <CardDescription>
-                HSN finder, compliance checker, export quote calculator, document builder,
-                verifier, claims tracker, and alerts now live in one command center.
+                HSN finder, country compliance checker, quote calculator, document builder,
+                verifier, claims tracker, and alerts are available from the tools workspace.
               </CardDescription>
             </div>
             <Link to="/tools">
@@ -115,38 +130,40 @@ export function DashboardPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent shipments</CardTitle>
-              <Link to="/shipments" className="text-xs font-medium text-indigo-400 hover:text-indigo-300">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle>Recent shipments</CardTitle>
+                <CardDescription>
+                  Continue document generation, verification, or reconciliation from the shipment record.
+                </CardDescription>
+              </div>
+              <Link to="/shipments" className="text-xs font-semibold text-cyan-300 hover:text-cyan-200">
                 View all
               </Link>
             </div>
-            <CardDescription>
-              Each shipment walks through checklist, documents, and verification report.
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            {shipmentsQuery.isLoading && <p className="text-sm text-slate-500">Loading...</p>}
-            {!shipmentsQuery.isLoading && shipments.length === 0 && (
-              <div className="py-8 text-center">
-                <p className="text-sm text-slate-500">No shipments yet.</p>
+            {shipmentsQuery.isLoading ? <p className="text-sm text-slate-500">Loading shipments...</p> : null}
+            {!shipmentsQuery.isLoading && shipments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 py-8 text-center">
+                <p className="text-sm text-slate-400">No shipments yet.</p>
                 <Link to="/shipments/new">
                   <Button className="mt-4" size="sm">
-                    + Create first shipment
+                    Create first shipment
                   </Button>
                 </Link>
               </div>
-            )}
-            {recentShipments.length > 0 && (
+            ) : null}
+            {recentShipments.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {recentShipments.map((shipment) => (
                   <Link
                     key={shipment.id}
                     to={`/shipments/${shipment.id}`}
-                    className="flex items-center justify-between rounded-lg border border-white/6 bg-slate-950/40 px-4 py-3 transition-colors hover:border-indigo-500/30 hover:bg-indigo-500/5"
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 transition-colors hover:border-cyan-300/30 hover:bg-cyan-300/5"
                   >
                     <div>
                       <p className="text-sm font-medium text-slate-100">
@@ -157,10 +174,10 @@ export function DashboardPage() {
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-medium ${
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                         shipment.shipment_stage === "pre_shipment"
-                          ? "text-indigo-300"
-                          : "text-emerald-300"
+                          ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
+                          : "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
                       }`}
                     >
                       {shipment.shipment_stage === "pre_shipment" ? "Pre-shipment" : "Post-shipment"}
@@ -168,11 +185,11 @@ export function DashboardPage() {
                   </Link>
                 ))}
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
-        <div className="flex w-full flex-col gap-4 lg:w-64">
+        <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Account</CardTitle>
@@ -191,98 +208,104 @@ export function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
-          <Link to="/shipments/new">
-            <Button className="w-full">+ New shipment</Button>
-          </Link>
+          <Card className="border-amber-300/20 bg-amber-300/10">
+            <CardContent className="pt-5">
+              <p className="text-sm font-semibold text-amber-100">Decision-support mode</p>
+              <p className="mt-2 text-xs leading-5 text-amber-100/75">
+                Rates, HSN suggestions, and compliance guidance must be verified by an operator,
+                CHA, CA, or customs broker before filing.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      <Card className="mt-4">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Discrepancy overview</CardTitle>
-            <span className="text-xs text-slate-500">
-              {discrepancyQuery.data?.total ?? 0} findings
-            </span>
-          </div>
-          <CardDescription>
-            Persisted deterministic findings from shipment reconciliation.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Row label="Critical" value={String(discrepancyQuery.data?.critical ?? 0)} />
-            <Row label="Warnings" value={String(discrepancyQuery.data?.warning ?? 0)} />
-            <Row label="Lock risk" value={String(discrepancyQuery.data?.lock_risk ?? 0)} />
-          </div>
-          {discrepancyQuery.data?.items.slice(0, 5).map((item) => (
-            <Link
-              className="mt-2 block rounded-lg border border-white/6 bg-slate-950/40 p-3 hover:border-indigo-500/30"
-              key={item.id}
-              to={`/shipments/${item.shipment_id}`}
-            >
-              <p className="text-sm font-medium text-slate-200">{item.message}</p>
-              <p className="mt-1 text-xs capitalize text-slate-500">
-                {item.severity} / {item.type.replaceAll("_", " ")}
-              </p>
-            </Link>
-          ))}
-          <p className="mt-3 text-xs text-slate-600">{discrepancyQuery.data?.disclaimer}</p>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-4">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Documentation Assistant</CardTitle>
-            <AiBadge />
-          </div>
-          <CardDescription>
-            Ask product and workflow questions. Legal, tax, and customs certainty still requires
-            your CA/CHA/customs broker.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                assistantStatusQuery.data?.configured
-                  ? "border-emerald-400/20 bg-emerald-400/8 text-emerald-200"
-                  : "border-amber-400/20 bg-amber-400/8 text-amber-200"
-              }`}
-            >
-              {assistantStatusQuery.data?.message ?? "Checking AI helper status..."}
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Discrepancy overview</CardTitle>
+              <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-400">
+                {discrepancyQuery.data?.total ?? 0} findings
+              </span>
             </div>
-            <textarea
-              className="min-h-24 w-full rounded-lg border border-white/8 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500/40"
-              value={assistantQuestion}
-              onChange={(event) => setAssistantQuestion(event.target.value)}
-            />
-            <Button
-              disabled={
-                assistantMutation.isPending ||
-                !assistantQuestion.trim() ||
-                assistantStatusQuery.data?.configured === false
-              }
-              onClick={() => assistantMutation.mutate()}
-            >
-              {assistantMutation.isPending ? "Asking..." : "Ask assistant"}
-            </Button>
-            {assistantMutation.data ? (
-              <div className="rounded-lg border border-white/8 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
-                {assistantMutation.data.answer}
+            <CardDescription>
+              Deterministic findings from shipment reconciliation, including lock-risk signals.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Row label="Critical" value={String(discrepancyQuery.data?.critical ?? 0)} />
+              <Row label="Warnings" value={String(discrepancyQuery.data?.warning ?? 0)} />
+              <Row label="Lock risk" value={String(discrepancyQuery.data?.lock_risk ?? 0)} />
+            </div>
+            {discrepancyQuery.data?.items.slice(0, 5).map((item) => (
+              <Link
+                className="mt-2 block rounded-2xl border border-white/10 bg-slate-950/50 p-3 transition hover:border-cyan-300/30"
+                key={item.id}
+                to={`/shipments/${item.shipment_id}`}
+              >
+                <p className="text-sm font-medium text-slate-200">{item.message}</p>
+                <p className="mt-1 text-xs capitalize text-slate-500">
+                  {item.severity} / {item.type.replaceAll("_", " ")}
+                </p>
+              </Link>
+            ))}
+            <p className="mt-3 text-xs leading-5 text-slate-600">{discrepancyQuery.data?.disclaimer}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Documentation Assistant</CardTitle>
+              <AiBadge />
+            </div>
+            <CardDescription>
+              Ask workflow questions. Legal, tax, and customs certainty still requires your
+              CA, CHA, or customs broker.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div
+                className={`rounded-xl border px-3 py-2 text-sm ${
+                  assistantStatusQuery.data?.configured
+                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                }`}
+              >
+                {assistantStatusQuery.data?.message ?? "Checking AI helper status..."}
               </div>
-            ) : null}
-            {assistantMutation.isError ? (
-              <p className="text-sm text-rose-300">
-                {assistantMutation.error instanceof Error
-                  ? assistantMutation.error.message
-                  : "Assistant failed to answer."}
-              </p>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
+              <textarea
+                className="min-h-24 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3.5 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/50"
+                value={assistantQuestion}
+                onChange={(event) => setAssistantQuestion(event.target.value)}
+              />
+              <Button
+                disabled={
+                  assistantMutation.isPending ||
+                  !assistantQuestion.trim() ||
+                  assistantStatusQuery.data?.configured === false
+                }
+                onClick={() => assistantMutation.mutate()}
+              >
+                {assistantMutation.isPending ? "Asking..." : "Ask assistant"}
+              </Button>
+              {assistantMutation.data ? (
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                  {assistantMutation.data.answer}
+                </div>
+              ) : null}
+              {assistantMutation.isError ? (
+                <p className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+                  {userMessageForError(assistantMutation.error)}
+                </p>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </DashboardShell>
   );
 }
@@ -297,18 +320,18 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-slate-900/70 px-4 py-4 backdrop-blur">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-bold ${accent}`}>{value}</p>
+    <div className="rounded-2xl border border-white/10 bg-slate-900/75 px-4 py-4 shadow-xl shadow-slate-950/10 backdrop-blur">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold tracking-[-0.02em] ${accent}`}>{value}</p>
     </div>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
       <span className="text-slate-500">{label}</span>
-      <span className="font-medium capitalize text-slate-200">{value}</span>
+      <span className="truncate font-medium capitalize text-slate-200">{value}</span>
     </div>
   );
 }

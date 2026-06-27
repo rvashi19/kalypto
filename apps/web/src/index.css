@@ -5,9 +5,15 @@
 :root {
   --background: 222 47% 4%;
   --foreground: 210 40% 98%;
-  --border: 215 25% 12%;
-  --ring: 239 84% 67%;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --border: 215 25% 16%;
+  --ring: 187 92% 69%;
+  font-family:
+    "Aptos",
+    "IBM Plex Sans",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 html {
@@ -18,8 +24,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #020617;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 30rem),
+    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.07), transparent 34rem),
+    #020617;
   color: hsl(var(--foreground));
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -28,4 +40,9 @@ body {
 
 * {
   border-color: hsl(var(--border));
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.24);
+  color: #ecfeff;
 }

@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { inputCls, selectCls } from "../../lib/ui";
 
 const DEFAULT_FORM: ComplianceCheckerRequest = {
   product: "Mango fruit beverage",
@@ -97,7 +98,7 @@ export function CompliancePage() {
       onLogout={() => logoutMutation.mutate()}
     >
       <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200">
           Source-backed assistant
         </p>
         <h2 className="mt-1 text-xl font-semibold text-slate-50">
@@ -145,7 +146,7 @@ export function CompliancePage() {
             <label className="block space-y-2 text-sm">
               <span className="text-slate-300">Extra details</span>
               <textarea
-                className="min-h-28 w-full rounded-lg border border-white/8 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none focus:border-indigo-500/40"
+                className="min-h-28 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-3 text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/50"
                 value={detailsToText(form.details)}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -166,10 +167,8 @@ export function CompliancePage() {
             </Button>
 
             {mutation.isError ? (
-              <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : "The compliance checker is unavailable right now."}
+              <div className="rounded-xl border border-rose-400/25 bg-rose-400/10 p-3 text-sm text-rose-100">
+                {userMessageForError(mutation.error)}
               </div>
             ) : null}
           </CardContent>
@@ -389,7 +388,7 @@ function ComplianceResult({ result }: { result: ComplianceCheckerResponse }) {
             <p className="text-sm font-medium text-slate-200">Sources</p>
             {result.sections.source_references.map((source) => (
               <a
-                className="block rounded-lg border border-white/8 bg-slate-950/50 p-3 text-sm text-indigo-200 underline-offset-4 hover:underline"
+                className="block rounded-xl border border-white/10 bg-slate-950/50 p-3 text-sm text-cyan-200 underline-offset-4 hover:underline"
                 href={source.source_url}
                 key={`${source.source_name}-${source.source_url}`}
                 rel="noreferrer"
@@ -456,7 +455,7 @@ function Field({
     <label className="block space-y-2 text-sm">
       <span className="text-slate-300">{label}</span>
       <input
-        className="w-full rounded-lg border border-white/8 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none focus:border-indigo-500/40"
+        className={inputCls}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -479,7 +478,7 @@ function SelectField({
     <label className="block space-y-2 text-sm">
       <span className="text-slate-300">{label}</span>
       <select
-        className="w-full rounded-lg border border-white/8 bg-slate-950/70 px-3 py-2 text-slate-100 outline-none focus:border-indigo-500/40"
+        className={selectCls}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
