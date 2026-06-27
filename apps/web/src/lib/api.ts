@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
+  ComplianceCoverageResponse,
   ComplianceOptionsResponse,
   ComplianceScrapeRunRequest,
   ComplianceScrapeRunResponse,
@@ -15,6 +16,8 @@ import type {
   DocumentChecklist,
   DocumentResponse,
   DocumentType,
+  ExportQuoteRequest,
+  ExportQuoteResponse,
   HsnRateLookupResponse,
   ShipmentCreate,
   ShipmentImportResponse,
@@ -160,6 +163,9 @@ export const api = {
       token
     ),
 
+  complianceCoverage: (token: string) =>
+    request<ComplianceCoverageResponse>("/compliance/coverage", {}, token),
+
   reviewSourceChange: (changeId: string, payload: SourceChangeReviewRequest, token: string) =>
     request<ComplianceSourceChangeResponse>(
       `/compliance/scrape/changes/${changeId}/review`,
@@ -279,6 +285,13 @@ export const api = {
     request<HsnRateLookupResponse>(
       `/shipments/hsn-rates?hsn=${encodeURIComponent(hsn)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
       {},
+      token
+    ),
+
+  calculateExportQuote: (payload: ExportQuoteRequest, token: string) =>
+    request<ExportQuoteResponse>(
+      "/tools/export-quote",
+      { method: "POST", body: JSON.stringify(payload) },
       token
     ),
 };

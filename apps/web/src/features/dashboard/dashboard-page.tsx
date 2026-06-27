@@ -71,6 +71,24 @@ export function DashboardPage() {
         />
       </div>
 
+      <Card className="mb-6 overflow-hidden border-cyan-300/20 bg-slate-950/80">
+        <div className="h-1 bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-300" />
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>KALYPTO tool workspace</CardTitle>
+              <CardDescription>
+                HSN finder, compliance checker, export quote calculator, document builder,
+                verifier, claims tracker, and alerts now live in one command center.
+              </CardDescription>
+            </div>
+            <Link to="/tools">
+              <Button>Open tools</Button>
+            </Link>
+          </div>
+        </CardHeader>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
         {/* Recent shipments */}
         <Card>

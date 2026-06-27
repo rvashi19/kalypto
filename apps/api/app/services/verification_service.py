@@ -49,6 +49,8 @@ Mandatory legal-safety override:
 - If operator-verified rate evidence is not explicitly included in the user message, set every
   estimated_amount and rate_percent to null and describe the scheme as requiring verification.
 - Never imply that KALYPTO files or submits a claim. A human exporter/CA/CHA must file.
+- Treat the "Operator-verified rate evidence" block in the user message as the only permitted
+  source for incentive rates and amounts.
 
 Given a shipment profile and uploaded documents, return a JSON object with exactly this structure:
 {
@@ -93,10 +95,19 @@ Return ONLY the JSON object. No markdown, no extra text."""
 def run_verification(
     shipment: ExportShipment,
     documents: list[ShipmentDocument],
+    rate_evidence: list[dict[str, object]] | None = None,
 ) -> VerificationReport:
     doc_summary = "\n".join(
         f"- {doc.document_type} ({doc.file_name}): {doc.extracted_fields or 'No fields extracted yet'}"
         for doc in documents
+    )
+    rate_summary = "\n".join(
+        (
+            f"- {item.get('scheme')}: {item.get('rate_percent')}% "
+            f"source={item.get('source')} version={item.get('version_stamp')} "
+            f"confidence={item.get('confidence')}"
+        )
+        for item in (rate_evidence or [])
     )
 
     user_msg = (
@@ -111,6 +122,8 @@ def run_verification(
         f"  Shipment stage: {shipment.shipment_stage}\n"
         f"  FOB value: {shipment.fob_value} {shipment.invoice_currency}\n"
         f"  Exporter: {shipment.exporter_name}\n\n"
+        "Operator-verified rate evidence:\n"
+        f"{rate_summary if rate_summary else 'None provided. Do not estimate incentive rates or amounts.'}\n\n"
         f"Uploaded documents:\n{doc_summary if documents else 'None uploaded yet'}"
     )
 

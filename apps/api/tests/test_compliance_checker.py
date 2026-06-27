@@ -275,3 +275,41 @@ def test_postgres_due_sources_uses_latest_snapshot_freshness(session) -> None:
     due = store.due_sources(limit=10)
 
     assert due == []
+
+
+def test_postgres_coverage_cells_report_verified_partial_and_empty(session) -> None:
+    organization, _ = _tenant(session)
+    store = PostgresComplianceKnowledgeStore(session=session, tenant_id=organization.id)
+    store.ingest(
+        [
+            _requirement(requirement_type="import_document"),
+            _requirement(
+                requirement_type="labeling",
+                requirement_text="Retail labels require importer-side confirmation.",
+                source_url="https://inspection.canada.ca/en/food-labels/labelling",
+            ),
+            _requirement(
+                requirement_type="inspection",
+                requirement_text="Food shipments may be subject to inspection controls.",
+                source_url="https://inspection.canada.ca/en/importing-food-plants-animals",
+            ),
+            _requirement(
+                country="USA",
+                category="textiles",
+                hsn_code="6109",
+                product_keywords=["cotton", "shirt"],
+                requirement_type="labeling",
+                requirement_text="Textile labels require fiber content and origin checks.",
+                source_url="https://www.ftc.gov/business-guidance/industry/clothing-and-textiles",
+                source_name="FTC textile guidance",
+            ),
+        ]
+    )
+    session.commit()
+
+    cells = store.coverage_cells(countries=["Canada", "USA"], categories=["beverages", "textiles"])
+    status_by_key = {(cell.country, cell.category): cell.status for cell in cells}
+
+    assert status_by_key[("Canada", "beverages")] == "verified"
+    assert status_by_key[("USA", "textiles")] == "partial"
+    assert status_by_key[("USA", "beverages")] == "empty"

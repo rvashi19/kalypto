@@ -165,6 +165,28 @@ export interface ComplianceSourceChangeResponse {
   created_at: string;
 }
 
+export interface ComplianceCoverageCell {
+  country: string;
+  category: string;
+  total_records: number;
+  approved_fresh_records: number;
+  pending_or_draft_records: number;
+  stale_records: number;
+  official_sources: number;
+  latest_checked_at: string | null;
+  status: "verified" | "partial" | "needs_review" | "empty";
+}
+
+export interface ComplianceCoverageResponse {
+  refresh_interval_days: number;
+  supported_countries: string[];
+  supported_categories: string[];
+  cells: ComplianceCoverageCell[];
+  due_sources_count: number;
+  source_changes_needing_review: number;
+  disclaimer: string;
+}
+
 export interface SourceChangeReviewRequest {
   status: "needs_review" | "reviewed" | "ignored";
   notes?: string | null;
@@ -342,5 +364,58 @@ export interface ReconciliationResponse {
   shipment_id: string;
   discrepancies: DiscrepancyDashboardResponse["items"];
   potential_amount: number;
+  disclaimer: string;
+}
+
+export interface ExportQuoteRequest {
+  product_name: string;
+  hsn_code: string;
+  destination_country: string;
+  incoterm: string;
+  quote_currency: string;
+  fob_value: number;
+  freight_value?: number;
+  insurance_value?: number;
+  destination_charges_value?: number;
+  domestic_charges_inr?: number;
+  destination_duty_percent?: number | null;
+  exchange_rate_to_inr?: number | null;
+}
+
+export interface ExportQuoteLineItem {
+  label: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+}
+
+export interface ExportQuoteIncentiveEstimate {
+  scheme: string;
+  rate_percent: number;
+  estimated_amount_inr: number;
+  source: string;
+  version_stamp: string;
+  confidence: string | null;
+}
+
+export interface ExportQuoteResponse {
+  product_name: string;
+  hsn_code: string;
+  destination_country: string;
+  incoterm: string;
+  quote_currency: string;
+  fob_value: number;
+  cif_value: number;
+  commercial_quote_total: number;
+  estimated_destination_duty: number | null;
+  buyer_landed_estimate: number;
+  exchange_rate_to_inr: number | null;
+  fob_value_inr: number | null;
+  cif_value_inr: number | null;
+  exporter_net_realization_inr: number | null;
+  incentive_total_inr: number;
+  incentive_estimates: ExportQuoteIncentiveEstimate[];
+  line_items: ExportQuoteLineItem[];
+  warnings: string[];
   disclaimer: string;
 }

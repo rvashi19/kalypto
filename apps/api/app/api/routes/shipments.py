@@ -640,8 +640,28 @@ def verify_shipment(
         actor_user_id=current_user.user.id,
     )
     documents = doc_repo.list_for_shipment(shipment_id)
+    rate_rows = session.scalars(
+        select(RateTable)
+        .where(RateTable.tenant_id == current_user.organization.id)
+        .order_by(RateTable.effective_date.desc())
+    ).all()
+    latest_by_scheme: dict[str, RateTable] = {}
+    for row in sorted(rate_rows, key=lambda item: len(item.hsn), reverse=True):
+        if shipment.hsn_code.startswith(row.hsn):
+            latest_by_scheme.setdefault(row.scheme.strip().lower(), row)
+    rate_evidence = [
+        {
+            "scheme": row.scheme,
+            "rate_percent": float(row.rate),
+            "source": row.source,
+            "effective_date": row.effective_date.isoformat(),
+            "version_stamp": row.version_stamp,
+            "confidence": row.confidence,
+        }
+        for row in latest_by_scheme.values()
+    ]
 
     try:
-        return run_verification(shipment, documents)
+        return run_verification(shipment, documents, rate_evidence=rate_evidence)
     except GroqClientError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e

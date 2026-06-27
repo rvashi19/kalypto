@@ -86,6 +86,33 @@ services:
       api:
         condition: service_started
 
+  compliance-refresh:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    profiles:
+      - jobs
+    working_dir: /workspace/apps/api
+    command: python -m app.scripts.refresh_compliance_sources
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MONGODB_URL: mongodb://mongo:27017
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-kalypto}
+      COMPLIANCE_STORE_BACKEND: ${COMPLIANCE_STORE_BACKEND:-postgres}
+      COMPLIANCE_REFRESH_INTERVAL_DAYS: ${COMPLIANCE_REFRESH_INTERVAL_DAYS:-3}
+      COMPLIANCE_SCRAPER_PROVIDER: ${COMPLIANCE_SCRAPER_PROVIDER:-http}
+      COMPLIANCE_ALLOW_PRIVATE_SCRAPE: ${COMPLIANCE_ALLOW_PRIVATE_SCRAPE:-false}
+      PYTHONPATH: /workspace/apps/api
+    volumes:
+      - .:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   mongo_data:

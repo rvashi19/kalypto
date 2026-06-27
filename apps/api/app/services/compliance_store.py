@@ -87,6 +87,19 @@ class StoredSourceChange:
     created_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class ComplianceCoverageCellResult:
+    country: str
+    category: str
+    total_records: int
+    approved_fresh_records: int
+    pending_or_draft_records: int
+    stale_records: int
+    official_sources: int
+    latest_checked_at: datetime | None
+    status: str
+
+
 class ComplianceKnowledgeStore(Protocol):
     def ingest(self, records: list[ComplianceRequirementInput]) -> tuple[int, int]: ...
 
@@ -123,6 +136,10 @@ class ComplianceKnowledgeStore(Protocol):
     def review_source_change(
         self, *, change_id: str, status: str, reviewed_by: str, notes: str | None
     ) -> StoredSourceChange: ...
+
+    def coverage_cells(
+        self, *, countries: list[str], categories: list[str]
+    ) -> list[ComplianceCoverageCellResult]: ...
 
 
 class PostgresComplianceKnowledgeStore:
@@ -309,6 +326,79 @@ class PostgresComplianceKnowledgeStore:
         self.session.add(change)
         self.session.flush()
         return self._source_change_from_row(change)
+
+    def coverage_cells(
+        self, *, countries: list[str], categories: list[str]
+    ) -> list[ComplianceCoverageCellResult]:
+        rows = self.session.execute(
+            select(ComplianceRequirement, ComplianceCountry, ProductCategory)
+            .join(ComplianceCountry, ComplianceRequirement.country_id == ComplianceCountry.id)
+            .join(ProductCategory, ComplianceRequirement.category_id == ProductCategory.id)
+            .where(ComplianceRequirement.tenant_id == self.tenant_id),
+        ).all()
+        grouped: dict[tuple[str, str], list[ComplianceRequirement]] = {
+            (country, category): [] for country in countries for category in categories
+        }
+        for requirement, country, category in rows:
+            key = (country.name, category.name)
+            grouped.setdefault(key, []).append(requirement)
+
+        cells: list[ComplianceCoverageCellResult] = []
+        for country in countries:
+            for category in categories:
+                records = grouped.get((country, category), [])
+                approved_fresh = [
+                    record
+                    for record in records
+                    if record.status == "active"
+                    and record.review_status == "approved"
+                    and not is_stale(expires_at=record.expires_at)
+                ]
+                pending = [
+                    record
+                    for record in records
+                    if record.status != "active" or record.review_status != "approved"
+                ]
+                stale = [
+                    record
+                    for record in records
+                    if record.status == "active"
+                    and record.review_status == "approved"
+                    and is_stale(expires_at=record.expires_at)
+                ]
+                official_sources = {
+                    record.source_url
+                    for record in approved_fresh
+                    if record.source_authority_level == "official"
+                }
+                checked_values = [
+                    value
+                    for record in records
+                    for value in (record.last_checked_at, record.last_scraped_at)
+                    if value is not None
+                ]
+                if pending or stale:
+                    status = "needs_review"
+                elif len(approved_fresh) >= 3 and official_sources:
+                    status = "verified"
+                elif approved_fresh:
+                    status = "partial"
+                else:
+                    status = "empty"
+                cells.append(
+                    ComplianceCoverageCellResult(
+                        country=country,
+                        category=category,
+                        total_records=len(records),
+                        approved_fresh_records=len(approved_fresh),
+                        pending_or_draft_records=len(pending),
+                        stale_records=len(stale),
+                        official_sources=len(official_sources),
+                        latest_checked_at=max(checked_values) if checked_values else None,
+                        status=status,
+                    )
+                )
+        return cells
 
     @staticmethod
     def _source_change_from_row(row: ComplianceSourceChange) -> StoredSourceChange:
@@ -604,6 +694,75 @@ class MongoComplianceKnowledgeStore:
             upsert=False,
         )
         return self._document_to_source_change(updated)
+
+    def coverage_cells(
+        self, *, countries: list[str], categories: list[str]
+    ) -> list[ComplianceCoverageCellResult]:
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {
+            (country, category): [] for country in countries for category in categories
+        }
+        documents = self.requirements.find({"tenant_id": str(self.tenant_id)})
+        for document in documents:
+            key = (str(document.get("country", "")), str(document.get("category", "")))
+            grouped.setdefault(key, []).append(document)
+
+        cells: list[ComplianceCoverageCellResult] = []
+        for country in countries:
+            for category in categories:
+                records = grouped.get((country, category), [])
+                approved_fresh = [
+                    record
+                    for record in records
+                    if record.get("status") == "active"
+                    and record.get("review_status") == "approved"
+                    and not is_stale(expires_at=record.get("expires_at"))
+                ]
+                pending = [
+                    record
+                    for record in records
+                    if record.get("status") != "active"
+                    or record.get("review_status") != "approved"
+                ]
+                stale = [
+                    record
+                    for record in records
+                    if record.get("status") == "active"
+                    and record.get("review_status") == "approved"
+                    and is_stale(expires_at=record.get("expires_at"))
+                ]
+                official_sources = {
+                    str(record.get("source_url"))
+                    for record in approved_fresh
+                    if record.get("source_authority_level") == "official"
+                }
+                checked_values = [
+                    value
+                    for record in records
+                    for value in (record.get("last_checked_at"), record.get("last_scraped_at"))
+                    if isinstance(value, datetime)
+                ]
+                if pending or stale:
+                    status = "needs_review"
+                elif len(approved_fresh) >= 3 and official_sources:
+                    status = "verified"
+                elif approved_fresh:
+                    status = "partial"
+                else:
+                    status = "empty"
+                cells.append(
+                    ComplianceCoverageCellResult(
+                        country=country,
+                        category=category,
+                        total_records=len(records),
+                        approved_fresh_records=len(approved_fresh),
+                        pending_or_draft_records=len(pending),
+                        stale_records=len(stale),
+                        official_sources=len(official_sources),
+                        latest_checked_at=max(checked_values) if checked_values else None,
+                        status=status,
+                    )
+                )
+        return cells
 
     def _record_to_document(
         self, record: ComplianceRequirementInput, *, now: datetime

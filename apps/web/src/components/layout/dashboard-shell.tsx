@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@repo/ui";
 
 const NAV = [
+  { label: "Tools", href: "/tools" },
   { label: "Shipments", href: "/shipments" },
   { label: "Compliance", href: "/compliance" },
   { label: "Dashboard", href: "/dashboard" },
@@ -24,7 +25,7 @@ export function DashboardShell({
             {/* Brand + desktop nav */}
             <div className="flex items-center gap-5">
               <Link
-                to="/shipments"
+                to="/tools"
                 className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 <span className="h-2 w-2 rounded-full bg-indigo-400" aria-hidden="true" />

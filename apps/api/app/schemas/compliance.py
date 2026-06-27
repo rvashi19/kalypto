@@ -211,6 +211,28 @@ class ComplianceSourceChangeResponse(BaseModel):
     created_at: datetime
 
 
+class ComplianceCoverageCell(BaseModel):
+    country: str
+    category: str
+    total_records: int
+    approved_fresh_records: int
+    pending_or_draft_records: int
+    stale_records: int
+    official_sources: int
+    latest_checked_at: datetime | None
+    status: Literal["verified", "partial", "needs_review", "empty"]
+
+
+class ComplianceCoverageResponse(BaseModel):
+    refresh_interval_days: int
+    supported_countries: list[str]
+    supported_categories: list[str]
+    cells: list[ComplianceCoverageCell]
+    due_sources_count: int
+    source_changes_needing_review: int
+    disclaimer: str
+
+
 class SourceChangeReviewRequest(BaseModel):
     status: SourceChangeStatus
     notes: str | None = Field(default=None, max_length=2000)

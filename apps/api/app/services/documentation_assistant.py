@@ -12,7 +12,7 @@ DOCUMENTATION_CONTEXT = dedent(
 
     KALYPTO is a multi-tenant SaaS platform for Indian exporters.
 
-    Phase 0 features currently available:
+    Currently available product areas:
     - organization signup
     - owner login/logout with JWT authentication
     - protected dashboard shell
@@ -21,14 +21,25 @@ DOCUMENTATION_CONTEXT = dedent(
     - demo seed account support
     - docker-compose local development
     - Render deployment for api, web, postgres, and redis
+    - shipment profile CRUD and CSV/XLSX shipment import
+    - upload/list/download shipment documents
+    - commercial invoice, proforma invoice, and packing list PDF generation
+    - AI-assisted document field extraction with deterministic text fallbacks
+    - AI document verification with tenant rate evidence only
+    - deterministic shipment reconciliation and discrepancy persistence
+    - money-at-risk discrepancy dashboard
+    - source-backed Country Compliance Requirement Checker
+    - compliance source scraping snapshots, change detection, and review queue
+    - compliance coverage matrix showing verified, partial, needs-review, and empty areas
+    - HSN and incentive rate lookup from operator-seeded tenant rate tables
+    - export quote / landed-cost calculator using user-entered duty assumptions
 
-    Phase 0 does not yet include:
-    - shipment or GST CSV uploads
-    - reconciliation engine workflows in the UI
-    - incentive discrepancy dashboards
-    - PDF document generation flows
+    Current limitations:
+    - compliance coverage is limited to approved records loaded by operators
+    - the compliance database is not a complete global legal database
     - direct government portal integrations
     - automatic filing to ICEGATE, DGFT, or GST systems
+    - authoritative HSN classification or authoritative incentive rate generation
 
     Legal and domain guardrails:
     - The platform must never auto-file anything to a government portal.
@@ -40,6 +51,7 @@ DOCUMENTATION_CONTEXT = dedent(
     - The frontend calls the backend API on /api/v1.
     - The health check endpoint is /api/v1/health.
     - The AI documentation helper requires XAI_API_KEY to be configured on the API service.
+    - AI document verification may require GROQ_API_KEY for full model-based reports.
     - The AI helper is for product guidance and onboarding, not legal advice.
     """
 ).strip()

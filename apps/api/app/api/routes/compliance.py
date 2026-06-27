@@ -11,6 +11,8 @@ from app.models import ComplianceScrapeRun, MembershipRole
 from app.schemas.compliance import (
     ComplianceCheckerRequest,
     ComplianceCheckerResponse,
+    ComplianceCoverageCell,
+    ComplianceCoverageResponse,
     ComplianceOptionsResponse,
     ComplianceScrapeRunRequest,
     ComplianceScrapeRunResponse,
@@ -214,6 +216,48 @@ def list_source_changes(
             limit=max(1, min(limit, 100)),
         )
     ]
+
+
+@router.get("/coverage", response_model=ComplianceCoverageResponse)
+def get_compliance_coverage(
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceCoverageResponse:
+    require_editor(current_user)
+    settings = get_settings()
+    store = _store_for_request(session, current_user)
+    countries = list(SUPPORTED_COUNTRIES)
+    categories = list(SUPPORTED_CATEGORIES)
+    cells = [
+        ComplianceCoverageCell(
+            country=cell.country,
+            category=cell.category,
+            total_records=cell.total_records,
+            approved_fresh_records=cell.approved_fresh_records,
+            pending_or_draft_records=cell.pending_or_draft_records,
+            stale_records=cell.stale_records,
+            official_sources=cell.official_sources,
+            latest_checked_at=cell.latest_checked_at,
+            status=cell.status,  # type: ignore[arg-type]
+        )
+        for cell in store.coverage_cells(countries=countries, categories=categories)
+    ]
+    due_sources_count = len(store.due_sources(limit=100))
+    source_changes_needing_review = len(
+        store.list_source_changes(status="needs_review", limit=100)
+    )
+    return ComplianceCoverageResponse(
+        refresh_interval_days=settings.compliance_refresh_interval_days,
+        supported_countries=countries,
+        supported_categories=categories,
+        cells=cells,
+        due_sources_count=due_sources_count,
+        source_changes_needing_review=source_changes_needing_review,
+        disclaimer=(
+            "Coverage status reports data governance health only. It does not certify that "
+            "a country/category database is complete or legally authoritative."
+        ),
+    )
 
 
 @router.post(

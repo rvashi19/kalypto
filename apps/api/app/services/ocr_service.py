@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +115,132 @@ def _extract_text_from_image(file_path: str) -> str:
         return ""
 
 
+def _extract_text_from_excel(file_path: str) -> str:
+    try:
+        from openpyxl import load_workbook  # type: ignore[import-untyped] # noqa: PLC0415
+    except ImportError:
+        return ""
+
+    workbook = load_workbook(file_path, read_only=True, data_only=True)
+    text_parts: list[str] = []
+    for worksheet in workbook.worksheets[:5]:
+        text_parts.append(f"Sheet: {worksheet.title}")
+        for row in worksheet.iter_rows(max_row=200, values_only=True):
+            values = [str(value).strip() for value in row if value not in (None, "")]
+            if values:
+                if len(values) == 2:
+                    text_parts.append(f"{values[0]}: {values[1]}")
+                else:
+                    text_parts.append(" | ".join(values))
+    return "\n".join(text_parts)
+
+
+def _first_match(patterns: list[str], text: str) -> str | None:
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+        if match:
+            return " ".join(match.group(1).strip().split())
+    return None
+
+
+def _extract_fields_deterministic(raw_text: str) -> dict[str, Any]:
+    compact_text = re.sub(r"[ \t]+", " ", raw_text)
+    fields: dict[str, Any] = {}
+    pattern_map = {
+        "invoice_number": [
+            r"(?:invoice\s*(?:no\.?|number|#)\s*[:\-]?\s*)([A-Z0-9\-\/]{3,40})",
+            r"(?:inv\s*(?:no\.?|#)\s*[:\-]?\s*)([A-Z0-9\-\/]{3,40})",
+        ],
+        "document_number": [
+            r"(?:document\s*(?:no\.?|number|#)\s*[:\-]?\s*)([A-Z0-9\-\/]{3,40})",
+        ],
+        "document_date": [
+            r"(?:date\s*[:\-]?\s*)(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})",
+            r"(?:date\s*[:\-]?\s*)(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})",
+        ],
+        "buyer_name": [
+            r"(?:buyer|consignee)\s*(?:name)?\s*[:\-]?\s*([A-Z0-9 &.,'\-]{3,120})",
+        ],
+        "seller_name": [
+            r"(?:seller|exporter)\s*(?:name)?\s*[:\-]?\s*([A-Z0-9 &.,'\-]{3,120})",
+        ],
+        "hsn_code": [
+            r"(?:hsn|hs code|itc\s*hs)\s*(?:code)?\s*[:\-]?\s*(\d{4,10})",
+        ],
+        "quantity": [
+            r"(?:quantity|qty)\s*[:\-]?\s*([0-9,.]+)",
+        ],
+        "unit_of_measure": [
+            r"(?:uom|unit(?:\s*of\s*measure)?)\s*[:\-]?\s*([A-Z]{2,20})",
+        ],
+        "net_weight_kg": [
+            r"(?:net\s*weight|net\s*wt)\s*[:\-]?\s*([0-9,.]+)\s*(?:kg|kgs|kilograms)?",
+        ],
+        "gross_weight_kg": [
+            r"(?:gross\s*weight|gross\s*wt)\s*[:\-]?\s*([0-9,.]+)\s*(?:kg|kgs|kilograms)?",
+        ],
+        "fob_value": [
+            r"(?:fob\s*(?:value|amount)?)\s*[:\-]?\s*(?:INR|USD|EUR|GBP|AED)?\s*([0-9,.]+)",
+        ],
+        "cif_value": [
+            r"(?:cif\s*(?:value|amount)?)\s*[:\-]?\s*(?:INR|USD|EUR|GBP|AED)?\s*([0-9,.]+)",
+        ],
+        "currency": [
+            r"\b(INR|USD|EUR|GBP|AED|SGD)\b",
+        ],
+        "incoterm": [
+            r"\b(EXW|FOB|CFR|CIF|DDP|DAP|FCA)\b",
+        ],
+        "payment_term": [
+            r"(?:payment\s*terms?|terms\s*of\s*payment)\s*[:\-]?\s*([A-Z0-9 ,.\/\-]{3,120})",
+        ],
+        "port_of_loading": [
+            r"(?:port\s*of\s*loading|pol)\s*[:\-]?\s*([A-Z0-9 ,.\/\-]{3,120})",
+        ],
+        "port_of_discharge": [
+            r"(?:port\s*of\s*discharge|pod)\s*[:\-]?\s*([A-Z0-9 ,.\/\-]{3,120})",
+        ],
+        "bl_awb_number": [
+            r"(?:bl|b\/l|awb|airway\s*bill)\s*(?:no\.?|number|#)?\s*[:\-]?\s*([A-Z0-9\-\/]{3,40})",
+        ],
+        "shipping_bill_no": [
+            r"(?:shipping\s*bill)\s*(?:no\.?|number|#)?\s*[:\-]?\s*([A-Z0-9\-\/]{3,40})",
+        ],
+        "igst_amount": [
+            r"(?:igst)\s*(?:amount|value)?\s*[:\-]?\s*(?:INR)?\s*([0-9,.]+)",
+        ],
+        "gstin": [
+            r"\b([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b",
+        ],
+        "iec_code": [
+            r"(?:iec)\s*(?:code|no\.?|number)?\s*[:\-]?\s*([A-Z0-9]{10})",
+        ],
+        "ad_code": [
+            r"(?:ad\s*code)\s*[:\-]?\s*([0-9]{7,14})",
+        ],
+    }
+    for field, patterns in pattern_map.items():
+        value = _first_match(patterns, compact_text)
+        if value:
+            fields[field] = value
+
+    product_match = _first_match(
+        [
+            (
+                r"(?:description\s*of\s*goods|product\s*description|goods)"
+                r"\s*[:\-]?\s*([A-Z0-9 ,.\/'\-]{3,160})"
+            ),
+        ],
+        compact_text,
+    )
+    if product_match:
+        fields["product_description"] = product_match
+
+    if fields:
+        fields["_extraction_method"] = "deterministic_text"
+    return fields
+
+
 def extract_fields(file_path: str, mime_type: str | None) -> dict[str, Any]:
     """Extract structured fields from a document file. Returns a dict of fields."""
     raw_text = ""
@@ -126,19 +253,26 @@ def extract_fields(file_path: str, mime_type: str | None) -> dict[str, Any]:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/vnd.ms-excel",
     }:
-        return {"_note": "Excel extraction not yet supported"}
+        raw_text = _extract_text_from_excel(file_path)
 
     if not raw_text or len(raw_text.strip()) < 20:
         return {"_note": "Could not extract readable text from this document"}
 
     truncated = raw_text[:8000]
+    deterministic_fields = _extract_fields_deterministic(truncated)
 
     try:
         fields = call_groq(
             system_prompt=_FIELD_EXTRACT_SYSTEM,
             user_message=f"Document text:\n{truncated}",
         )
-        return {k: v for k, v in fields.items() if v is not None}
+        ai_fields = {k: v for k, v in fields.items() if v is not None}
+        return {**deterministic_fields, **ai_fields, "_extraction_method": "ai_plus_text"}
     except GroqClientError as e:
         logger.warning("Field extraction Groq call failed: %s", e)
+        if deterministic_fields:
+            deterministic_fields["_note"] = (
+                "AI extraction unavailable; deterministic text fields used."
+            )
+            return deterministic_fields
         return {"_note": f"AI extraction failed: {e}"}

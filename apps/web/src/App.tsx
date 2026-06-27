@@ -7,6 +7,7 @@ import { CompliancePage } from "./features/compliance/compliance-page";
 import { ShipmentsPage } from "./features/shipments/shipments-page";
 import { NewShipmentPage } from "./features/shipments/new-shipment-page";
 import { ShipmentDetailPage } from "./features/shipments/shipment-detail-page";
+import { ToolsPage } from "./features/tools/tools-page";
 
 export default function App() {
   return (
@@ -14,12 +15,13 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />
       <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
       <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
       <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />
       <Route path="/shipments/:id" element={<ProtectedRoute><ShipmentDetailPage /></ProtectedRoute>} />
-      <Route path="/" element={<Navigate to="/shipments" replace />} />
-      <Route path="*" element={<Navigate to="/shipments" replace />} />
+      <Route path="/" element={<Navigate to="/tools" replace />} />
+      <Route path="*" element={<Navigate to="/tools" replace />} />
     </Routes>
   );
 }
