@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
 
@@ -12,6 +13,12 @@ export function LoginPage() {
   const { setSession } = useAuth();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   const reason = (location.state as { reason?: string } | null)?.reason;
+
+  useEffect(() => {
+    if (reason === "session-expired") {
+      navigate("/login", { replace: true, state: { from } });
+    }
+  }, [from, navigate, reason]);
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) =>
@@ -50,11 +57,25 @@ export function LoginPage() {
           >
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="owner@exportco.in" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="owner@exportco.in"
+                defaultValue="demo@example.com"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" placeholder="Your password" required />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Your password"
+                defaultValue="DemoPassword123!"
+                required
+              />
             </div>
 
             {sessionMessage ? (
