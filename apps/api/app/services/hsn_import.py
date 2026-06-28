@@ -161,10 +161,7 @@ def import_hsn_snapshot(
             continue
 
         existing = session.scalars(
-            select(HsnCode).where(
-                HsnCode.normalized_code == normalized,
-                HsnCode.source_version == source_version,
-            )
+            select(HsnCode).where(HsnCode.normalized_code == normalized)
         ).first()
 
         values = {

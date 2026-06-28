@@ -191,6 +191,29 @@ def test_warning_flags_present_for_vague_query(session):
     assert "textile composition ambiguity" in matches[0].warning_flags
 
 
+def test_synonym_maps_brand_term_to_official_description(session):
+    import json as _json
+
+    payload = _json.dumps(
+        {"records": [{"code": "85171300", "description": "Smartphones / telephone sets"}]}
+    ).encode("utf-8")
+    from app.services.hsn_import import import_hsn_snapshot
+
+    import_hsn_snapshot(
+        session=session,
+        raw_bytes=payload,
+        import_type="json",
+        source_name="seed",
+        source_url=None,
+        source_document_title=None,
+        source_document_date=None,
+        source_version="v",
+    )
+    matches = search_hsn(session=session, query="iphone")
+    assert matches
+    assert matches[0].code.normalized_code == "85171300"
+
+
 def test_search_does_not_depend_on_rate_table(session):
     # RateTable is empty in a fresh DB; search must still return HSN results.
     _seed(session)

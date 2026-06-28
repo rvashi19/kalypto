@@ -17,11 +17,13 @@ prefer the OGD API or a published snapshot file.
 
 from __future__ import annotations
 
+import html
 import json
+import re
 import time
 from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from sqlalchemy.orm import Session
@@ -34,6 +36,10 @@ from app.services.rate_limit import rate_limiter
 MAX_FILE_BYTES = 25_000_000
 OGD_PAGE_SIZE = 1000
 OGD_BASE = "https://api.data.gov.in/resource"
+
+EXIMGURU_BASE = "https://www.eximguru.com/hs-codes/"
+EXIMGURU_SOURCE = "EximGuru ITC-HS aggregator (secondary/supplementary source)"
+_CRAWL_DELAY_SECONDS = 0.4
 
 
 class HsnScrapeError(RuntimeError):
@@ -201,3 +207,135 @@ def fetch_ogd_records(
         created_by=created_by,
     )
     return ScrapeOutcome(result=result, records_fetched=len(records), source_label=resource_id)
+
+
+# ── EximGuru connector (private ITC-HS aggregator) ──────────────────────────────
+# Official DGFT/CBIC sources remain primary; EximGuru republishes the same public
+# ITC-HS schedule and is treated as secondary/supplementary evidence. robots.txt
+# allows crawling; requests are spaced by a polite fixed delay.
+
+
+def _clean_text(raw: str) -> str:
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", raw))).strip()
+
+
+def _eximguru_get(url: str) -> str:
+    settings = get_settings()
+    validate_public_source_url(url, allow_private=settings.hsn_scrape_allow_private)
+    request = Request(
+        url,
+        method="GET",
+        headers={"User-Agent": _user_agent(), "Accept": "text/html,*/*;q=0.5"},
+    )
+    try:
+        with urlopen(request, timeout=30) as response:  # noqa: S310
+            raw = response.read(MAX_FILE_BYTES + 1)
+    except HTTPError as error:
+        raise HsnScrapeError(f"EximGuru returned HTTP {error.code} for {url}.") from error
+    except URLError as error:
+        raise HsnScrapeError(f"EximGuru request failed for {url}: {error}") from error
+    time.sleep(_CRAWL_DELAY_SECONDS)
+    return raw.decode("utf-8", errors="replace")
+
+
+def _chapter_links() -> dict[int, str]:
+    """Map chapter number -> chapter page URL from the EximGuru index."""
+    html_text = _eximguru_get(EXIMGURU_BASE + "default.aspx")
+    links: dict[int, str] = {}
+    for href in re.findall(r'hs-codes/((\d{2})-chapter-[0-9a-z\-]+\.aspx)', html_text, re.I):
+        path, chapter = href
+        links.setdefault(int(chapter), urljoin(EXIMGURU_BASE, path))
+    return links
+
+
+def _parse_rows(html_text: str) -> list[tuple[str, str, str | None]]:
+    """Return (code, description, heading_href|None) for code-like table rows."""
+    out: list[tuple[str, str, str | None]] = []
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", html_text, re.S | re.I):
+        cells = [_clean_text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S | re.I)]
+        cells = [c for c in cells if c]
+        if len(cells) < 2:
+            continue
+        code = cells[0].replace(".", "").replace(" ", "")
+        if not re.fullmatch(r"\d{2,8}", code):
+            continue
+        href_match = re.search(r'href="((?:\d{4})[^"]*\.aspx)"', row, re.I)
+        href = urljoin(EXIMGURU_BASE, href_match.group(1)) if href_match else None
+        out.append((code, cells[1], href))
+    return out
+
+
+def fetch_eximguru(
+    *,
+    session: Session,
+    chapters: list[int] | None,
+    source_version: str,
+    max_records: int | None = None,
+    created_by: str | None = None,
+) -> ScrapeOutcome:
+    """Crawl EximGuru chapter -> heading -> leaf pages and import the ITC-HS rows."""
+    settings = get_settings()
+    rate_limiter.enforce(bucket="hsn-scrape", key="eximguru", limit=20, window_seconds=60)
+    limit_total = max_records or settings.hsn_scrape_max_records
+
+    index = _chapter_links()
+    targets = sorted(set(chapters)) if chapters else sorted(index)
+    records: dict[str, dict[str, object]] = {}
+
+    for chapter in targets:
+        chapter_url = index.get(chapter)
+        if not chapter_url:
+            continue
+        chapter_html = _eximguru_get(chapter_url)
+        for code, desc, heading_url in _parse_rows(chapter_html):
+            if len(code) == 4:
+                heading_desc = re.sub(r"^harmonised codes of\s*", "", desc, flags=re.I).strip()
+                records.setdefault(code, {"code": code, "description": heading_desc or desc})
+                if heading_url and len(records) < limit_total:
+                    _collect_heading(heading_url, records, limit_total)
+            if len(records) >= limit_total:
+                break
+        if len(records) >= limit_total:
+            break
+
+    if not records:
+        raise HsnScrapeError(
+            "EximGuru crawl returned no rows. The site structure may have changed."
+        )
+
+    payload = json.dumps({"records": list(records.values())}).encode("utf-8")
+    result = import_hsn_snapshot(
+        session=session,
+        raw_bytes=payload,
+        import_type="json",
+        source_name=EXIMGURU_SOURCE,
+        source_url=EXIMGURU_BASE,
+        source_document_title="ITC-HS schedule (via EximGuru)",
+        source_document_date=None,
+        source_version=source_version,
+        created_by=created_by,
+    )
+    return ScrapeOutcome(
+        result=result,
+        records_fetched=len(records),
+        source_label=f"eximguru:{','.join(str(c) for c in targets[:8])}",
+    )
+
+
+def _collect_heading(heading_url: str, records: dict[str, dict[str, object]], limit_total: int) -> None:
+    heading_html = _eximguru_get(heading_url)
+    subheading_context = ""
+    for code, desc, _ in _parse_rows(heading_html):
+        if len(code) == 6:
+            subheading_context = desc.rstrip(":").strip()
+            records.setdefault(code, {"code": code, "description": desc.rstrip(":").strip()})
+        elif len(code) == 8:
+            full = desc
+            # Prefix the 6-digit context when the leaf text is a bare qualifier.
+            if subheading_context and subheading_context.lower() not in desc.lower():
+                full = f"{subheading_context}: {desc}"
+            records.setdefault(code, {"code": code, "description": full})
+        elif len(code) == 4:
+            records.setdefault(code, {"code": code, "description": desc})
+        if len(records) >= limit_total:
+            return

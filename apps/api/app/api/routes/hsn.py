@@ -41,6 +41,7 @@ from app.services.hsn_normalization import InvalidHsnCodeError, normalize_code, 
 from app.services.hsn_scraper import (
     HsnScrapeError,
     ScrapeOutcome,
+    fetch_eximguru,
     fetch_official_file,
     fetch_ogd_records,
 )
@@ -266,6 +267,14 @@ def scrape_official_source(
                 or "data.gov.in (Open Government Data Platform, India)",
                 source_document_title=payload.source_document_title,
                 source_document_date=payload.source_document_date,
+                created_by=current_user.user.email,
+            )
+        elif payload.source == "eximguru":
+            outcome = fetch_eximguru(
+                session=session,
+                chapters=payload.chapters,
+                source_version=payload.source_version,
+                max_records=payload.max_records,
                 created_by=current_user.user.email,
             )
         else:

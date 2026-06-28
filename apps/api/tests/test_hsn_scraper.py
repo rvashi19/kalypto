@@ -115,6 +115,45 @@ def test_ogd_surfaces_source_error(session, monkeypatch):
         fetch_ogd_records(session=session, resource_id="bad", source_version="v", api_key="k")
 
 
+_EXIMGURU_DEFAULT = '<a href="/hs-codes/09-chapter-9-coffee-tea.aspx">Chapter 9</a>'
+_EXIMGURU_CHAPTER = (
+    "<table><tr><td>0910</td>"
+    '<td><a href="0910-ginger-saffron-turmeric.aspx">Harmonised Codes of Ginger, Turmeric</a></td>'
+    "</tr></table>"
+)
+_EXIMGURU_HEADING = (
+    "<table>"
+    "<tr><td>0910</td><td>Ginger, saffron, turmeric</td></tr>"
+    "<tr><td>091030</td><td>Turmeric (curcuma):</td></tr>"
+    "<tr><td>09103010</td><td>Fresh</td></tr>"
+    "<tr><td>09103020</td><td>Dried</td></tr>"
+    "</table>"
+)
+
+
+def test_eximguru_connector_crawls_and_imports(session, monkeypatch):
+    def fake_get(url: str) -> str:
+        if url.endswith("default.aspx"):
+            return _EXIMGURU_DEFAULT
+        if "09-chapter" in url:
+            return _EXIMGURU_CHAPTER
+        if "0910-ginger" in url:
+            return _EXIMGURU_HEADING
+        return "<html></html>"
+
+    monkeypatch.setattr(hsn_scraper, "_eximguru_get", fake_get)
+    outcome = hsn_scraper.fetch_eximguru(
+        session=session, chapters=[9], source_version="eximguru-2026"
+    )
+    assert outcome.result.job.status == "completed"
+    codes = {c.normalized_code for c in session.scalars(select(HsnCode)).all()}
+    assert {"0910", "091030", "09103010", "09103020"} <= codes
+    leaf = session.scalars(select(HsnCode).where(HsnCode.normalized_code == "09103010")).first()
+    # 6-digit subheading context is prefixed onto the bare leaf qualifier.
+    assert "Turmeric" in leaf.description
+    assert leaf.source_name.startswith("EximGuru")
+
+
 def test_official_file_connector_imports_csv(session, monkeypatch):
     csv_body = b"code,description\n09103010,Turmeric powder\n62052000,Men's cotton shirt woven\n"
 

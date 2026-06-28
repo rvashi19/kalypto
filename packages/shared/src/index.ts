@@ -570,7 +570,7 @@ export interface HsnImportResponse {
 }
 
 export interface HsnScrapeRequest {
-  source: "ogd" | "file";
+  source: "ogd" | "file" | "eximguru";
   source_version: string;
   source_name?: string | null;
   resource_id?: string | null;
@@ -578,6 +578,7 @@ export interface HsnScrapeRequest {
   max_records?: number | null;
   url?: string | null;
   import_type?: "csv" | "xlsx" | "json" | null;
+  chapters?: number[] | null;
   source_document_title?: string | null;
   source_document_date?: string | null;
 }

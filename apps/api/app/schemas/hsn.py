@@ -135,8 +135,8 @@ class HsnCodeAnnotateRequest(BaseModel):
 
 
 class HsnScrapeRequest(BaseModel):
-    # "ogd" = data.gov.in REST API; "file" = direct official snapshot file URL.
-    source: str = Field(pattern=r"^(ogd|file)$")
+    # ogd = data.gov.in API; file = official snapshot URL; eximguru = ITC-HS aggregator crawl.
+    source: str = Field(pattern=r"^(ogd|file|eximguru)$")
     source_version: str = Field(min_length=2, max_length=80)
     source_name: str | None = Field(default=None, max_length=255)
     # OGD connector
@@ -146,6 +146,8 @@ class HsnScrapeRequest(BaseModel):
     # File connector
     url: str | None = Field(default=None, max_length=2048)
     import_type: str | None = Field(default=None, pattern=r"^(csv|xlsx|json)$")
+    # EximGuru connector: specific chapters (1-98), or null for all chapters.
+    chapters: list[int] | None = Field(default=None)
     # Shared provenance
     source_document_title: str | None = Field(default=None, max_length=512)
     source_document_date: str | None = Field(default=None, max_length=40)

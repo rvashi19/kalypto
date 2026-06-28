@@ -52,6 +52,50 @@ _TEXTILE_CUES = {"shirt", "fabric", "cloth", "garment", "textile", "yarn", "appa
 _MACHINERY_CUES = {"motor", "pump", "machine", "engine", "part", "parts", "component", "gear", "bearing"}
 _CHEMICAL_CUES = {"acid", "oxide", "chemical", "compound", "solvent", "polymer", "resin", "reagent"}
 
+# Colloquial / brand terms → official tariff description words, so everyday searches
+# match ITC-HS wording (e.g. "iphone" → "telephone smartphones"). Whole-word only.
+_SYNONYMS: dict[str, str] = {
+    "iphone": "telephones cellular networks",
+    "smartphone": "telephones cellular networks",
+    "android": "telephones cellular networks",
+    "cellphone": "telephones cellular networks",
+    "mobile": "telephones cellular networks",
+    "phone": "telephone",
+    "laptop": "portable automatic data processing computers",
+    "notebook": "portable automatic data processing computers",
+    "macbook": "portable automatic data processing computers",
+    "computer": "automatic data processing",
+    "pc": "automatic data processing",
+    "desktop": "automatic data processing",
+    "tv": "television",
+    "car": "motor vehicle",
+    "motorbike": "motorcycle",
+    "scooter": "motorcycle",
+    "shoe": "footwear",
+    "shoes": "footwear",
+    "sandal": "footwear",
+    "bag": "handbag",
+    "purse": "handbag",
+    "medicine": "medicament",
+    "drug": "medicament",
+    "tablet": "medicament",
+    "capsule": "medicament",
+    "biscuit": "biscuits",
+    "cookie": "biscuits",
+    "soda": "aerated waters beverage",
+    "cola": "aerated waters beverage",
+    "softdrink": "aerated waters beverage",
+}
+
+
+def _expand_synonyms(text: str) -> str:
+    expanded: list[str] = []
+    for word in _TOKEN_RE.findall((text or "").lower()):
+        expanded.append(word)
+        if word in _SYNONYMS:
+            expanded.append(_SYNONYMS[word])
+    return " ".join(expanded) if expanded else (text or "")
+
 
 @dataclass
 class HsnMatch:
@@ -156,34 +200,58 @@ def search_hsn(
             score = 82.0 - min(len(code.normalized_code) - len(normalized), 6)
             results[code.id] = HsnMatch(code=code, score=score, match_reason="HSN code prefix match")
     else:
-        tokens = _tokenize(raw)
+        tokens = _tokenize(_expand_synonyms(raw))
         if tokens:
-            # Candidate set: rows whose description contains at least one query token.
+            # Candidate set: every row whose description contains any query token
+            # (plus a singular/plural stem so "shirts" matches "shirt", etc.).
+            # Score them all (capped for safety) so the best matches are never dropped.
             from sqlalchemy import or_
 
+            like_terms: set[str] = set()
+            for token in tokens:
+                like_terms.add(token)
+                if len(token) > 3 and token.endswith("s"):
+                    like_terms.add(token[:-1])
             candidate_query = base.where(
-                or_(*[func.lower(HsnCode.description).like(f"%{token}%") for token in tokens])
-            ).limit(limit * 10)
+                or_(*[func.lower(HsnCode.description).like(f"%{term}%") for term in like_terms])
+            ).limit(3000)
             candidates = session.scalars(candidate_query).all()
+            token_count = len(tokens)
 
             for code in candidates:
                 desc = (code.description or "").lower()
-                present = [t for t in tokens if t in desc]
-                if not present:
+                desc_words = set(_tokenize(desc))
+                word_hits = sub_hits = 0
+                for token in tokens:
+                    if any(w == token or w.startswith(token) or token.startswith(w) for w in desc_words):
+                        word_hits += 1
+                        sub_hits += 1
+                    elif token in desc:
+                        sub_hits += 1
+                if sub_hits == 0:
                     continue
-                overlap = len(present) / len(tokens)
-                all_present = len(present) == len(tokens)
-                level_bonus = {8: 12, 6: 8, 4: 4, 2: 0}.get(code.digit_level, 0)
-                if all_present:
-                    score = 70.0 + level_bonus
-                    reason = "Full description match"
-                else:
-                    score = 35.0 + overlap * 25.0 + level_bonus * 0.5
-                    reason = "Token overlap match"
+                word_cov = word_hits / token_count
+                sub_cov = sub_hits / token_count
+                level_bonus = {8: 8, 6: 5, 4: 2, 2: 0}.get(code.digit_level, 0)
+                score = 30.0 + 52.0 * word_cov + 10.0 * sub_cov + level_bonus
+                if word_hits == token_count:
+                    score += 8.0  # every query word present as a whole word
+                score = min(score, 96.0)
+                reason = (
+                    "Full description match" if word_hits == token_count else "Partial description match"
+                )
                 results[code.id] = HsnMatch(code=code, score=round(score, 2), match_reason=reason)
 
     matches = sorted(results.values(), key=lambda m: (-m.score, m.code.digit_level, m.code.normalized_code))
-    matches = matches[:limit]
+    # Collapse to one row per HSN code (defensive against legacy duplicate versions).
+    seen_codes: set[str] = set()
+    deduped: list[HsnMatch] = []
+    for match in matches:
+        if match.code.normalized_code in seen_codes:
+            continue
+        seen_codes.add(match.code.normalized_code)
+        deduped.append(match)
+    matches = deduped[:limit]
 
     evidence = _evidence_counts(session, [m.code.id for m in matches])
     query_flags = _query_warnings(raw)

@@ -17,7 +17,12 @@ from __future__ import annotations
 import argparse
 
 from app.db.session import SessionLocal
-from app.services.hsn_scraper import HsnScrapeError, fetch_official_file, fetch_ogd_records
+from app.services.hsn_scraper import (
+    HsnScrapeError,
+    fetch_eximguru,
+    fetch_official_file,
+    fetch_ogd_records,
+)
 
 
 def main() -> None:
@@ -41,6 +46,13 @@ def main() -> None:
     fil.add_argument("--source-document-title", default=None)
     fil.add_argument("--source-document-date", default=None)
 
+    exi = sub.add_parser("eximguru", help="EximGuru ITC-HS aggregator crawl (secondary source)")
+    exi.add_argument("--source-version", required=True)
+    exi.add_argument(
+        "--chapters", default=None, help="Comma-separated chapters, e.g. 9,10,85 (default: all)"
+    )
+    exi.add_argument("--max-records", type=int, default=None)
+
     args = parser.parse_args()
     session = SessionLocal()
     try:
@@ -54,6 +66,17 @@ def main() -> None:
                 source_name=args.source_name,
                 source_document_title=args.source_document_title,
                 source_document_date=args.source_document_date,
+                created_by="cli",
+            )
+        elif args.source == "eximguru":
+            chapters = (
+                [int(c) for c in args.chapters.split(",") if c.strip()] if args.chapters else None
+            )
+            outcome = fetch_eximguru(
+                session=session,
+                chapters=chapters,
+                source_version=args.source_version,
+                max_records=args.max_records,
                 created_by="cli",
             )
         else:

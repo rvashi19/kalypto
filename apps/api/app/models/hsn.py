@@ -20,7 +20,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     Uuid,
     func,
 )
@@ -34,12 +33,10 @@ class HsnCode(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """One HSN/ITC(HS) line. Global master — not tenant scoped."""
 
     __tablename__ = "hsn_codes"
-    __table_args__ = (
-        UniqueConstraint("normalized_code", "source_version", name="uq_hsn_codes_norm_version"),
-    )
 
     code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    normalized_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    # One authoritative row per HSN code; re-imports upsert in place (latest source wins).
+    normalized_code: Mapped[str] = mapped_column(String(20), nullable=False, unique=True, index=True)
     digit_level: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
