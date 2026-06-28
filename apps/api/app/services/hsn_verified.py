@@ -34,15 +34,28 @@ def _normalize_term(term: str) -> str:
     return " ".join((term or "").lower().split())
 
 
-def load_verified_aliases(*, session: Session, raw_bytes: bytes, source: str = "agent_verified") -> dict[str, int]:
-    """Idempotently load verified term->code rows, cleaning the master description."""
+def load_verified_aliases(
+    *,
+    session: Session,
+    raw_bytes: bytes,
+    source: str = "agent_verified",
+    code_source_name: str = VERIFIED_SOURCE,
+    overwrite_description: bool = True,
+    confidence: int = 96,
+) -> dict[str, int]:
+    """Idempotently load verified term->code rows.
+
+    overwrite_description: when True (curated seed) the mapped master row's
+    description is replaced with the clean verified text; when False (LLM answers)
+    an existing row is left untouched and only created if missing.
+    """
     rows = list(csv.DictReader(io.StringIO(raw_bytes.decode("utf-8-sig"))))
     aliases = created = updated = 0
     for row in rows:
         term = _normalize_term(row.get("term", ""))
         code_raw = (row.get("code") or "").strip()
         description = (row.get("description") or "").strip()
-        if not term or not code_raw or not description:
+        if not term or not code_raw:
             continue
         normalized = normalize_code(code_raw)
         try:
@@ -58,22 +71,21 @@ def load_verified_aliases(*, session: Session, raw_bytes: bytes, source: str = "
                 code=code_raw,
                 normalized_code=normalized,
                 digit_level=level,
-                description=description,
+                description=description or code_raw,
                 chapter_code=chapter_code(normalized),
                 heading_code=heading_code(normalized),
                 subheading_code=subheading_code(normalized),
                 parent_code=parent_code(normalized),
-                source_name=VERIFIED_SOURCE,
+                source_name=code_source_name,
                 source_version="verified",
                 is_active=True,
             )
             session.add(existing)
             session.flush()
             created += 1
-        else:
-            # Overwrite the scraped/garbled description with the verified clean one.
+        elif overwrite_description and description:
             existing.description = description
-            existing.source_name = VERIFIED_SOURCE
+            existing.source_name = code_source_name
             updated += 1
             session.query(HsnSourceEvidence).filter(
                 HsnSourceEvidence.hsn_code_id == existing.id,
@@ -83,9 +95,9 @@ def load_verified_aliases(*, session: Session, raw_bytes: bytes, source: str = "
         session.add(
             HsnSourceEvidence(
                 hsn_code_id=existing.id,
-                source_name=VERIFIED_SOURCE,
+                source_name=code_source_name,
                 evidence_type="manual_admin",
-                raw_text_excerpt=f"Verified mapping for '{term}': {description}",
+                raw_text_excerpt=f"Verified mapping for '{term}': {description or existing.description}",
                 document_title="Verified product mapping",
                 document_date=datetime.now(UTC),
                 confidence_weight=95,
@@ -97,7 +109,9 @@ def load_verified_aliases(*, session: Session, raw_bytes: bytes, source: str = "
         ).first()
         if alias is None:
             session.add(
-                HsnProductAlias(term=term, normalized_code=normalized, source=source, confidence=96)
+                HsnProductAlias(
+                    term=term, normalized_code=normalized, source=source, confidence=confidence
+                )
             )
             aliases += 1
         else:

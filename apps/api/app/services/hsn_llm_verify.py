@@ -26,11 +26,13 @@ from app.services.hsn_normalization import normalize_code
 
 _SYSTEM = (
     "You are an expert in Indian customs classification (ITC-HS / HSN). "
-    "Given a product and candidate HSN codes, choose the single most appropriate "
-    "8-digit Indian HSN code. Prefer one of the candidates; only propose a different "
-    "code if none of the candidates fit. Respond with strict JSON only: "
-    '{"hsn_code":"<8 digits>","confidence":<0-100>,"reasoning":"<one sentence>",'
-    '"alternatives":["<code>", ...]}'
+    "Determine the single most appropriate full 8-digit Indian HSN code for the product. "
+    "The candidate list is only a hint from a partial local database — if the correct "
+    "code is not among the candidates, return the correct code from your own knowledge. "
+    "Always return a full 8-digit code (not 2/4/6 digits) and a short official-style "
+    "description for it. Respond with strict JSON only: "
+    '{"hsn_code":"<8 digits>","description":"<official-style description>",'
+    '"confidence":<0-100>,"reasoning":"<one sentence>","alternatives":["<8-digit code>", ...]}'
 )
 
 
@@ -114,11 +116,13 @@ def llm_classify(
         if chosen
         else None
     )
+    llm_description = str(verdict.get("description") or "").strip()
     return {
         "product": product,
         "hsn_code": chosen or None,
         "in_master": row is not None,
-        "description": row.description if row else None,
+        # Prefer the verified master description; fall back to the LLM's description.
+        "description": (row.description if row else None) or llm_description or None,
         "confidence": verdict.get("confidence"),
         "reasoning": verdict.get("reasoning"),
         "alternatives": [normalize_code(str(a)) for a in verdict.get("alternatives", []) if a],

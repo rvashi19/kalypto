@@ -309,7 +309,11 @@ def scrape_official_source(
     return _scrape_response(outcome, payload.source_version)
 
 
-@router.post("/classify-ai", response_model=HsnAiClassifyResponse)
+@router.post(
+    "/classify-ai",
+    response_model=HsnAiClassifyResponse,
+    dependencies=[Depends(rate_limit_upload_requests)],
+)
 def classify_ai(
     payload: HsnAiClassifyRequest,
     session: DbSession,
@@ -333,12 +337,25 @@ def classify_ai(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
 
     stored = False
-    if payload.store and verdict.get("in_master") and verdict.get("hsn_code"):
+    code = verdict.get("hsn_code")
+    if payload.store and code:
+        # Store the LLM verdict: create the code row if our partial master lacks it,
+        # but never overwrite a curated/scraped description. Labelled as LLM-sourced.
+        description = (verdict.get("description") or "").replace('"', "'")
+        model = verdict.get("model") or "llm"
+        confidence = verdict.get("confidence")
         csv = (
-            "term,code,description\n"
-            f"{payload.product.strip().lower()},{verdict['hsn_code']},{verdict['description']}\n"
+            'term,code,description\n'
+            f'"{payload.product.strip().lower()}",{code},"{description}"\n'
         ).encode()
-        load_verified_aliases(session=session, raw_bytes=csv, source="llm_verified")
+        load_verified_aliases(
+            session=session,
+            raw_bytes=csv,
+            source="llm_verified",
+            code_source_name=f"LLM-suggested ({model})",
+            overwrite_description=False,
+            confidence=int(confidence) if isinstance(confidence, int | float) else 70,
+        )
         stored = True
 
     return HsnAiClassifyResponse(stored=stored, **verdict)
