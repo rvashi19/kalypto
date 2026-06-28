@@ -42,21 +42,43 @@ class HsnLlmError(RuntimeError):
     pass
 
 
+def _provider() -> tuple[str, str, str | None, str] | None:
+    """Return (name, api_key, base_url|None, model). OpenAI preferred, then xAI."""
+    settings = get_settings()
+    if settings.openai_api_key:
+        return ("openai", settings.openai_api_key, None, settings.openai_model)
+    if settings.xai_api_key:
+        return ("xai", settings.xai_api_key, settings.xai_base_url, settings.xai_model)
+    return None
+
+
 def is_llm_configured() -> bool:
-    return bool(get_settings().xai_api_key)
+    return _provider() is not None
+
+
+def active_model() -> str | None:
+    provider = _provider()
+    return provider[3] if provider else None
 
 
 def _call_llm(product: str, candidate_lines: str) -> dict[str, Any]:
-    settings = get_settings()
+    provider = _provider()
+    if provider is None:
+        raise HsnLlmNotConfiguredError("No LLM provider is configured.")
+    _name, api_key, base_url, model = provider
     openai_module: Any = importlib.import_module("openai")
-    client = openai_module.OpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+    client = (
+        openai_module.OpenAI(api_key=api_key, base_url=base_url)
+        if base_url
+        else openai_module.OpenAI(api_key=api_key)
+    )
     user = (
         f"Product: {product}\n\nCandidate HSN codes:\n{candidate_lines}\n\n"
         "Return the best 8-digit Indian HSN code as strict JSON."
     )
     try:
         response = client.responses.create(
-            model=settings.xai_model,
+            model=model,
             instructions=_SYSTEM,
             input=user,
         )
@@ -80,7 +102,7 @@ def llm_classify(
     """candidates: list of (code, description). Returns a validated verdict dict."""
     if not is_llm_configured():
         raise HsnLlmNotConfiguredError(
-            "No LLM is configured. Set XAI_API_KEY (or GROQ_API_KEY) to enable AI verification."
+            "No LLM is configured. Set OPENAI_API_KEY (or XAI_API_KEY) to enable AI verification."
         )
 
     candidate_lines = "\n".join(f"- {code}: {desc}" for code, desc in candidates[:12]) or "- (none)"
@@ -100,5 +122,5 @@ def llm_classify(
         "confidence": verdict.get("confidence"),
         "reasoning": verdict.get("reasoning"),
         "alternatives": [normalize_code(str(a)) for a in verdict.get("alternatives", []) if a],
-        "model": get_settings().xai_model,
+        "model": active_model(),
     }

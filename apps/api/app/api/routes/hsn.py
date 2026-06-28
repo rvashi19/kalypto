@@ -319,7 +319,7 @@ def classify_ai(
     if not is_llm_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI verification is not configured. Set XAI_API_KEY (or GROQ_API_KEY) on the API.",
+            detail="AI verification is not configured. Set OPENAI_API_KEY (or XAI_API_KEY) on the API.",
         )
     candidates = [
         (m.code.normalized_code, m.code.description)
