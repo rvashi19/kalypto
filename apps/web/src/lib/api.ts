@@ -20,7 +20,14 @@ import type {
   DocumentType,
   ExportQuoteRequest,
   ExportQuoteResponse,
+  HsnDetailResponse,
+  HsnImportJobResponse,
+  HsnImportResponse,
   HsnRateLookupResponse,
+  HsnScrapeRequest,
+  HsnSearchResponse,
+  HsnVerificationCreate,
+  HsnVerificationResponse,
   ShipmentCreate,
   ShipmentImportResponse,
   ReconciliationResponse,
@@ -343,6 +350,47 @@ export const api = {
   getHsnRates: (hsn: string, token: string, fobValue?: number) =>
     request<HsnRateLookupResponse>(
       `/shipments/hsn-rates?hsn=${encodeURIComponent(hsn)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
+      {},
+      token
+    ),
+
+  // HSN Finder (standalone classification) — decoupled from incentives.
+
+  searchHsn: (
+    query: string,
+    token: string,
+    options: { limit?: number; digitLevel?: number } = {}
+  ) => {
+    const params = new URLSearchParams({ q: query });
+    if (options.limit) params.set("limit", String(options.limit));
+    if (options.digitLevel) params.set("digit_level", String(options.digitLevel));
+    return request<HsnSearchResponse>(`/hsn/search?${params.toString()}`, {}, token);
+  },
+
+  getHsnDetail: (code: string, token: string) =>
+    request<HsnDetailResponse>(`/hsn/${encodeURIComponent(code)}`, {}, token),
+
+  createHsnVerification: (payload: HsnVerificationCreate, token: string) =>
+    request<HsnVerificationResponse>(
+      "/hsn/verify",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  scrapeHsn: (payload: HsnScrapeRequest, token: string) =>
+    request<HsnImportResponse>(
+      "/hsn/scrape",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  listHsnImportJobs: (token: string) =>
+    request<HsnImportJobResponse[]>("/hsn/import/jobs", {}, token),
+
+  // Incentive Finder — accepts a selected HSN; decoupled future endpoint.
+  searchIncentives: (hsnCode: string, token: string, fobValue?: number) =>
+    request<HsnRateLookupResponse>(
+      `/incentives/search?hsn_code=${encodeURIComponent(hsnCode)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
       {},
       token
     ),

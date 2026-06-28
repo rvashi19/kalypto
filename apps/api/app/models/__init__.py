@@ -47,6 +47,13 @@ from app.models.compliance import (
     ComplianceSourceSnapshot,
     ProductCategory,
 )
+from app.models.hsn import (
+    HsnClassificationQuery,
+    HsnCode,
+    HsnImportJob,
+    HsnSourceEvidence,
+    HsnVerificationRequest,
+)
 
 __all__ = [
     "Alert",
@@ -72,6 +79,11 @@ __all__ = [
     "ExportDiscrepancy",
     "ExportShipment",
     "GstExportInvoice",
+    "HsnClassificationQuery",
+    "HsnCode",
+    "HsnImportJob",
+    "HsnSourceEvidence",
+    "HsnVerificationRequest",
     "IncentiveClaim",
     "IncentiveClaimStatus",
     "IncentiveScheme",

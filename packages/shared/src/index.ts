@@ -470,3 +470,132 @@ export interface ExportQuoteResponse {
   warnings: string[];
   disclaimer: string;
 }
+
+// ── HSN Finder (standalone classification module) ──────────────────────────────
+
+export interface HsnHierarchy {
+  chapter_code: string | null;
+  heading_code: string | null;
+  subheading_code: string | null;
+  parent_code: string | null;
+}
+
+export interface HsnEvidenceItem {
+  source_name: string;
+  source_url: string | null;
+  evidence_type: string;
+  document_title: string | null;
+  document_date: string | null;
+  retrieved_at: string | null;
+  raw_text_excerpt: string | null;
+  confidence_weight: number | null;
+}
+
+export interface HsnSearchItem {
+  code: string;
+  normalized_code: string;
+  description: string;
+  digit_level: number;
+  hierarchy: HsnHierarchy;
+  confidence_score: number;
+  confidence_label: "Low" | "Medium" | "High";
+  match_reason: string;
+  source_evidence: HsnEvidenceItem[];
+  warning_flags: string[];
+  verification_recommended: boolean;
+}
+
+export interface HsnSearchResponse {
+  query: string;
+  count: number;
+  results: HsnSearchItem[];
+  disclaimer: string;
+}
+
+export interface HsnDetailResponse {
+  code: string;
+  normalized_code: string;
+  description: string;
+  digit_level: number;
+  hierarchy: HsnHierarchy;
+  unit_of_quantity: string | null;
+  section_name: string | null;
+  chapter_name: string | null;
+  import_policy: string | null;
+  export_policy: string | null;
+  policy_condition: string | null;
+  source_name: string;
+  source_url: string | null;
+  source_document_title: string | null;
+  source_document_date: string | null;
+  source_version: string | null;
+  is_active: boolean;
+  source_evidence: HsnEvidenceItem[];
+  incentive_rate_available: boolean;
+  disclaimer: string;
+}
+
+export interface HsnVerificationCreate {
+  product_description: string;
+  selected_hsn_code?: string | null;
+  alternative_hsn_codes?: string[];
+  user_notes?: string | null;
+}
+
+export interface HsnVerificationResponse {
+  id: string;
+  product_description: string;
+  selected_hsn_code: string | null;
+  alternative_hsn_codes: string[];
+  user_notes: string | null;
+  status: string;
+  reviewer_notes: string | null;
+  created_at: string;
+  disclaimer: string;
+}
+
+export interface HsnImportResponse {
+  job_id: string;
+  status: string;
+  import_type: string;
+  source_name: string;
+  source_version: string | null;
+  checksum: string | null;
+  records_seen: number;
+  records_created: number;
+  records_updated: number;
+  records_deactivated: number;
+  error_message: string | null;
+  errors: { row: number; message: string }[];
+}
+
+export interface HsnScrapeRequest {
+  source: "ogd" | "file";
+  source_version: string;
+  source_name?: string | null;
+  resource_id?: string | null;
+  api_key?: string | null;
+  max_records?: number | null;
+  url?: string | null;
+  import_type?: "csv" | "xlsx" | "json" | null;
+  source_document_title?: string | null;
+  source_document_date?: string | null;
+}
+
+export interface HsnImportJobResponse {
+  id: string;
+  source_name: string;
+  source_url: string | null;
+  import_type: string;
+  status: string;
+  records_seen: number;
+  records_created: number;
+  records_updated: number;
+  records_deactivated: number;
+  error_message: string | null;
+  checksum: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}

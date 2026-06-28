@@ -60,6 +60,17 @@ class Settings(BaseSettings):
         alias="COMPLIANCE_REFRESH_INTERVAL_DAYS",
     )
     firecrawl_api_key: str | None = Field(default=None, alias="FIRECRAWL_API_KEY")
+    # HSN master scraper (admin-triggered, rate-limited, source-versioned).
+    data_gov_in_api_key: str | None = Field(default=None, alias="DATA_GOV_IN_API_KEY")
+    hsn_scrape_user_agent: str = Field(
+        default="KalyptoHsnBot/1.0 (+https://kalypto.local; admin-triggered, review-only)",
+        alias="HSN_SCRAPE_USER_AGENT",
+    )
+    hsn_scrape_max_records: int = Field(default=20000, alias="HSN_SCRAPE_MAX_RECORDS")
+    hsn_scrape_min_interval_seconds: int = Field(
+        default=2, alias="HSN_SCRAPE_MIN_INTERVAL_SECONDS"
+    )
+    hsn_scrape_allow_private: bool = Field(default=False, alias="HSN_SCRAPE_ALLOW_PRIVATE")
     tavily_api_key: str | None = Field(default=None, alias="TAVILY_API_KEY")
     bright_data_api_key: str | None = Field(default=None, alias="BRIGHT_DATA_API_KEY")
     jwt_algorithm: str = "HS256"

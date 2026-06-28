@@ -7,8 +7,8 @@ import type {
 } from "@repo/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
@@ -18,9 +18,9 @@ import { AiBadge, inputCls, selectCls } from "../../lib/ui";
 const MODULES = [
   {
     id: "hsn",
-    title: "HSN & Incentive Finder",
+    title: "Incentive Finder",
     eyebrow: "Rates",
-    summary: "Find tenant-verified RoDTEP, Drawback, and RoSCTL records.",
+    summary: "Look up tenant-verified RoDTEP, Drawback, and RoSCTL records for a selected HSN. Classify codes in HSN Finder first.",
   },
   {
     id: "compliance",
@@ -143,8 +143,20 @@ function buildQuotePayload(form: QuoteForm): ExportQuoteRequest {
 export function ToolsPage() {
   const { session, token, setSession } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [activeModule, setActiveModule] = useState<ModuleId>("hsn");
-  const [hsn, setHsn] = useState("090422");
+  const [hsn, setHsn] = useState(searchParams.get("hsn") ?? "090422");
+
+  // When the HSN Finder hands off a selected code (/tools?hsn=...), prefill the
+  // incentive lookup and focus this module.
+  useEffect(() => {
+    const handoff = searchParams.get("hsn");
+    if (handoff) {
+      setHsn(handoff);
+      setActiveModule("hsn");
+    }
+  }, [searchParams]);
+
   const [hsnFobValue, setHsnFobValue] = useState("100000");
   const [complianceForm, setComplianceForm] =
     useState<ComplianceCheckerRequest>(DEFAULT_COMPLIANCE_FORM);
@@ -195,7 +207,7 @@ export function ToolsPage() {
   });
 
   const hsnMutation = useMutation({
-    mutationFn: () => api.getHsnRates(hsn, token!, toNumber(hsnFobValue)),
+    mutationFn: () => api.searchIncentives(hsn, token!, toNumber(hsnFobValue)),
   });
 
   const complianceMutation = useMutation({
@@ -524,8 +536,8 @@ function HsnFinderPanel({
 }) {
   return (
     <PanelFrame
-      title="HSN & Incentive Finder"
-      description="Search only the operator-verified tenant rate table. No model-generated rates."
+      title="Incentive Finder"
+      description="Look up approved incentive/rate records for an HSN code. Use HSN Finder to classify the code first. No model-generated rates."
     >
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <Field label="HSN code">
