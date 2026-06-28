@@ -503,6 +503,7 @@ export interface HsnSearchItem {
   source_evidence: HsnEvidenceItem[];
   warning_flags: string[];
   verification_recommended: boolean;
+  verified: boolean;
 }
 
 export interface HsnSearchResponse {
@@ -599,4 +600,17 @@ export interface HsnImportJobResponse {
   completed_at: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+export interface HsnAiClassifyResponse {
+  product: string;
+  hsn_code: string | null;
+  in_master: boolean;
+  description: string | null;
+  confidence: number | null;
+  reasoning: string | null;
+  alternatives: string[];
+  model: string | null;
+  stored: boolean;
+  disclaimer: string;
 }

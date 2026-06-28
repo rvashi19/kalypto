@@ -20,6 +20,7 @@ import type {
   DocumentType,
   ExportQuoteRequest,
   ExportQuoteResponse,
+  HsnAiClassifyResponse,
   HsnDetailResponse,
   HsnImportJobResponse,
   HsnImportResponse,
@@ -374,6 +375,13 @@ export const api = {
     request<HsnVerificationResponse>(
       "/hsn/verify",
       { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  classifyHsnAi: (product: string, token: string) =>
+    request<HsnAiClassifyResponse>(
+      "/hsn/classify-ai",
+      { method: "POST", body: JSON.stringify({ product, store: true }) },
       token
     ),
 

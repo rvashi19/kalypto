@@ -292,7 +292,7 @@ def fetch_eximguru(
                 heading_desc = re.sub(r"^harmonised codes of\s*", "", desc, flags=re.I).strip()
                 records.setdefault(code, {"code": code, "description": heading_desc or desc})
                 if heading_url and len(records) < limit_total:
-                    _collect_heading(heading_url, records, limit_total)
+                    _collect_heading(heading_url, records, limit_total, heading_desc)
             if len(records) >= limit_total:
                 break
         if len(records) >= limit_total:
@@ -322,20 +322,36 @@ def fetch_eximguru(
     )
 
 
-def _collect_heading(heading_url: str, records: dict[str, dict[str, object]], limit_total: int) -> None:
+def _compose_description(heading_desc: str, leaf: str) -> str:
+    """Build a faithful description from the unambiguous heading + the leaf cell.
+
+    The heading is prepended only when the leaf is a bare qualifier (no internal
+    context of its own), so "Of cotton" under "Men's shirts" becomes
+    "Men's shirts: Of cotton" while an already-qualified leaf is left as-is.
+    """
+    head = heading_desc.strip().rstrip(":").strip()
+    leaf = leaf.strip().rstrip(":").strip()
+    if not leaf:
+        return head
+    if not head:
+        return leaf
+    if head.lower() in leaf.lower() or leaf.lower() in head.lower():
+        return leaf if len(leaf) >= len(head) else head
+    bare = ":" not in leaf and len(leaf.split()) <= 4
+    return f"{head}: {leaf}" if bare else leaf
+
+
+def _collect_heading(
+    heading_url: str,
+    records: dict[str, dict[str, object]],
+    limit_total: int,
+    heading_desc: str,
+) -> None:
     heading_html = _eximguru_get(heading_url)
-    subheading_context = ""
     for code, desc, _ in _parse_rows(heading_html):
-        if len(code) == 6:
-            subheading_context = desc.rstrip(":").strip()
+        if len(code) == 4:
             records.setdefault(code, {"code": code, "description": desc.rstrip(":").strip()})
-        elif len(code) == 8:
-            full = desc
-            # Prefix the 6-digit context when the leaf text is a bare qualifier.
-            if subheading_context and subheading_context.lower() not in desc.lower():
-                full = f"{subheading_context}: {desc}"
-            records.setdefault(code, {"code": code, "description": full})
-        elif len(code) == 4:
-            records.setdefault(code, {"code": code, "description": desc})
+        else:
+            records.setdefault(code, {"code": code, "description": _compose_description(heading_desc, desc)})
         if len(records) >= limit_total:
             return

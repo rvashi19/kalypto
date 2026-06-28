@@ -106,6 +106,7 @@ class HsnMatch:
     warning_flags: list[str] = field(default_factory=list)
     confidence_label: str = "Low"
     verification_recommended: bool = True
+    verified: bool = False
 
 
 def _tokenize(text: str) -> list[str]:
@@ -242,6 +243,19 @@ def search_hsn(
                 )
                 results[code.id] = HsnMatch(code=code, score=round(score, 2), match_reason=reason)
 
+    # Verified mappings take precedence over scraped matches for the same code.
+    from app.services.hsn_verified import verified_matches
+
+    for code_row, confidence in verified_matches(
+        session=session, query=raw, include_inactive=include_inactive
+    ):
+        results[code_row.id] = HsnMatch(
+            code=code_row,
+            score=float(max(confidence, 97)),
+            match_reason="Verified product mapping",
+            verified=True,
+        )
+
     matches = sorted(results.values(), key=lambda m: (-m.score, m.code.digit_level, m.code.normalized_code))
     # Collapse to one row per HSN code (defensive against legacy duplicate versions).
     seen_codes: set[str] = set()
@@ -263,6 +277,13 @@ def search_hsn(
 
     for index, match in enumerate(matches):
         match.evidence_count = evidence.get(match.code.id, 0)
+        if match.verified:
+            # Verified mappings are clean, High-confidence answers (still source-backed).
+            match.warning_flags = []
+            match.score = round(match.score, 2)
+            match.confidence_label = "High"
+            match.verification_recommended = False
+            continue
         flags = list(query_flags) if is_text_query else []
         if multiple_plausible and index < close_top:
             flags.append("multiple plausible HSN codes")

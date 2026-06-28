@@ -40,6 +40,7 @@ class HsnSearchItem(BaseModel):
     source_evidence: list[HsnEvidenceItem] = Field(default_factory=list)
     warning_flags: list[str] = Field(default_factory=list)
     verification_recommended: bool = True
+    verified: bool = False
 
 
 class HsnSearchResponse(BaseModel):
@@ -126,6 +127,24 @@ class HsnVerificationResponse(BaseModel):
     status: str
     reviewer_notes: str | None = None
     created_at: datetime
+    disclaimer: str = HSN_DISCLAIMER
+
+
+class HsnAiClassifyRequest(BaseModel):
+    product: str = Field(min_length=2, max_length=400)
+    store: bool = True  # store the verdict as a verified alias for next time
+
+
+class HsnAiClassifyResponse(BaseModel):
+    product: str
+    hsn_code: str | None = None
+    in_master: bool = False
+    description: str | None = None
+    confidence: float | int | None = None
+    reasoning: str | None = None
+    alternatives: list[str] = Field(default_factory=list)
+    model: str | None = None
+    stored: bool = False
     disclaimer: str = HSN_DISCLAIMER
 
 

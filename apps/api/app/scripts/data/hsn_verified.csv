@@ -1,0 +1,88 @@
+term,code,description
+turmeric powder,09103030,Turmeric (curcuma), powder
+turmeric,09103020,Turmeric (curcuma), dried
+fresh turmeric,09103010,Turmeric (curcuma), fresh
+haldi,09103020,Turmeric (curcuma), dried
+cumin,09093121,Cumin seeds, neither crushed nor ground
+cumin seeds,09093121,Cumin seeds, neither crushed nor ground
+jeera,09093121,Cumin seeds, neither crushed nor ground
+black pepper,09041120,Black pepper, neither crushed nor ground
+pepper,09041120,Black pepper, neither crushed nor ground
+kali mirch,09041120,Black pepper, neither crushed nor ground
+green tea,09021010,Green tea (not fermented), in immediate packings not exceeding 3 kg
+black tea,09024040,Black tea (fermented), other
+tea,09024040,Black tea (fermented), other
+red chilli,09042120,Dried chilli (Capsicum), crushed or ground
+chilli,09042120,Dried chilli (Capsicum), crushed or ground
+chilli powder,09042120,Dried chilli (Capsicum) powder, crushed or ground
+ginger,09101110,Ginger, fresh, neither crushed nor ground
+cardamom,09083110,"Cardamoms, large, neither crushed nor ground"
+elaichi,09083110,"Cardamoms, large, neither crushed nor ground"
+basmati rice,10063020,"Basmati rice, semi-milled or wholly milled"
+non basmati rice,10063090,"Rice, semi-milled or wholly milled, other than basmati"
+white rice,10063090,"Rice, semi-milled or wholly milled, other"
+milled rice,10063090,"Rice, semi-milled or wholly milled, other"
+brown rice,10062000,Husked (brown) rice
+paddy,10061090,"Rice in husk (paddy or rough), other"
+rice,10063090,"Rice, semi-milled or wholly milled"
+soft drink,22021010,Aerated waters with added sugar or flavour (carbonated soft drink)
+carbonated drink,22021010,Aerated waters with added sugar or flavour (carbonated soft drink)
+aerated water,22021010,Aerated waters with added sugar or flavour
+cola,22021010,Aerated waters with added sugar or flavour (carbonated soft drink)
+mineral water,22011010,Mineral waters and aerated waters (packaged drinking water)
+packaged water,22011010,Mineral waters and aerated waters (packaged drinking water)
+medicine,30049099,"Medicaments (mixed or unmixed), for retail sale, other"
+medicament,30049099,"Medicaments (mixed or unmixed), for retail sale, other"
+tablet medicine,30049099,"Medicaments for retail sale, other"
+lipstick,33041000,Lip make-up preparations
+lip makeup,33041000,Lip make-up preparations
+face cream,33049990,"Beauty or skin-care preparations, other"
+skin cream,33049990,"Beauty or skin-care preparations, other"
+cosmetics,33049990,"Beauty or skin-care preparations, other"
+beauty cream,33049990,"Beauty or skin-care preparations, other"
+shampoo,33051090,"Shampoos, other"
+plastic bottle,39233090,"Plastic bottles, carboys and flasks, other"
+plastic bag,39232990,"Plastic bags and sacks, of other plastics"
+polythene bag,39232990,"Plastic bags and sacks, of other plastics"
+leather handbag,42022110,Handbags with outer surface of leather
+handbag,42022110,Handbags with outer surface of leather
+ladies purse,42022110,Handbags with outer surface of leather
+leather wallet,42023110,Wallets and purses with outer surface of leather
+wallet,42023110,Wallets and purses with outer surface of leather
+cotton t-shirt,61091000,"T-shirts and singlets, of cotton, knitted"
+cotton tshirt,61091000,"T-shirts and singlets, of cotton, knitted"
+t-shirt,61091000,"T-shirts and singlets, of cotton, knitted"
+cotton knitted shirt,61051010,"Men's or boys' shirts, of cotton, knitted"
+cotton shirt,62052000,"Men's or boys' shirts, of cotton (woven)"
+mens shirt,62052000,"Men's or boys' shirts, of cotton (woven)"
+formal shirt,62052000,"Men's or boys' shirts, of cotton (woven)"
+jeans,62034200,"Men's or boys' trousers of cotton (jeans/denim)"
+denim trousers,62034200,"Men's or boys' trousers of cotton (jeans/denim)"
+trousers,62034200,Men's or boys' trousers of cotton
+leather shoes,64039910,Leather footwear (sandals) with leather upper
+leather footwear,64039910,Leather footwear with leather upper
+leather sandals,64039910,Leather sandals with leather upper
+gold jewellery,71131910,Articles of jewellery of gold or other precious metal
+gold jewelry,71131910,Articles of jewellery of gold or other precious metal
+gold ornaments,71131910,Articles of jewellery of gold or other precious metal
+silver jewellery,71131120,Articles of jewellery of silver
+silver ornaments,71131120,Articles of jewellery of silver
+aluminium can,76129090,"Aluminium cans and containers, other"
+beverage can,76129090,"Aluminium beverage cans and containers, other"
+aluminium bottle,76129090,"Aluminium cans and containers, other"
+aluminium foil,76071110,"Aluminium foil, rolled but not further worked, not backed"
+laptop,84713010,"Portable computers (laptops/notebooks), weighing not more than 10 kg"
+notebook computer,84713010,"Portable computers (laptops/notebooks), weighing not more than 10 kg"
+macbook,84713010,"Portable computers (laptops), weighing not more than 10 kg"
+desktop computer,84714900,Automatic data processing machine (desktop computer system)
+computer,84714900,Automatic data processing machine (computer system)
+printer,84433100,"Printers/copiers capable of connecting to a computer or network"
+electric motor,85015110,"AC motor, multi-phase, output not exceeding 750 W"
+ac motor,85015110,"AC motor, multi-phase, output not exceeding 750 W"
+mobile phone,85171210,Telephones for cellular networks (mobile phones)
+smartphone,85171210,Telephones for cellular networks (smartphones)
+cell phone,85171210,Telephones for cellular networks (mobile phones)
+iphone,85171210,Telephones for cellular networks (smartphones)
+android phone,85171210,Telephones for cellular networks (smartphones)
+wooden furniture,94036000,"Wooden furniture, other"
+furniture,94036000,"Wooden furniture, other"

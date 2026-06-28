@@ -23,6 +23,8 @@ from app.models import (
     RateTable,
 )
 from app.schemas.hsn import (
+    HsnAiClassifyRequest,
+    HsnAiClassifyResponse,
     HsnCodeAnnotateRequest,
     HsnDetailResponse,
     HsnEvidenceItem,
@@ -37,6 +39,12 @@ from app.schemas.hsn import (
     HsnVerificationResponse,
 )
 from app.services.hsn_import import import_hsn_snapshot
+from app.services.hsn_llm_verify import (
+    HsnLlmError,
+    HsnLlmNotConfiguredError,
+    is_llm_configured,
+    llm_classify,
+)
 from app.services.hsn_normalization import InvalidHsnCodeError, normalize_code, normalize_strict
 from app.services.hsn_scraper import (
     HsnScrapeError,
@@ -46,6 +54,7 @@ from app.services.hsn_scraper import (
     fetch_ogd_records,
 )
 from app.services.hsn_search import HsnMatch, record_query, search_hsn
+from app.services.hsn_verified import load_verified_aliases
 from app.services.rate_limit import rate_limit_upload_requests
 
 router = APIRouter(prefix="/hsn", tags=["hsn"])
@@ -101,6 +110,7 @@ def _match_to_item(session: DbSession, match: HsnMatch) -> HsnSearchItem:
         source_evidence=_evidence_items(session, code.id) if match.evidence_count else [],
         warning_flags=match.warning_flags,
         verification_recommended=match.verification_recommended,
+        verified=match.verified,
     )
 
 
@@ -297,6 +307,41 @@ def scrape_official_source(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
 
     return _scrape_response(outcome, payload.source_version)
+
+
+@router.post("/classify-ai", response_model=HsnAiClassifyResponse)
+def classify_ai(
+    payload: HsnAiClassifyRequest,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> HsnAiClassifyResponse:
+    """LLM-verify the best HSN for a product, grounded in deterministic candidates."""
+    if not is_llm_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI verification is not configured. Set XAI_API_KEY (or GROQ_API_KEY) on the API.",
+        )
+    candidates = [
+        (m.code.normalized_code, m.code.description)
+        for m in search_hsn(session=session, query=payload.product, limit=12)
+    ]
+    try:
+        verdict = llm_classify(session=session, product=payload.product, candidates=candidates)
+    except HsnLlmNotConfiguredError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+    except HsnLlmError as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
+
+    stored = False
+    if payload.store and verdict.get("in_master") and verdict.get("hsn_code"):
+        csv = (
+            "term,code,description\n"
+            f"{payload.product.strip().lower()},{verdict['hsn_code']},{verdict['description']}\n"
+        ).encode()
+        load_verified_aliases(session=session, raw_bytes=csv, source="llm_verified")
+        stored = True
+
+    return HsnAiClassifyResponse(stored=stored, **verdict)
 
 
 @router.post("/verify", response_model=HsnVerificationResponse, status_code=status.HTTP_201_CREATED)

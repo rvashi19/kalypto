@@ -214,6 +214,25 @@ def test_synonym_maps_brand_term_to_official_description(session):
     assert matches[0].code.normalized_code == "85171300"
 
 
+def test_verified_alias_overrides_and_ranks_first(session):
+    _seed(session)  # imports hsn_sample including 62052000 with its raw description
+    from app.services.hsn_verified import load_verified_aliases
+
+    csv = b"term,code,description\ncotton shirt,62052000,Men's or boys' shirts of cotton (woven)\n"
+    result = load_verified_aliases(session=session, raw_bytes=csv)
+    assert result["aliases"] == 1
+    # Master description is cleaned in place.
+    code = session.scalars(select(HsnCode).where(HsnCode.normalized_code == "62052000")).first()
+    assert "Men's or boys' shirts" in code.description
+    # Verified mapping ranks first, High, no warnings.
+    matches = search_hsn(session=session, query="cotton shirt")
+    assert matches
+    assert matches[0].code.normalized_code == "62052000"
+    assert matches[0].verified is True
+    assert matches[0].confidence_label == "High"
+    assert matches[0].warning_flags == []
+
+
 def test_search_does_not_depend_on_rate_table(session):
     # RateTable is empty in a fresh DB; search must still return HSN results.
     _seed(session)

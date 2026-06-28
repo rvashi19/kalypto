@@ -51,6 +51,7 @@ from app.models.hsn import (
     HsnClassificationQuery,
     HsnCode,
     HsnImportJob,
+    HsnProductAlias,
     HsnSourceEvidence,
     HsnVerificationRequest,
 )
@@ -82,6 +83,7 @@ __all__ = [
     "HsnClassificationQuery",
     "HsnCode",
     "HsnImportJob",
+    "HsnProductAlias",
     "HsnSourceEvidence",
     "HsnVerificationRequest",
     "IncentiveClaim",

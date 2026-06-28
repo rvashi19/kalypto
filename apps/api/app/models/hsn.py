@@ -140,6 +140,30 @@ class HsnClassificationQuery(Base, UUIDPrimaryKeyMixin):
     )
 
 
+class HsnProductAlias(Base, UUIDPrimaryKeyMixin):
+    """A verified product-phrase -> HSN code mapping consulted first during search.
+
+    These are human/agent-verified or LLM-verified answers, stored once so common
+    product searches return the correct code with high confidence regardless of how
+    the official description is worded.
+    """
+
+    __tablename__ = "hsn_product_aliases"
+
+    term: Mapped[str] = mapped_column(String(160), nullable=False, unique=True, index=True)
+    normalized_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    # agent_verified / llm_verified / admin / cross_verified
+    source: Mapped[str] = mapped_column(String(40), nullable=False, default="agent_verified")
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=95)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+
+
 class HsnVerificationRequest(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
     """A request for human (CHA/customs broker) verification of a classification."""
 

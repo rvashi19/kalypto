@@ -40,6 +40,10 @@ export function HsnFinderPage() {
     onSuccess: (data) => setDetail(data),
   });
 
+  const aiMutation = useMutation({
+    mutationFn: () => api.classifyHsnAi(query, token!),
+  });
+
   const verifyMutation = useMutation({
     mutationFn: (item: HsnSearchItem) =>
       api.createHsnVerification(
@@ -125,9 +129,33 @@ export function HsnFinderPage() {
           >
             {searchMutation.isPending ? "Searching…" : "Search"}
           </Button>
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            disabled={aiMutation.isPending || !query.trim()}
+            onClick={() => aiMutation.mutate()}
+            title="Ask the AI to verify the best HSN code for this product"
+          >
+            {aiMutation.isPending ? "Verifying…" : "AI verify"}
+          </Button>
         </div>
         {searchMutation.error instanceof Error ? (
           <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
+        ) : null}
+        {aiMutation.error instanceof Error ? (
+          <p className="mt-3 text-sm text-amber-300">AI verification unavailable: {aiMutation.error.message}</p>
+        ) : null}
+        {aiMutation.data ? (
+          <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 text-sm">
+            <span className="font-semibold text-indigo-200">AI verified:</span>{" "}
+            <span className="font-mono text-slate-100">{aiMutation.data.hsn_code ?? "no code"}</span>
+            {aiMutation.data.description ? (
+              <span className="text-slate-300"> — {aiMutation.data.description}</span>
+            ) : null}
+            {aiMutation.data.reasoning ? (
+              <p className="mt-1 text-xs text-slate-400">{aiMutation.data.reasoning}</p>
+            ) : null}
+          </div>
         ) : null}
       </section>
 
@@ -214,8 +242,15 @@ function ResultCard({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-base font-semibold tracking-wide text-slate-100">
-          {item.code}
+        <span className="flex items-center gap-2">
+          <span className="font-mono text-base font-semibold tracking-wide text-slate-100">
+            {item.code}
+          </span>
+          {item.verified ? (
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+              ✓ Verified
+            </span>
+          ) : null}
         </span>
         <span
           className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${CONFIDENCE_STYLES[item.confidence_label]}`}
