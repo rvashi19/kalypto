@@ -26,6 +26,7 @@ from app.models import (
 from app.schemas.hsn import (
     HsnAiClassifyRequest,
     HsnAiClassifyResponse,
+    HsnChapterResponse,
     HsnCodeAnnotateRequest,
     HsnCrossCheckSource,
     HsnDetailResponse,
@@ -172,6 +173,30 @@ def stats(session: DbSession, current_user: CurrentUser) -> HsnStatsResponse:
             session.scalar(select(func.count()).select_from(HsnProductAlias)) or 0
         ),
     )
+
+
+@router.get("/chapters", response_model=list[HsnChapterResponse])
+def chapters(session: DbSession, current_user: CurrentUser) -> list[HsnChapterResponse]:
+    chapter_rows = session.scalars(
+        select(HsnCode)
+        .where(HsnCode.digit_level == 2, HsnCode.is_active.is_(True))
+        .order_by(HsnCode.normalized_code)
+    ).all()
+    counts = dict(
+        session.execute(
+            select(HsnCode.chapter_code, func.count())
+            .where(HsnCode.is_active.is_(True))
+            .group_by(HsnCode.chapter_code)
+        ).all()
+    )
+    return [
+        HsnChapterResponse(
+            code=row.normalized_code,
+            name=row.description,
+            count=int(counts.get(row.normalized_code, 0)),
+        )
+        for row in chapter_rows
+    ]
 
 
 @router.get("/import/jobs", response_model=list[HsnImportJobResponse])

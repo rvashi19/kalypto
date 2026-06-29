@@ -49,11 +49,18 @@ export function HsnFinderPage() {
   const [sort, setSort] = useState<SortKey>("relevance");
   const [selected, setSelected] = useState<HsnSearchItem | null>(null);
   const [detail, setDetail] = useState<HsnDetailResponse | null>(null);
+  const [browse, setBrowse] = useState(false);
 
   const statsQuery = useQuery({
     queryKey: ["hsn-stats", token],
     queryFn: () => api.hsnStats(token!),
     enabled: Boolean(token),
+  });
+
+  const chaptersQuery = useQuery({
+    queryKey: ["hsn-chapters", token],
+    queryFn: () => api.hsnChapters(token!),
+    enabled: Boolean(token && browse),
   });
 
   const searchMutation = useMutation({
@@ -97,6 +104,7 @@ export function HsnFinderPage() {
 
   function runSearch(q: string, lvl = level) {
     if (!q.trim()) return;
+    setBrowse(false);
     setQuery(q);
     searchMutation.mutate({ q, level: lvl });
   }
@@ -144,8 +152,8 @@ export function HsnFinderPage() {
         {/* Stats */}
         <div className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat value={stats?.total_codes} label="HSN codes" />
+          <Stat value={stats?.chapters} label="Chapters" />
           <Stat value={stats?.tariff_items} label="8-digit items" />
-          <Stat value={stats?.headings} label="Headings" />
           <Stat value={stats?.verified_mappings} label="Verified maps" />
         </div>
 
@@ -209,6 +217,17 @@ export function HsnFinderPage() {
       {/* Filter tabs + sort */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setBrowse((b) => !b)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              browse
+                ? "bg-amber-400/15 text-amber-200"
+                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+            }`}
+          >
+            Browse Chapters
+          </button>
+          <span className="mx-1 self-center text-slate-700">|</span>
           {LEVELS.map((l) => (
             <button
               key={l.value}
@@ -217,7 +236,7 @@ export function HsnFinderPage() {
                 if (query.trim()) runSearch(query, l.value);
               }}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                level === l.value
+                level === l.value && !browse
                   ? "bg-amber-400/15 text-amber-200"
                   : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
@@ -242,8 +261,33 @@ export function HsnFinderPage() {
         </div>
       </div>
 
+      {/* Browse chapters */}
+      {browse ? (
+        <div className="mt-5">
+          {chaptersQuery.isPending ? (
+            <p className="text-sm text-slate-500">Loading chapters…</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {(chaptersQuery.data ?? []).map((ch) => (
+                <button
+                  key={ch.code}
+                  onClick={() => runSearch(ch.code)}
+                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-left transition hover:border-amber-400/40 hover:bg-slate-900"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-bold text-amber-300">Ch {ch.code}</span>
+                    <span className="text-[10px] text-slate-500">{ch.count} codes</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">{ch.name}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {/* Results + detail */}
-      <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className={`mt-5 grid gap-6 lg:grid-cols-[1fr_400px] ${browse ? "hidden" : ""}`}>
         <section className="space-y-3">
           {searchMutation.isPending ? (
             <>

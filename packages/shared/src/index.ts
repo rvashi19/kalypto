@@ -632,3 +632,9 @@ export interface HsnStatsResponse {
   tariff_items: number;
   verified_mappings: number;
 }
+
+export interface HsnChapterResponse {
+  code: string;
+  name: string;
+  count: number;
+}

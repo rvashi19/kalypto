@@ -135,6 +135,12 @@ class HsnAiClassifyRequest(BaseModel):
     store: bool = True  # store the verdict as a verified alias for next time
 
 
+class HsnChapterResponse(BaseModel):
+    code: str
+    name: str
+    count: int
+
+
 class HsnStatsResponse(BaseModel):
     total_codes: int
     chapters: int
