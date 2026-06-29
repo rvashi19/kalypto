@@ -11,12 +11,13 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession
 from app.models import (
     HsnCode,
     HsnImportJob,
+    HsnProductAlias,
     HsnSourceEvidence,
     HsnVerificationRequest,
     MembershipRole,
@@ -36,6 +37,7 @@ from app.schemas.hsn import (
     HsnScrapeRequest,
     HsnSearchItem,
     HsnSearchResponse,
+    HsnStatsResponse,
     HsnVerificationCreate,
     HsnVerificationResponse,
 )
@@ -150,6 +152,26 @@ def search(
     )
     session.commit()
     return HsnSearchResponse(query=q, count=len(items), results=items)
+
+
+@router.get("/stats", response_model=HsnStatsResponse)
+def stats(session: DbSession, current_user: CurrentUser) -> HsnStatsResponse:
+    def _count(level: int | None = None) -> int:
+        query = select(func.count()).select_from(HsnCode).where(HsnCode.is_active.is_(True))
+        if level is not None:
+            query = query.where(HsnCode.digit_level == level)
+        return int(session.scalar(query) or 0)
+
+    return HsnStatsResponse(
+        total_codes=_count(),
+        chapters=_count(2),
+        headings=_count(4),
+        subheadings=_count(6),
+        tariff_items=_count(8),
+        verified_mappings=int(
+            session.scalar(select(func.count()).select_from(HsnProductAlias)) or 0
+        ),
+    )
 
 
 @router.get("/import/jobs", response_model=list[HsnImportJobResponse])

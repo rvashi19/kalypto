@@ -623,3 +623,12 @@ export interface HsnAiClassifyResponse {
   cross_check: HsnCrossCheckSource[];
   disclaimer: string;
 }
+
+export interface HsnStatsResponse {
+  total_codes: number;
+  chapters: number;
+  headings: number;
+  subheadings: number;
+  tariff_items: number;
+  verified_mappings: number;
+}

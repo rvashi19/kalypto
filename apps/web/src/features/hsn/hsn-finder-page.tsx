@@ -1,7 +1,7 @@
 import type { HsnDetailResponse, HsnScrapeRequest, HsnSearchItem } from "@repo/shared";
 import { Button } from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
@@ -9,26 +9,56 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 const CONFIDENCE_STYLES: Record<string, string> = {
-  High: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  Medium: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  High: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-200",
   Low: "border-slate-600/50 bg-slate-700/40 text-slate-300",
 };
 
+const QUICK_CHIPS = [
+  "Rice",
+  "Cotton shirt",
+  "Turmeric powder",
+  "Gold jewellery",
+  "Mobile phone",
+  "Leather wallet",
+  "Aluminium beverage can",
+  "Shampoo",
+];
+
+const LEVELS = [
+  { label: "All", value: 0 },
+  { label: "Chapter · 2", value: 2 },
+  { label: "Heading · 4", value: 4 },
+  { label: "Sub-heading · 6", value: 6 },
+  { label: "Tariff item · 8", value: 8 },
+] as const;
+
+type SortKey = "relevance" | "code_asc" | "code_desc" | "az";
+
 const EMPTY_STATE =
-  "No HSN match found in the imported HSN master data. This does not mean the HSN does not exist. Import/update official HSN master data or request verification.";
+  "No HSN match found in the imported master data. This does not mean the code does not exist — try the AI verify, or import/update the official HSN master.";
 
 const inputClass =
-  "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30";
+  "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20";
 
 export function HsnFinderPage() {
   const { session, token, setSession } = useAuth();
   const navigate = useNavigate();
-  const [query, setQuery] = useState("turmeric powder");
+  const [query, setQuery] = useState("");
+  const [level, setLevel] = useState(0);
+  const [sort, setSort] = useState<SortKey>("relevance");
   const [selected, setSelected] = useState<HsnSearchItem | null>(null);
   const [detail, setDetail] = useState<HsnDetailResponse | null>(null);
 
+  const statsQuery = useQuery({
+    queryKey: ["hsn-stats", token],
+    queryFn: () => api.hsnStats(token!),
+    enabled: Boolean(token),
+  });
+
   const searchMutation = useMutation({
-    mutationFn: () => api.searchHsn(query, token!, { limit: 25 }),
+    mutationFn: (vars: { q: string; level: number }) =>
+      api.searchHsn(vars.q, token!, { limit: 30, digitLevel: vars.level || undefined }),
     onSuccess: () => {
       setSelected(null);
       setDetail(null);
@@ -40,9 +70,7 @@ export function HsnFinderPage() {
     onSuccess: (data) => setDetail(data),
   });
 
-  const aiMutation = useMutation({
-    mutationFn: () => api.classifyHsnAi(query, token!),
-  });
+  const aiMutation = useMutation({ mutationFn: () => api.classifyHsnAi(query, token!) });
 
   const verifyMutation = useMutation({
     mutationFn: (item: HsnSearchItem) =>
@@ -67,14 +95,28 @@ export function HsnFinderPage() {
     onSettled: () => setSession(null),
   });
 
+  function runSearch(q: string, lvl = level) {
+    if (!q.trim()) return;
+    setQuery(q);
+    searchMutation.mutate({ q, level: lvl });
+  }
+
   function onSelect(item: HsnSearchItem) {
     setSelected(item);
     detailMutation.mutate(item.normalized_code);
   }
 
-  const results = searchMutation.data?.results ?? [];
+  const results = useMemo(() => {
+    const list = [...(searchMutation.data?.results ?? [])];
+    if (sort === "code_asc") list.sort((a, b) => a.normalized_code.localeCompare(b.normalized_code));
+    if (sort === "code_desc") list.sort((a, b) => b.normalized_code.localeCompare(a.normalized_code));
+    if (sort === "az") list.sort((a, b) => a.description.localeCompare(b.description));
+    return list;
+  }, [searchMutation.data, sort]);
+
   const isAdmin = session?.membership.role === "owner";
   const hasSearched = Boolean(searchMutation.data) || searchMutation.isPending;
+  const stats = statsQuery.data;
 
   return (
     <DashboardShell
@@ -82,108 +124,126 @@ export function HsnFinderPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      {/* Search header */}
-      <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">HSN Finder</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-              Classify products against the imported official HSN/ITC(HS) master. Classification
-              only — incentives and rates are handled separately in the Incentive Finder.
-            </p>
-          </div>
-          {searchMutation.data ? (
-            <span className="rounded-full border border-slate-700 bg-slate-800/60 px-3 py-1 text-xs text-slate-400">
-              {searchMutation.data.count} result{searchMutation.data.count === 1 ? "" : "s"}
-            </span>
-          ) : null}
+      {/* Hero — styled after hsn.codes */}
+      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-950 px-6 py-10 text-center md:py-14">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-300/80">
+          — Harmonised System of Nomenclature · India ITC-HS —
+        </p>
+        <h1 className="mt-4 font-serif text-4xl font-bold tracking-tight text-white md:text-6xl">
+          HSN Code Finder
+        </h1>
+        <p className="mt-1 font-serif text-3xl italic text-amber-300 md:text-5xl">
+          Verified India Database
+        </p>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
+          Search India&apos;s ITC-HS classification by product or code. Source-backed, AI-verified,
+          and cross-checked against authentic ITC-HS data. Classification only — incentives are
+          handled separately.
+        </p>
+
+        {/* Stats */}
+        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
+          <Stat value={stats?.total_codes} label="HSN codes" />
+          <Stat value={stats?.tariff_items} label="8-digit items" />
+          <Stat value={stats?.headings} label="Headings" />
+          <Stat value={stats?.verified_mappings} label="Verified maps" />
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <SearchIcon />
+        {/* Search */}
+        <div className="mx-auto mt-8 max-w-3xl">
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/90 p-2 shadow-lg focus-within:border-amber-400/50 focus-within:ring-2 focus-within:ring-amber-400/15">
+            <span className="pl-2 text-slate-500">
+              <SearchIcon />
+            </span>
             <input
               autoFocus
-              className={`${inputClass} pl-10 pr-9`}
-              placeholder="Enter product name or HSN code"
+              className="flex-1 bg-transparent px-1 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+              placeholder="Search by HSN code (e.g. 8517) or product name (e.g. rice, mobile phone)…"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && query.trim()) searchMutation.mutate();
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runSearch(query);
               }}
             />
-            {query ? (
-              <button
-                onClick={() => setQuery("")}
-                aria-label="Clear"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-300"
-              >
-                ✕
-              </button>
-            ) : null}
+            <Button
+              className="shrink-0 !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+              disabled={searchMutation.isPending || !query.trim()}
+              onClick={() => runSearch(query)}
+            >
+              {searchMutation.isPending ? "Searching…" : "Search"}
+            </Button>
+            <Button
+              variant="secondary"
+              className="shrink-0"
+              disabled={aiMutation.isPending || !query.trim()}
+              onClick={() => aiMutation.mutate()}
+              title="Ask GPT to classify, cross-verified against authentic ITC-HS data"
+            >
+              {aiMutation.isPending ? "Verifying…" : "AI verify"}
+            </Button>
           </div>
-          <Button
-            className="shrink-0 sm:w-36"
-            disabled={searchMutation.isPending || !query.trim()}
-            onClick={() => searchMutation.mutate()}
-          >
-            {searchMutation.isPending ? "Searching…" : "Search"}
-          </Button>
-          <Button
-            variant="secondary"
-            className="shrink-0"
-            disabled={aiMutation.isPending || !query.trim()}
-            onClick={() => aiMutation.mutate()}
-            title="Ask the AI to verify the best HSN code for this product"
-          >
-            {aiMutation.isPending ? "Verifying…" : "AI verify"}
-          </Button>
+
+          {/* Quick chips */}
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {QUICK_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => runSearch(chip)}
+                className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-400 transition hover:border-amber-400/40 hover:text-amber-200"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
         </div>
+
         {searchMutation.error instanceof Error ? (
           <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
         ) : null}
         {aiMutation.error instanceof Error ? (
           <p className="mt-3 text-sm text-amber-300">AI verification unavailable: {aiMutation.error.message}</p>
         ) : null}
-        {aiMutation.data ? (
-          <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-indigo-200">AI suggestion:</span>
-              <span className="font-mono text-slate-100">{aiMutation.data.hsn_code ?? "no code"}</span>
-              <VerificationChip status={aiMutation.data.verification} />
-              {typeof aiMutation.data.confidence === "number" ? (
-                <span className="text-xs text-slate-500">model conf {aiMutation.data.confidence}</span>
-              ) : null}
-            </div>
-            {aiMutation.data.description ? (
-              <p className="mt-1 text-slate-300">{aiMutation.data.description}</p>
-            ) : null}
-            {aiMutation.data.reasoning ? (
-              <p className="mt-1 text-xs text-slate-400">{aiMutation.data.reasoning}</p>
-            ) : null}
-            {aiMutation.data.cross_check.length ? (
-              <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Authentic source cross-check
-                </p>
-                {aiMutation.data.cross_check.map((s, i) => (
-                  <p key={i} className="text-xs text-slate-400">
-                    <span className="text-slate-300">{s.source}</span> — {s.description}{" "}
-                    <span className="text-slate-500">({Math.round(s.match * 100)}% match)</span>
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-amber-300">
-                No authentic source confirmed this code — treat as a hint and verify with a CHA.
-              </p>
-            )}
-          </div>
-        ) : null}
+        {aiMutation.data ? <AiVerdict data={aiMutation.data} /> : null}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-        {/* Results */}
+      {/* Filter tabs + sort */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="flex flex-wrap gap-1">
+          {LEVELS.map((l) => (
+            <button
+              key={l.value}
+              onClick={() => {
+                setLevel(l.value);
+                if (query.trim()) runSearch(query, l.value);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                level === l.value
+                  ? "bg-amber-400/15 text-amber-200"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          {searchMutation.data ? <span>{results.length} results</span> : null}
+          <span>Sort</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 outline-none focus:border-amber-400/50"
+          >
+            <option value="relevance">Relevance</option>
+            <option value="code_asc">Code ↑</option>
+            <option value="code_desc">Code ↓</option>
+            <option value="az">A → Z</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Results + detail */}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_400px]">
         <section className="space-y-3">
           {searchMutation.isPending ? (
             <>
@@ -194,14 +254,14 @@ export function HsnFinderPage() {
           ) : null}
 
           {searchMutation.data && results.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center">
-              <p className="text-sm leading-6 text-slate-400">{EMPTY_STATE}</p>
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-sm leading-6 text-slate-400">
+              {EMPTY_STATE}
             </div>
           ) : null}
 
           {!hasSearched ? (
             <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-10 text-center text-sm text-slate-500">
-              Search by product (e.g. “basmati rice”, “cotton shirt”) or an HSN code (e.g. “0910”).
+              Search above to find HSN codes — by product (“basmati rice”) or code (“0910”).
             </div>
           ) : null}
 
@@ -215,7 +275,6 @@ export function HsnFinderPage() {
           ))}
         </section>
 
-        {/* Detail */}
         <aside className="lg:sticky lg:top-4 lg:self-start">
           {detailMutation.isPending ? (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -246,6 +305,53 @@ export function HsnFinderPage() {
   );
 }
 
+function Stat({ value, label }: { value: number | undefined; label: string }) {
+  return (
+    <div>
+      <p className="font-mono text-2xl font-bold text-amber-300 md:text-3xl">
+        {value == null ? "—" : value.toLocaleString("en-IN")}
+      </p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function AiVerdict({ data }: { data: import("@repo/shared").HsnAiClassifyResponse }) {
+  return (
+    <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-left text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-amber-200">AI suggestion:</span>
+        <span className="font-mono text-slate-100">{data.hsn_code ?? "no code"}</span>
+        <VerificationChip status={data.verification} />
+        {typeof data.confidence === "number" ? (
+          <span className="text-xs text-slate-500">model conf {data.confidence}</span>
+        ) : null}
+      </div>
+      {data.description ? <p className="mt-1 text-slate-300">{data.description}</p> : null}
+      {data.reasoning ? <p className="mt-1 text-xs text-slate-400">{data.reasoning}</p> : null}
+      {data.cross_check.length ? (
+        <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Authentic source cross-check
+          </p>
+          {data.cross_check.map((s, i) => (
+            <p key={i} className="text-xs text-slate-400">
+              <span className="text-slate-300">{s.source}</span> — {s.description}{" "}
+              <span className="text-slate-500">({Math.round(s.match * 100)}% match)</span>
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-amber-300">
+          No authentic source confirmed this code — treat as a hint and verify with a CHA.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ResultCard({
   item,
   selected,
@@ -260,13 +366,13 @@ function ResultCard({
       onClick={onSelect}
       className={`block w-full rounded-xl border p-4 text-left transition ${
         selected
-          ? "border-indigo-500/60 bg-indigo-500/5 ring-1 ring-indigo-500/40"
+          ? "border-amber-400/50 bg-amber-400/5 ring-1 ring-amber-400/30"
           : "border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-900"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-base font-semibold tracking-wide text-slate-100">
+          <span className="font-mono text-lg font-bold tracking-wide text-amber-300">
             {item.code}
           </span>
           {item.verified ? (
@@ -335,7 +441,7 @@ function DetailPanel({
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div>
         <div className="flex items-center gap-2">
-          <p className="font-mono text-xl font-semibold text-white">{detail.code}</p>
+          <p className="font-mono text-xl font-bold text-amber-300">{detail.code}</p>
           <CopyButton value={detail.code} />
         </div>
         <p className="mt-1.5 text-sm leading-6 text-slate-300">{detail.description}</p>
@@ -345,7 +451,7 @@ function DetailPanel({
         <div className="space-y-1 text-sm text-slate-300">
           <HierRow label="Chapter" value={detail.hierarchy.chapter_code} extra={detail.chapter_name} />
           <HierRow label="Heading" value={detail.hierarchy.heading_code} />
-          <HierRow label="Subheading" value={detail.hierarchy.subheading_code} />
+          <HierRow label="Sub-heading" value={detail.hierarchy.subheading_code} />
           <HierRow label="Tariff line" value={detail.digit_level === 8 ? detail.normalized_code : null} />
         </div>
       </Section>
@@ -374,7 +480,7 @@ function DetailPanel({
                     href={evidence.source_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1 inline-block font-medium text-indigo-300 hover:text-indigo-200"
+                    className="mt-1 inline-block font-medium text-amber-300 hover:text-amber-200"
                   >
                     Open source ↗
                   </a>
@@ -395,7 +501,10 @@ function DetailPanel({
         <Button className="w-full" variant="secondary" disabled={verifyPending || verified} onClick={onVerify}>
           {verified ? "✓ Verification requested" : verifyPending ? "Submitting…" : "Verify with CHA / customs broker"}
         </Button>
-        <Button className="w-full" onClick={onUseForIncentives}>
+        <Button
+          className="w-full !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+          onClick={onUseForIncentives}
+        >
           Use this HSN for Incentive Finder
         </Button>
         {!detail.incentive_rate_available ? (
@@ -454,11 +563,13 @@ function AdminDataPanel({ token }: { token: string }) {
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="text-lg font-semibold tracking-tight text-white">Official HSN data · admin</h2>
+      <h2 className="font-serif text-xl font-semibold tracking-tight text-white">
+        Official HSN data <span className="text-amber-300">· admin</span>
+      </h2>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
         Refresh the HSN master from an official or aggregator source. Runs are rate-limited and
-        source-versioned, and import idempotently (no duplicate rows). EximGuru is a secondary
-        ITC-HS aggregator; official DGFT/CBIC and data.gov.in remain primary.
+        source-versioned, and import idempotently. EximGuru is a secondary ITC-HS aggregator;
+        official DGFT/CBIC and data.gov.in remain primary.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -468,7 +579,7 @@ function AdminDataPanel({ token }: { token: string }) {
             onClick={() => setSource(s.id)}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               source === s.id
-                ? "border-indigo-500/60 bg-indigo-500/10 text-indigo-200"
+                ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
                 : "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200"
             }`}
           >
@@ -598,7 +709,7 @@ function CopyButton({ value }: { value: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
+      className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-amber-400/50 hover:text-amber-200"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -622,7 +733,7 @@ function VerificationChip({ status }: { status: string }) {
 function SearchIcon() {
   return (
     <svg
-      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+      className="h-5 w-5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

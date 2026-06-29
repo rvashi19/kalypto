@@ -135,6 +135,15 @@ class HsnAiClassifyRequest(BaseModel):
     store: bool = True  # store the verdict as a verified alias for next time
 
 
+class HsnStatsResponse(BaseModel):
+    total_codes: int
+    chapters: int
+    headings: int
+    subheadings: int
+    tariff_items: int
+    verified_mappings: int
+
+
 class HsnCrossCheckSource(BaseModel):
     source: str
     description: str

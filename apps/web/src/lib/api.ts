@@ -24,6 +24,7 @@ import type {
   HsnDetailResponse,
   HsnImportJobResponse,
   HsnImportResponse,
+  HsnStatsResponse,
   HsnRateLookupResponse,
   HsnScrapeRequest,
   HsnSearchResponse,
@@ -356,6 +357,8 @@ export const api = {
     ),
 
   // HSN Finder (standalone classification) — decoupled from incentives.
+
+  hsnStats: (token: string) => request<HsnStatsResponse>("/hsn/stats", {}, token),
 
   searchHsn: (
     query: string,
