@@ -135,6 +135,12 @@ class HsnAiClassifyRequest(BaseModel):
     store: bool = True  # store the verdict as a verified alias for next time
 
 
+class HsnCrossCheckSource(BaseModel):
+    source: str
+    description: str
+    match: float
+
+
 class HsnAiClassifyResponse(BaseModel):
     product: str
     hsn_code: str | None = None
@@ -145,6 +151,10 @@ class HsnAiClassifyResponse(BaseModel):
     alternatives: list[str] = Field(default_factory=list)
     model: str | None = None
     stored: bool = False
+    # Cross-verification against authentic ITC-HS website data.
+    verification: str = "unverified"  # cross_verified / exists_weak_match / unverified
+    authentic_sources: int = 0
+    cross_check: list[HsnCrossCheckSource] = Field(default_factory=list)
     disclaimer: str = HSN_DISCLAIMER
 
 

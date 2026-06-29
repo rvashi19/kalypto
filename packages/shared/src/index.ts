@@ -602,6 +602,12 @@ export interface HsnImportJobResponse {
   created_at: string;
 }
 
+export interface HsnCrossCheckSource {
+  source: string;
+  description: string;
+  match: number;
+}
+
 export interface HsnAiClassifyResponse {
   product: string;
   hsn_code: string | null;
@@ -612,5 +618,8 @@ export interface HsnAiClassifyResponse {
   alternatives: string[];
   model: string | null;
   stored: boolean;
+  verification: "cross_verified" | "exists_weak_match" | "unverified";
+  authentic_sources: number;
+  cross_check: HsnCrossCheckSource[];
   disclaimer: string;
 }

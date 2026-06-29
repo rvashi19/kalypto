@@ -341,6 +341,72 @@ def _compose_description(heading_desc: str, leaf: str) -> str:
     return f"{head}: {leaf}" if bare else leaf
 
 
+# ── Single-code live lookup (used for cross-verification) ───────────────────────
+
+_CHAPTER_INDEX_CACHE: dict[int, str] = {}
+_CHAPTER_HEADINGS_CACHE: dict[int, dict[str, tuple[str | None, str]]] = {}
+_HEADING_CODES_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _chapter_links_cached() -> dict[int, str]:
+    if not _CHAPTER_INDEX_CACHE:
+        _CHAPTER_INDEX_CACHE.update(_chapter_links())
+    return _CHAPTER_INDEX_CACHE
+
+
+def _chapter_headings(chapter: int) -> dict[str, tuple[str | None, str]]:
+    """{heading4: (heading_url|None, heading_desc)} for a chapter, cached."""
+    if chapter in _CHAPTER_HEADINGS_CACHE:
+        return _CHAPTER_HEADINGS_CACHE[chapter]
+    url = _chapter_links_cached().get(chapter)
+    headings: dict[str, tuple[str | None, str]] = {}
+    if url:
+        for code, desc, heading_url in _parse_rows(_eximguru_get(url)):
+            if len(code) == 4:
+                clean = re.sub(r"^harmonised codes of\s*", "", desc, flags=re.I).strip()
+                headings[code] = (heading_url, clean or desc)
+    _CHAPTER_HEADINGS_CACHE[chapter] = headings
+    return headings
+
+
+def _heading_codes(heading_url: str, heading_desc: str) -> dict[str, str]:
+    if heading_url in _HEADING_CODES_CACHE:
+        return _HEADING_CODES_CACHE[heading_url]
+    codes: dict[str, str] = {}
+    for code, desc, _ in _parse_rows(_eximguru_get(heading_url)):
+        codes[code] = desc if len(code) == 4 else _compose_description(heading_desc, desc)
+    _HEADING_CODES_CACHE[heading_url] = codes
+    return codes
+
+
+def fetch_code_description(code: str) -> tuple[str | None, bool]:
+    """Live authentic lookup of one code on EximGuru. Returns (description, exact_match)."""
+    digits = "".join(c for c in (code or "") if c.isdigit())
+    if len(digits) < 2:
+        return None, False
+    try:
+        chapter = int(digits[:2])
+    except ValueError:
+        return None, False
+    headings = _chapter_headings(chapter)
+    if len(digits) == 4:
+        if digits in headings:
+            return headings[digits][1], True
+        return None, False
+    heading4 = digits[:4]
+    if heading4 not in headings:
+        return None, False
+    heading_url, heading_desc = headings[heading4]
+    if len(digits) == 2:
+        return heading_desc, True
+    if not heading_url:
+        return heading_desc, False
+    leaf_map = _heading_codes(heading_url, heading_desc)
+    if digits in leaf_map:
+        return leaf_map[digits], True
+    return heading_desc, False
+
+
 def _collect_heading(
     heading_url: str,
     records: dict[str, dict[str, object]],

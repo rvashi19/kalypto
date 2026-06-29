@@ -26,6 +26,7 @@ from app.schemas.hsn import (
     HsnAiClassifyRequest,
     HsnAiClassifyResponse,
     HsnCodeAnnotateRequest,
+    HsnCrossCheckSource,
     HsnDetailResponse,
     HsnEvidenceItem,
     HsnHierarchy,
@@ -38,6 +39,7 @@ from app.schemas.hsn import (
     HsnVerificationCreate,
     HsnVerificationResponse,
 )
+from app.services.hsn_cross_verify import cross_verify_code
 from app.services.hsn_import import import_hsn_snapshot
 from app.services.hsn_llm_verify import (
     HsnLlmError,
@@ -336,14 +338,34 @@ def classify_ai(
     except HsnLlmError as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
 
-    stored = False
     code = verdict.get("hsn_code")
-    if payload.store and code:
-        # Store the LLM verdict: create the code row if our partial master lacks it,
-        # but never overwrite a curated/scraped description. Labelled as LLM-sourced.
+
+    # Cross-verify the LLM's code against authentic ITC-HS website data so the
+    # answer never depends on the LLM alone.
+    cross = (
+        cross_verify_code(
+            session=session,
+            code=code,
+            product=payload.product,
+            llm_description=verdict.get("description"),
+        )
+        if code
+        else None
+    )
+    cross_sources = (
+        [HsnCrossCheckSource(source=s.source, description=s.description[:200], match=s.match) for s in cross.sources]
+        if cross
+        else []
+    )
+    verification = cross.status if cross else "unverified"
+
+    stored = False
+    if payload.store and code and verification != "unverified":
+        # Store only codes confirmed by an authentic source. Cross-verified answers
+        # become High-confidence verified mappings; weak matches are stored lower.
         description = (verdict.get("description") or "").replace('"', "'")
         model = verdict.get("model") or "llm"
-        confidence = verdict.get("confidence")
+        cross_verified = verification == "cross_verified"
         csv = (
             'term,code,description\n'
             f'"{payload.product.strip().lower()}",{code},"{description}"\n'
@@ -351,14 +373,20 @@ def classify_ai(
         load_verified_aliases(
             session=session,
             raw_bytes=csv,
-            source="llm_verified",
-            code_source_name=f"LLM-suggested ({model})",
+            source="llm_cross_verified" if cross_verified else "llm_verified",
+            code_source_name=f"LLM ({model}) + authentic source cross-check",
             overwrite_description=False,
-            confidence=int(confidence) if isinstance(confidence, int | float) else 70,
+            confidence=92 if cross_verified else 70,
         )
         stored = True
 
-    return HsnAiClassifyResponse(stored=stored, **verdict)
+    return HsnAiClassifyResponse(
+        stored=stored,
+        verification=verification,
+        authentic_sources=cross.authentic_count if cross else 0,
+        cross_check=cross_sources,
+        **verdict,
+    )
 
 
 @router.post("/verify", response_model=HsnVerificationResponse, status_code=status.HTTP_201_CREATED)

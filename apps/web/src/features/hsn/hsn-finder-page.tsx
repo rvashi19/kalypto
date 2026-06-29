@@ -147,14 +147,37 @@ export function HsnFinderPage() {
         ) : null}
         {aiMutation.data ? (
           <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 text-sm">
-            <span className="font-semibold text-indigo-200">AI verified:</span>{" "}
-            <span className="font-mono text-slate-100">{aiMutation.data.hsn_code ?? "no code"}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-indigo-200">AI suggestion:</span>
+              <span className="font-mono text-slate-100">{aiMutation.data.hsn_code ?? "no code"}</span>
+              <VerificationChip status={aiMutation.data.verification} />
+              {typeof aiMutation.data.confidence === "number" ? (
+                <span className="text-xs text-slate-500">model conf {aiMutation.data.confidence}</span>
+              ) : null}
+            </div>
             {aiMutation.data.description ? (
-              <span className="text-slate-300"> — {aiMutation.data.description}</span>
+              <p className="mt-1 text-slate-300">{aiMutation.data.description}</p>
             ) : null}
             {aiMutation.data.reasoning ? (
               <p className="mt-1 text-xs text-slate-400">{aiMutation.data.reasoning}</p>
             ) : null}
+            {aiMutation.data.cross_check.length ? (
+              <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Authentic source cross-check
+                </p>
+                {aiMutation.data.cross_check.map((s, i) => (
+                  <p key={i} className="text-xs text-slate-400">
+                    <span className="text-slate-300">{s.source}</span> — {s.description}{" "}
+                    <span className="text-slate-500">({Math.round(s.match * 100)}% match)</span>
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-amber-300">
+                No authentic source confirmed this code — treat as a hint and verify with a CHA.
+              </p>
+            )}
           </div>
         ) : null}
       </section>
@@ -579,6 +602,20 @@ function CopyButton({ value }: { value: string }) {
     >
       {copied ? "Copied" : "Copy"}
     </button>
+  );
+}
+
+function VerificationChip({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    cross_verified: { label: "✓ Cross-verified", cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" },
+    exists_weak_match: { label: "Code exists · weak match", cls: "border-amber-500/40 bg-amber-500/15 text-amber-300" },
+    unverified: { label: "⚠ Unverified by source", cls: "border-rose-500/40 bg-rose-500/15 text-rose-300" },
+  };
+  const v = map[status] ?? map.unverified;
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${v.cls}`}>
+      {v.label}
+    </span>
   );
 }
 

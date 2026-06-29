@@ -154,6 +154,43 @@ def test_eximguru_connector_crawls_and_imports(session, monkeypatch):
     assert leaf.source_name.startswith("EximGuru")
 
 
+def test_cross_verify_confirms_with_authentic_sources(session, monkeypatch):
+    from app.models import HsnCode
+    from app.services import hsn_cross_verify
+
+    session.add(
+        HsnCode(
+            code="69120010",
+            normalized_code="69120010",
+            digit_level=8,
+            description="Ceramic tableware and kitchenware",
+            source_name="seed",
+            is_active=True,
+        )
+    )
+    session.commit()
+    # Authentic live source agrees.
+    monkeypatch.setattr(
+        hsn_cross_verify, "fetch_code_description", lambda code: ("Ceramic tableware, kitchenware", True)
+    )
+    result = hsn_cross_verify.cross_verify_code(
+        session=session,
+        code="69120010",
+        product="ceramic coffee mug",
+        llm_description="Ceramic tableware and kitchenware",
+    )
+    assert result.status == "cross_verified"
+    assert result.authentic_count == 2
+
+    # A code no authentic source knows -> unverified.
+    monkeypatch.setattr(hsn_cross_verify, "fetch_code_description", lambda code: (None, False))
+    bad = hsn_cross_verify.cross_verify_code(
+        session=session, code="99999999", product="ceramic coffee mug"
+    )
+    assert bad.status == "unverified"
+    assert bad.authentic_count == 0
+
+
 def test_official_file_connector_imports_csv(session, monkeypatch):
     csv_body = b"code,description\n09103010,Turmeric powder\n62052000,Men's cotton shirt woven\n"
 
