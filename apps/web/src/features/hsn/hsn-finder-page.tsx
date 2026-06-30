@@ -14,23 +14,16 @@ const CONFIDENCE_STYLES: Record<string, string> = {
   Low: "border-slate-600/50 bg-slate-700/40 text-slate-300",
 };
 
-const QUICK_CHIPS = [
-  "Basmati rice",
-  "Turmeric",
-  "Almond",
-  "Cashew",
-  "Cumin",
-  "Wheat",
-  "Shrimp",
-  "Cotton shirt",
-  "Gold jewellery",
-  "Diamond",
-  "Mobile phone",
-  "Laptop",
-  "Diesel",
-  "Urea",
-  "Tractor",
-  "Leather wallet",
+const CHIP_GROUPS: { label: string; chips: string[] }[] = [
+  { label: "Agri & Food", chips: ["Basmati rice", "Wheat", "Maize", "Turmeric", "Cumin", "Cardamom", "Tea", "Coffee", "Sugar", "Soybean"] },
+  { label: "Nuts & Fruit", chips: ["Almond", "Cashew", "Walnut", "Raisins", "Mango", "Banana", "Grapes", "Pomegranate"] },
+  { label: "Pulses", chips: ["Chana", "Lentil", "Tur dal", "Moong", "Urad", "Rajma"] },
+  { label: "Marine & Dairy", chips: ["Shrimp", "Fish", "Ghee", "Milk powder", "Paneer", "Honey", "Buffalo meat"] },
+  { label: "Gems & Metals", chips: ["Gold", "Silver", "Diamond", "Gold jewellery", "Steel", "Aluminium", "Copper"] },
+  { label: "Energy & Chem", chips: ["Diesel", "Petrol", "Crude oil", "LPG", "Urea", "DAP fertilizer", "Medicine"] },
+  { label: "Electronics", chips: ["Mobile phone", "Laptop", "LED TV", "Air conditioner", "Refrigerator", "Solar panel", "Battery"] },
+  { label: "Vehicles & Machinery", chips: ["Car", "Motorcycle", "Tractor", "Auto parts", "Water pump", "Electric motor"] },
+  { label: "Textiles & More", chips: ["Cotton shirt", "T-shirt", "Jeans", "Saree", "Leather wallet", "Leather shoes", "Wooden furniture", "Ceramic tiles"] },
 ];
 
 const LEVELS = [
@@ -58,6 +51,7 @@ export function HsnFinderPage() {
   const [selected, setSelected] = useState<HsnSearchItem | null>(null);
   const [detail, setDetail] = useState<HsnDetailResponse | null>(null);
   const [browse, setBrowse] = useState(false);
+  const [chipGroup, setChipGroup] = useState(0);
 
   const statsQuery = useQuery({
     queryKey: ["hsn-stats", token],
@@ -199,9 +193,24 @@ export function HsnFinderPage() {
             </Button>
           </div>
 
-          {/* Quick chips */}
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            {QUICK_CHIPS.map((chip) => (
+          {/* Quick chips — grouped by category */}
+          <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+            {CHIP_GROUPS.map((group, i) => (
+              <button
+                key={group.label}
+                onClick={() => setChipGroup(i)}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+                  chipGroup === i
+                    ? "bg-amber-400/15 text-amber-200"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            {CHIP_GROUPS[chipGroup].chips.map((chip) => (
               <button
                 key={chip}
                 onClick={() => runSearch(chip)}
