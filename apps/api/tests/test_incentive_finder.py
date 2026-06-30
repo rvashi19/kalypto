@@ -143,17 +143,11 @@ def test_import_idempotent(session):
     assert second.job.records_updated == first.job.records_created
 
 
-def test_reimport_does_not_downgrade_approved(session):
+def test_reimport_identical_keeps_approved(session):
     org = _tenant(session)
     _seed(session, org.id)
-    # Re-import the same row with a blank approval_status; approved must stay approved.
-    csv = (
-        b"scheme,hsn_code,rate_value,effective_from,source_name,approval_status\n"
-        b"rodtep,12119030,1.4,2023-04-01,DGFT,\n"
-    )
-    import_incentive_snapshot(
-        session=session, tenant_id=org.id, raw_bytes=csv, import_type="csv", source_name="x"
-    )
+    # An identical re-import (no field changes) must not knock an approved rate back to review.
+    _seed(session, org.id)
     row = session.scalars(
         select(IncentiveRate).where(IncentiveRate.normalized_hsn_code == "12119030")
     ).first()

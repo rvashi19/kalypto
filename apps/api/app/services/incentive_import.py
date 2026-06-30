@@ -8,6 +8,7 @@ snapshot upserts in place. Approved records are not blindly downgraded on re-imp
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -26,6 +27,58 @@ _EVIDENCE_TYPE = {
     "drawback": "drawback_schedule",
     "rosctl": "rosctl_schedule",
 }
+# Fields whose change makes an already-approved rate go back to review.
+_CHANGE_FIELDS = (
+    "rate_value", "cap_value", "cap_unit", "rate_type", "unit_of_quantity",
+    "condition_text", "effective_to",
+)
+_PDF_ROW_RE = re.compile(r"(\d{2,8})\D{0,40}?(\d{1,3}(?:\.\d{1,3})?)\s*%")
+
+
+def _parse_pdf_rows(raw_bytes: bytes, scheme: str | None) -> list[dict[str, Any]]:
+    """Best-effort extraction of (HSN, rate%) pairs from an official schedule PDF.
+
+    Imported rows are pending by default and must be admin-reviewed — PDF table
+    extraction is approximate and never a source of truth.
+    """
+    try:
+        import pdfplumber  # type: ignore[import-untyped]
+    except ImportError as error:
+        raise ValueError("PDF import requires pdfplumber (install API requirements).") from error
+    import io as _io
+
+    rows: list[dict[str, Any]] = []
+    with pdfplumber.open(_io.BytesIO(raw_bytes)) as pdf:
+        for page in pdf.pages:
+            for line in (page.extract_text() or "").splitlines():
+                match = _PDF_ROW_RE.search(line)
+                if not match:
+                    continue
+                code = match.group(1)
+                if len(code) not in (2, 4, 6, 8):
+                    continue
+                rows.append(
+                    {
+                        "scheme": scheme or "",
+                        "hsn_code": code,
+                        "rate_value": match.group(2),
+                        "rate_type": "percentage",
+                        "description": line.strip()[:200],
+                    }
+                )
+    return rows
+
+
+def _anomaly_note(scheme: str, rate_value: float, values: dict[str, Any]) -> str | None:
+    flags: list[str] = []
+    if rate_value < 0 or rate_value > 100:
+        flags.append("rate outside 0–100% range")
+    if values.get("cap_value") is not None and not values.get("cap_unit"):
+        flags.append("cap value without cap unit")
+    eff_to = values.get("effective_to")
+    if eff_to is not None and values.get("_effective_from") is not None and eff_to <= values["_effective_from"]:
+        flags.append("effective_to not after effective_from")
+    return "; ".join(flags) or None
 
 
 @dataclass
@@ -53,6 +106,18 @@ def _parse_date(value: str | None) -> datetime | None:
     return None
 
 
+def _field_changed(existing: Any, incoming: Any) -> bool:
+    """Numeric-aware change comparison (Decimal vs float vs None)."""
+    if existing is None and incoming is None:
+        return False
+    try:
+        if existing is not None and incoming is not None:
+            return float(existing) != float(incoming)
+    except (TypeError, ValueError):
+        pass
+    return existing != incoming
+
+
 def _to_float(value: str | None) -> float | None:
     if value in (None, ""):
         return None
@@ -74,6 +139,7 @@ def import_incentive_snapshot(
     source_document_title: str | None = None,
     source_document_date: str | None = None,
     source_version: str | None = None,
+    source_id: UUID | None = None,
     created_by: str | None = None,
     commit: bool = True,
 ) -> IncentiveImportResult:
@@ -94,7 +160,11 @@ def import_incentive_snapshot(
 
     errors: list[dict[str, Any]] = []
     try:
-        rows = parse_rows(raw_bytes, import_type)
+        rows = (
+            _parse_pdf_rows(raw_bytes, scheme)
+            if import_type.lower() == "pdf"
+            else parse_rows(raw_bytes, import_type)
+        )
     except Exception as error:  # noqa: BLE001
         job.status = "failed"
         job.error_message = str(error)
@@ -146,6 +216,10 @@ def import_incentive_snapshot(
             "source_version": _pick(row, "source_version") or source_version,
         }
 
+        review_note = _anomaly_note(
+            row_scheme, rate_value, {**values, "_effective_from": effective_from}
+        )
+
         existing = session.scalars(
             select(IncentiveRate).where(
                 IncentiveRate.tenant_id == tenant_id,
@@ -162,21 +236,33 @@ def import_incentive_snapshot(
                 effective_from=effective_from,
                 approval_status=incoming_status,
                 is_active=True,
+                source_id=source_id,
+                review_note=review_note,
                 **values,
             )
             session.add(rate)
             session.flush()
             created += 1
         else:
+            was_approved = existing.approval_status == "approved"
+            changed = any(_field_changed(getattr(existing, f), values.get(f)) for f in _CHANGE_FIELDS)
             for key, value in values.items():
                 setattr(existing, key, value)
-            # Never blindly downgrade an approved record on re-import.
-            if not (existing.approval_status == "approved" and incoming_status in ("", "pending")):
+            existing.is_active = True
+            existing.review_note = review_note
+            if source_id is not None:
+                existing.source_id = source_id
+            if was_approved and changed:
+                # A changed official rate must be re-reviewed before it is shown.
+                existing.approval_status = "needs_review"
+                existing.verified_by = None
+                existing.verified_at = None
+            elif not was_approved:
                 existing.approval_status = incoming_status
                 if incoming_status != "approved":
                     existing.verified_by = None
                     existing.verified_at = None
-            existing.is_active = True
+            # was_approved and not changed -> stays approved.
             rate = existing
             updated += 1
             session.query(IncentiveSourceEvidence).filter(

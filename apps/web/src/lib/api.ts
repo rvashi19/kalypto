@@ -26,10 +26,15 @@ import type {
   HsnImportJobResponse,
   HsnImportResponse,
   HsnStatsResponse,
+  IncentiveAnomalyResponse,
   IncentiveDetailResponse,
   IncentiveImportJobResponse,
   IncentiveImportResponse,
+  IncentiveRateItem,
+  IncentiveRefreshResponse,
   IncentiveSearchResponse,
+  IncentiveSourceCreate,
+  IncentiveSourceResponse,
   HsnRateLookupResponse,
   HsnScrapeRequest,
   HsnSearchResponse,
@@ -424,8 +429,50 @@ export const api = {
   approveIncentive: (id: string, token: string) =>
     request<IncentiveDetailResponse>(`/incentives/${id}/approve`, { method: "POST" }, token),
 
+  rejectIncentive: (id: string, token: string) =>
+    request<IncentiveDetailResponse>(`/incentives/${id}/reject`, { method: "POST" }, token),
+
   listIncentiveImportJobs: (token: string) =>
     request<IncentiveImportJobResponse[]>("/incentives/import-jobs", {}, token),
+
+  listIncentiveSources: (token: string) =>
+    request<IncentiveSourceResponse[]>("/incentives/sources", {}, token),
+
+  registerIncentiveSource: (payload: IncentiveSourceCreate, token: string) =>
+    request<IncentiveSourceResponse>(
+      "/incentives/sources",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  refreshIncentiveSource: (id: string, token: string) =>
+    request<IncentiveRefreshResponse>(`/incentives/sources/${id}/refresh`, { method: "POST" }, token),
+
+  incentivePendingQueue: (token: string) =>
+    request<IncentiveRateItem[]>("/incentives/pending", {}, token),
+
+  incentiveAnomalyCheck: (token: string) =>
+    request<IncentiveAnomalyResponse>("/incentives/anomaly-check", { method: "POST" }, token),
+
+  importIncentivesFile: async (
+    file: File,
+    fields: { source_name: string; scheme?: string; source_url?: string; source_document_title?: string; source_document_date?: string; source_version?: string; import_type?: string },
+    token: string
+  ): Promise<IncentiveImportResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    Object.entries(fields).forEach(([k, v]) => {
+      if (v) form.append(k, v);
+    });
+    const response = await fetch(`${API_BASE_URL}/incentives/import`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => ({ detail: "Import failed." }));
+    if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
+    return body as IncentiveImportResponse;
+  },
 
   importIncentives: async (
     file: File,

@@ -676,8 +676,50 @@ export interface IncentiveRateItem {
   verified_by: string | null;
   verified_at: string | null;
   is_active: boolean;
+  review_note: string | null;
   match_level: string;
   source_evidence_count: number;
+}
+
+export interface IncentiveSourceResponse {
+  id: string;
+  scheme: string | null;
+  source_name: string;
+  source_url: string | null;
+  source_document_title: string | null;
+  source_type: string;
+  refresh_interval_days: number | null;
+  last_fetched_at: string | null;
+  last_source_version: string | null;
+  last_status: string;
+  last_records: number;
+  is_active: boolean;
+  due_for_refresh: boolean;
+  created_at: string;
+}
+
+export interface IncentiveSourceCreate {
+  source_name: string;
+  scheme?: string | null;
+  source_url?: string | null;
+  source_document_title?: string | null;
+  source_type: "csv" | "xlsx" | "pdf" | "json";
+  refresh_interval_days?: number | null;
+}
+
+export interface IncentiveRefreshResponse {
+  source_id: string;
+  status: string;
+  message: string;
+  records_seen: number;
+  records_created: number;
+  records_updated: number;
+}
+
+export interface IncentiveAnomalyResponse {
+  checked: number;
+  flagged: number;
+  model: string | null;
 }
 
 export interface IncentiveSearchResponse {

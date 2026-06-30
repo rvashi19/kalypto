@@ -58,6 +58,7 @@ from app.models.hsn import (
 from app.models.incentive import (
     IncentiveImportJob,
     IncentiveRate,
+    IncentiveSource,
     IncentiveSourceEvidence,
 )
 
@@ -96,6 +97,7 @@ __all__ = [
     "IncentiveImportJob",
     "IncentiveRate",
     "IncentiveScheme",
+    "IncentiveSource",
     "IncentiveSourceEvidence",
     "Invoice",
     "InvoiceType",

@@ -45,6 +45,7 @@ class IncentiveRateItem(BaseModel):
     verified_by: str | None = None
     verified_at: datetime | None = None
     is_active: bool
+    review_note: str | None = None
     match_level: str  # exact / prefix
     source_evidence_count: int = 0
 
@@ -64,6 +65,47 @@ class IncentiveSearchResponse(BaseModel):
 class IncentiveDetailResponse(IncentiveRateItem):
     source_evidence: list[IncentiveEvidenceItem] = Field(default_factory=list)
     disclaimer: str = INCENTIVE_DISCLAIMER
+
+
+class IncentiveSourceCreate(BaseModel):
+    source_name: str = Field(min_length=2, max_length=255)
+    scheme: str | None = Field(default=None, max_length=40)
+    source_url: str | None = Field(default=None, max_length=2048)
+    source_document_title: str | None = Field(default=None, max_length=512)
+    source_type: str = Field(default="csv", pattern=r"^(csv|xlsx|pdf|json)$")
+    refresh_interval_days: int | None = Field(default=None, ge=1, le=365)
+
+
+class IncentiveSourceResponse(BaseModel):
+    id: str
+    scheme: str | None = None
+    source_name: str
+    source_url: str | None = None
+    source_document_title: str | None = None
+    source_type: str
+    refresh_interval_days: int | None = None
+    last_fetched_at: datetime | None = None
+    last_source_version: str | None = None
+    last_status: str
+    last_records: int
+    is_active: bool
+    due_for_refresh: bool = False
+    created_at: datetime
+
+
+class IncentiveRefreshResponse(BaseModel):
+    source_id: str
+    status: str
+    message: str
+    records_seen: int = 0
+    records_created: int = 0
+    records_updated: int = 0
+
+
+class IncentiveAnomalyResponse(BaseModel):
+    checked: int
+    flagged: int
+    model: str | None = None
 
 
 class IncentiveImportError(BaseModel):

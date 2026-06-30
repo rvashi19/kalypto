@@ -34,7 +34,8 @@ def main() -> None:
         job = result.job
         summary = (
             f"incentives: status={job.status} seen={job.records_seen} "
-            f"created={job.records_created} updated={job.records_updated} errors={len(result.errors)}"
+            f"created={job.records_created} updated={job.records_updated} "
+            f"errors={len(result.errors)}"
         )
     finally:
         session.close()

@@ -67,11 +67,44 @@ class IncentiveRate(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     source_document_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source_version: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
 
-    # pending / approved / rejected / expired
+    # pending / approved / rejected / expired / needs_review
     approval_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     verified_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
+    source_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("incentive_sources.id"), nullable=True, index=True
+    )
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class IncentiveSource(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Registry of official incentive-rate sources (DGFT/CBIC/MoT schedules).
+
+    A source is either a configured official file URL (re-fetchable on a schedule)
+    or an upload-only entry. Refreshes import rows as pending for admin approval.
+    """
+
+    __tablename__ = "incentive_sources"
+
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("organizations.id"), nullable=True, index=True
+    )
+    scheme: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    source_document_title: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # csv / xlsx / pdf / json
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False, default="csv")
+    refresh_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_source_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_status: Mapped[str] = mapped_column(String(20), nullable=False, default="registered")
+    last_records: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
 
 
 class IncentiveSourceEvidence(Base, UUIDPrimaryKeyMixin):
