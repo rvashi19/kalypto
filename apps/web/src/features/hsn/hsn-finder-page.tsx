@@ -15,14 +15,22 @@ const CONFIDENCE_STYLES: Record<string, string> = {
 };
 
 const QUICK_CHIPS = [
-  "Rice",
+  "Basmati rice",
+  "Turmeric",
+  "Almond",
+  "Cashew",
+  "Cumin",
+  "Wheat",
+  "Shrimp",
   "Cotton shirt",
-  "Turmeric powder",
   "Gold jewellery",
+  "Diamond",
   "Mobile phone",
+  "Laptop",
+  "Diesel",
+  "Urea",
+  "Tractor",
   "Leather wallet",
-  "Aluminium beverage can",
-  "Shampoo",
 ];
 
 const LEVELS = [
