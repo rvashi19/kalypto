@@ -85,14 +85,28 @@ def search_incentives(
 
     # The query code plus each parent level it falls under.
     prefixes = {normalized} | {normalized[:n] for n in (2, 4, 6, 8) if n <= len(normalized)}
+    tenant_scope = or_(IncentiveRate.tenant_id == tenant_id, IncentiveRate.tenant_id.is_(None))
     query = (
         select(IncentiveRate)
         .where(IncentiveRate.normalized_hsn_code.in_(prefixes))
-        .where(or_(IncentiveRate.tenant_id == tenant_id, IncentiveRate.tenant_id.is_(None)))
+        .where(tenant_scope)
     )
     if scheme and scheme.lower() != "all":
         query = query.where(func.lower(IncentiveRate.scheme) == scheme.lower())
-    rows = session.scalars(query).all()
+    rows = list(session.scalars(query).all())
+
+    # RoSCTL is classified by fabric type, not customs 8-digit, so also match RoSCTL
+    # rows that share the 4-digit heading (returned as fabric-rate variants).
+    if len(normalized) >= 4 and (not scheme or scheme.lower() in ("all", "rosctl")):
+        heading = normalized[:4]
+        seen_ids = {r.id for r in rows}
+        rosctl_rows = session.scalars(
+            select(IncentiveRate)
+            .where(func.lower(IncentiveRate.scheme) == "rosctl")
+            .where(IncentiveRate.normalized_hsn_code.like(f"{heading}%"))
+            .where(tenant_scope)
+        ).all()
+        rows.extend(r for r in rosctl_rows if r.id not in seen_ids)
 
     asof = _as_utc(export_date) if export_date else datetime.now(UTC)
     candidates = [
@@ -107,23 +121,28 @@ def search_incentives(
     if include_unapproved:
         selected = candidates  # admins see every matching row (pending/expired included)
     else:
-        # Normal users: best (most specific, latest) approved row per scheme.
+        # Normal users: best approved row per scheme, but keep all RoSCTL fabric variants.
         seen: set[str] = set()
         selected = []
         for row in candidates:
             key = row.scheme.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            selected.append(row)
+            if key == "rosctl":
+                selected.append(row)
+            elif key not in seen:
+                seen.add(key)
+                selected.append(row)
 
     selected = selected[:limit]
     evidence = _evidence_counts(session, [row.id for row in selected])
+
+    def _match_level(row: IncentiveRate) -> str:
+        if row.normalized_hsn_code == normalized:
+            return "exact"
+        if normalized.startswith(row.normalized_hsn_code):
+            return "prefix"
+        return "heading"
+
     return [
-        IncentiveMatch(
-            row=row,
-            match_level="exact" if row.normalized_hsn_code == normalized else "prefix",
-            evidence_count=evidence.get(row.id, 0),
-        )
+        IncentiveMatch(row=row, match_level=_match_level(row), evidence_count=evidence.get(row.id, 0))
         for row in selected
     ]
