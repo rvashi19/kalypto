@@ -108,6 +108,14 @@ class IncentiveAnomalyResponse(BaseModel):
     model: str | None = None
 
 
+class IncentiveBulkApproveRequest(BaseModel):
+    source_id: str | None = None
+
+
+class IncentiveBulkApproveResponse(BaseModel):
+    approved: int
+
+
 class IncentiveImportError(BaseModel):
     row: int
     message: str

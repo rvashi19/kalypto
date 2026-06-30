@@ -20,7 +20,9 @@ def main() -> None:
     session = SessionLocal()
     refreshed = 0
     try:
-        sources = session.scalars(select(IncentiveSource).where(IncentiveSource.is_active.is_(True))).all()
+        sources = session.scalars(
+            select(IncentiveSource).where(IncentiveSource.is_active.is_(True))
+        ).all()
         for source in sources:
             if not is_due(source):
                 continue

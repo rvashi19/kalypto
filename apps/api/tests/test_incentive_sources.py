@@ -162,6 +162,29 @@ def test_pending_queue_approve_and_reject_flow():
     assert search.json()["count"] == 1
 
 
+def test_bulk_approve_pending():
+    client, headers = _admin_client()
+    csv = (
+        b"scheme,hsn_code,rate_value,effective_from,source_name\n"
+        b"rodtep,12119030,1.4,2023-04-01,DGFT\n"
+        b"drawback,10063020,2.2,2023-04-01,CBIC\n"
+    )
+    client.post(
+        "/api/v1/incentives/import",
+        headers=headers,
+        files={"file": ("rates.csv", csv, "text/csv")},
+        data={"source_name": "DGFT", "import_type": "csv"},
+    )
+    assert len(client.get("/api/v1/incentives/pending", headers=headers).json()) == 2
+    result = client.post("/api/v1/incentives/bulk-approve", headers=headers, json={})
+    assert result.status_code == 200
+    assert result.json()["approved"] == 2
+    assert client.get("/api/v1/incentives/pending", headers=headers).json() == []
+    assert client.get(
+        "/api/v1/incentives/search", headers=headers, params={"hsn_code": "12119030"}
+    ).json()["count"] == 1
+
+
 def test_empty_state_when_no_approved_source():
     client, headers = _admin_client()
     response = client.get("/api/v1/incentives/search", headers=headers, params={"hsn_code": "99011100"})

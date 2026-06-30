@@ -722,6 +722,10 @@ export interface IncentiveAnomalyResponse {
   model: string | null;
 }
 
+export interface IncentiveBulkApproveResponse {
+  approved: number;
+}
+
 export interface IncentiveSearchResponse {
   hsn_code: string;
   normalized_hsn_code: string;

@@ -27,6 +27,7 @@ import type {
   HsnImportResponse,
   HsnStatsResponse,
   IncentiveAnomalyResponse,
+  IncentiveBulkApproveResponse,
   IncentiveDetailResponse,
   IncentiveImportJobResponse,
   IncentiveImportResponse,
@@ -453,6 +454,13 @@ export const api = {
 
   incentiveAnomalyCheck: (token: string) =>
     request<IncentiveAnomalyResponse>("/incentives/anomaly-check", { method: "POST" }, token),
+
+  bulkApproveIncentives: (token: string, sourceId?: string) =>
+    request<IncentiveBulkApproveResponse>(
+      "/incentives/bulk-approve",
+      { method: "POST", body: JSON.stringify({ source_id: sourceId ?? null }) },
+      token
+    ),
 
   importIncentivesFile: async (
     file: File,

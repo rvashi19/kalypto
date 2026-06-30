@@ -24,6 +24,8 @@ from app.models import (
 )
 from app.schemas.incentive import (
     IncentiveAnomalyResponse,
+    IncentiveBulkApproveRequest,
+    IncentiveBulkApproveResponse,
     IncentiveDetailResponse,
     IncentiveEvidenceItem,
     IncentiveImportError,
@@ -364,6 +366,37 @@ def run_anomaly_check(session: DbSession, current_user: CurrentUser) -> Incentiv
     except HsnLlmError as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
     return IncentiveAnomalyResponse(**result)
+
+
+@router.post("/bulk-approve", response_model=IncentiveBulkApproveResponse)
+def bulk_approve(
+    payload: IncentiveBulkApproveRequest, session: DbSession, current_user: CurrentUser
+) -> IncentiveBulkApproveResponse:
+    """Approve all pending/needs_review rates (optionally only from one source)."""
+    _require_admin(current_user)
+    query = select(IncentiveRate).where(
+        IncentiveRate.approval_status.in_(_PENDING_STATUSES),
+        or_(
+            IncentiveRate.tenant_id == current_user.organization.id,
+            IncentiveRate.tenant_id.is_(None),
+        ),
+    )
+    if payload.source_id:
+        try:
+            query = query.where(IncentiveRate.source_id == UUID(payload.source_id))
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid source_id."
+            ) from error
+    rows = session.scalars(query).all()
+    now = datetime.now(UTC)
+    for row in rows:
+        row.approval_status = "approved"
+        row.is_active = True
+        row.verified_by = current_user.user.email
+        row.verified_at = now
+    session.commit()
+    return IncentiveBulkApproveResponse(approved=len(rows))
 
 
 @router.post("/{rate_id}/reject", response_model=IncentiveDetailResponse)

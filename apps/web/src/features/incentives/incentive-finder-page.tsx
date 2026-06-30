@@ -245,6 +245,7 @@ function IncentiveAdminPanel({ token }: { token: string }) {
   const approveMut = useMutation({ mutationFn: (id: string) => api.approveIncentive(id, token), onSuccess: invalidate });
   const rejectMut = useMutation({ mutationFn: (id: string) => api.rejectIncentive(id, token), onSuccess: invalidate });
   const anomalyMut = useMutation({ mutationFn: () => api.incentiveAnomalyCheck(token), onSuccess: invalidate });
+  const bulkApproveMut = useMutation({ mutationFn: (sourceId?: string) => api.bulkApproveIncentives(token, sourceId), onSuccess: invalidate });
   const importMut = useMutation({
     mutationFn: () => api.importIncentivesFile(file!, { source_name: importSource || "Official schedule", scheme: importScheme }, token),
     onSuccess: invalidate,
@@ -301,11 +302,16 @@ function IncentiveAdminPanel({ token }: { token: string }) {
                   {s.due_for_refresh ? <span className="ml-2 text-amber-300">due</span> : null}
                 </p>
               </div>
-              {s.source_url ? (
-                <Button size="sm" variant="secondary" disabled={refreshMut.isPending} onClick={() => refreshMut.mutate(s.id)}>
-                  {refreshMut.isPending ? "…" : "Refresh"}
+              <div className="flex gap-2">
+                {s.source_url ? (
+                  <Button size="sm" variant="secondary" disabled={refreshMut.isPending} onClick={() => refreshMut.mutate(s.id)}>
+                    {refreshMut.isPending ? "…" : "Refresh"}
+                  </Button>
+                ) : <span className="self-center text-slate-600">upload-only</span>}
+                <Button size="sm" disabled={bulkApproveMut.isPending} onClick={() => bulkApproveMut.mutate(s.id)}>
+                  Approve all
                 </Button>
-              ) : <span className="text-slate-600">upload-only</span>}
+              </div>
             </div>
           )) : <p className="text-sm text-slate-500">No sources registered yet.</p>}
         </div>
@@ -336,9 +342,14 @@ function IncentiveAdminPanel({ token }: { token: string }) {
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">Pending approval ({pending.length})</p>
-          <Button size="sm" variant="secondary" disabled={anomalyMut.isPending || !pending.length} onClick={() => anomalyMut.mutate()}>
-            {anomalyMut.isPending ? "Checking…" : "AI anomaly check"}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" disabled={anomalyMut.isPending || !pending.length} onClick={() => anomalyMut.mutate()}>
+              {anomalyMut.isPending ? "Checking…" : "AI anomaly check"}
+            </Button>
+            <Button size="sm" disabled={bulkApproveMut.isPending || !pending.length} onClick={() => bulkApproveMut.mutate(undefined)}>
+              {bulkApproveMut.isPending ? "Approving…" : `Approve all (${pending.length})`}
+            </Button>
+          </div>
         </div>
         {anomalyMut.data ? <p className="mt-1 text-xs text-slate-400">Checked {anomalyMut.data.checked}, flagged {anomalyMut.data.flagged}.</p> : null}
         {anomalyMut.error instanceof Error ? <p className="mt-1 text-xs text-amber-300">{anomalyMut.error.message}</p> : null}
