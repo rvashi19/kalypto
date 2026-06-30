@@ -350,7 +350,7 @@ export function HsnFinderPage() {
               verifyPending={verifyMutation.isPending}
               verified={Boolean(verifyMutation.data)}
               onUseForIncentives={() =>
-                navigate(`/tools?hsn=${encodeURIComponent(detail.normalized_code)}`)
+                navigate(`/incentives?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
               }
             />
           ) : (

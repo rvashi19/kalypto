@@ -26,6 +26,10 @@ import type {
   HsnImportJobResponse,
   HsnImportResponse,
   HsnStatsResponse,
+  IncentiveDetailResponse,
+  IncentiveImportJobResponse,
+  IncentiveImportResponse,
+  IncentiveSearchResponse,
   HsnRateLookupResponse,
   HsnScrapeRequest,
   HsnSearchResponse,
@@ -401,13 +405,47 @@ export const api = {
   listHsnImportJobs: (token: string) =>
     request<HsnImportJobResponse[]>("/hsn/import/jobs", {}, token),
 
-  // Incentive Finder — accepts a selected HSN; decoupled future endpoint.
-  searchIncentives: (hsnCode: string, token: string, fobValue?: number) =>
-    request<HsnRateLookupResponse>(
-      `/incentives/search?hsn_code=${encodeURIComponent(hsnCode)}${fobValue ? `&fob_value=${fobValue}` : ""}`,
-      {},
-      token
-    ),
+  // Incentive Finder — rates for an already-selected HSN (no classification).
+  incentiveSearch: (
+    hsnCode: string,
+    token: string,
+    opts: { scheme?: string; exportDate?: string; includeUnapproved?: boolean } = {}
+  ) => {
+    const params = new URLSearchParams({ hsn_code: hsnCode });
+    if (opts.scheme && opts.scheme !== "all") params.set("scheme", opts.scheme);
+    if (opts.exportDate) params.set("export_date", opts.exportDate);
+    if (opts.includeUnapproved) params.set("include_unapproved", "true");
+    return request<IncentiveSearchResponse>(`/incentives/search?${params.toString()}`, {}, token);
+  },
+
+  getIncentive: (id: string, token: string) =>
+    request<IncentiveDetailResponse>(`/incentives/${id}`, {}, token),
+
+  approveIncentive: (id: string, token: string) =>
+    request<IncentiveDetailResponse>(`/incentives/${id}/approve`, { method: "POST" }, token),
+
+  listIncentiveImportJobs: (token: string) =>
+    request<IncentiveImportJobResponse[]>("/incentives/import-jobs", {}, token),
+
+  importIncentives: async (
+    file: File,
+    fields: { source_name: string; scheme?: string; source_url?: string; source_document_title?: string; source_document_date?: string; source_version?: string },
+    token: string
+  ): Promise<IncentiveImportResponse> => {
+    const form = new FormData();
+    form.append("file", file);
+    Object.entries(fields).forEach(([k, v]) => {
+      if (v) form.append(k, v);
+    });
+    const response = await fetch(`${API_BASE_URL}/incentives/import`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => ({ detail: "Import failed." }));
+    if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
+    return body as IncentiveImportResponse;
+  },
 
   calculateExportQuote: (payload: ExportQuoteRequest, token: string) =>
     request<ExportQuoteResponse>(

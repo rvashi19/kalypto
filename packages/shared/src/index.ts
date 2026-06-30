@@ -638,3 +638,95 @@ export interface HsnChapterResponse {
   name: string;
   count: number;
 }
+
+// ── Incentive Finder ───────────────────────────────────────────────────────────
+
+export interface IncentiveEvidenceItem {
+  source_name: string;
+  source_url: string | null;
+  document_title: string | null;
+  document_date: string | null;
+  raw_text_excerpt: string | null;
+  retrieved_at: string | null;
+  evidence_type: string;
+  confidence_weight: number | null;
+}
+
+export interface IncentiveRateItem {
+  id: string;
+  scheme: string;
+  hsn_code: string;
+  normalized_hsn_code: string;
+  digit_level: number;
+  product_description: string | null;
+  rate_type: string;
+  rate_value: number;
+  cap_value: number | null;
+  cap_unit: string | null;
+  unit_of_quantity: string | null;
+  condition_text: string | null;
+  effective_from: string;
+  effective_to: string | null;
+  source_name: string;
+  source_url: string | null;
+  source_document_title: string | null;
+  source_document_date: string | null;
+  source_version: string | null;
+  approval_status: string;
+  verified_by: string | null;
+  verified_at: string | null;
+  is_active: boolean;
+  match_level: string;
+  source_evidence_count: number;
+}
+
+export interface IncentiveSearchResponse {
+  hsn_code: string;
+  normalized_hsn_code: string;
+  digit_level: number | null;
+  hsn_exists: boolean;
+  count: number;
+  schemes_present: string[];
+  results: IncentiveRateItem[];
+  message: string | null;
+  disclaimer: string;
+}
+
+export interface IncentiveDetailResponse extends IncentiveRateItem {
+  source_evidence: IncentiveEvidenceItem[];
+  disclaimer: string;
+}
+
+export interface IncentiveImportResponse {
+  job_id: string;
+  status: string;
+  scheme: string | null;
+  source_name: string;
+  import_type: string;
+  checksum: string | null;
+  records_seen: number;
+  records_created: number;
+  records_updated: number;
+  records_deactivated: number;
+  error_message: string | null;
+  errors: { row: number; message: string }[];
+}
+
+export interface IncentiveImportJobResponse {
+  id: string;
+  scheme: string | null;
+  source_name: string;
+  source_url: string | null;
+  import_type: string;
+  status: string;
+  records_seen: number;
+  records_created: number;
+  records_updated: number;
+  records_deactivated: number;
+  error_message: string | null;
+  checksum: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}

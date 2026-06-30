@@ -5,6 +5,7 @@ import { SignupPage } from "./features/auth/signup-page";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { CompliancePage } from "./features/compliance/compliance-page";
 import { HsnFinderPage } from "./features/hsn/hsn-finder-page";
+import { IncentiveFinderPage } from "./features/incentives/incentive-finder-page";
 import { ShipmentsPage } from "./features/shipments/shipments-page";
 import { NewShipmentPage } from "./features/shipments/new-shipment-page";
 import { ShipmentDetailPage } from "./features/shipments/shipment-detail-page";
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />
       <Route path="/hsn" element={<ProtectedRoute><HsnFinderPage /></ProtectedRoute>} />
+      <Route path="/incentives" element={<ProtectedRoute><IncentiveFinderPage /></ProtectedRoute>} />
       <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
       <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
       <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />

@@ -55,6 +55,11 @@ from app.models.hsn import (
     HsnSourceEvidence,
     HsnVerificationRequest,
 )
+from app.models.incentive import (
+    IncentiveImportJob,
+    IncentiveRate,
+    IncentiveSourceEvidence,
+)
 
 __all__ = [
     "Alert",
@@ -88,7 +93,10 @@ __all__ = [
     "HsnVerificationRequest",
     "IncentiveClaim",
     "IncentiveClaimStatus",
+    "IncentiveImportJob",
+    "IncentiveRate",
     "IncentiveScheme",
+    "IncentiveSourceEvidence",
     "Invoice",
     "InvoiceType",
     "Membership",

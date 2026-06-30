@@ -207,7 +207,7 @@ export function ToolsPage() {
   });
 
   const hsnMutation = useMutation({
-    mutationFn: () => api.searchIncentives(hsn, token!, toNumber(hsnFobValue)),
+    mutationFn: () => api.getHsnRates(hsn, token!, toNumber(hsnFobValue)),
   });
 
   const complianceMutation = useMutation({

@@ -45,3 +45,6 @@ local-*.log
 apps/api/local-api.log
 apps/web/local-web.log
 apps/api/.local_uploads/
+
+# SQLite journal artifacts
+*.db-journal
