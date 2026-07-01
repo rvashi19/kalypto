@@ -92,6 +92,8 @@ def parse_rows(raw_bytes: bytes, import_type: str) -> list[dict[str, Any]]:
 
         workbook = load_workbook(io.BytesIO(raw_bytes), read_only=True, data_only=True)
         sheet = workbook.active
+        if sheet is None:
+            raise ValueError("XLSX import must contain at least one worksheet.")
         rows_iter = sheet.iter_rows(values_only=True)
         header = [str(cell).strip() if cell is not None else "" for cell in next(rows_iter)]
         records: list[dict[str, Any]] = []

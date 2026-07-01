@@ -36,7 +36,7 @@ _UNITS = {"Piece", "Kg", "Pair", "Sqm", "Set", "Number", "Gross", "Dozen"}
 def parse_rosctl_pdf(
     path: Path, *, effective_from: str, source_name: str
 ) -> list[dict[str, object]]:
-    import pdfplumber  # type: ignore[import-untyped]
+    import pdfplumber
 
     state: dict[str, tuple[float, float, str]] = {}
     central: dict[str, tuple[float, float]] = {}

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:5173"
-    cors_allow_origin_regex: str = r"https://.*\.onrender\.com"
+    cors_allow_origin_regex: str = r"https://.*\.(onrender\.com|vercel\.app)"
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/export_assurance",
         alias="DATABASE_URL",

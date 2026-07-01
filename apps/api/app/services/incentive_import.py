@@ -11,7 +11,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -42,7 +42,7 @@ def _parse_pdf_rows(raw_bytes: bytes, scheme: str | None) -> list[dict[str, Any]
     extraction is approximate and never a source of truth.
     """
     try:
-        import pdfplumber  # type: ignore[import-untyped]
+        import pdfplumber
     except ImportError as error:
         raise ValueError("PDF import requires pdfplumber (install API requirements).") from error
     import io as _io
@@ -115,7 +115,7 @@ def _field_changed(existing: Any, incoming: Any) -> bool:
             return float(existing) != float(incoming)
     except (TypeError, ValueError):
         pass
-    return existing != incoming
+    return cast(bool, existing != incoming)
 
 
 def _to_float(value: str | None) -> float | None:
@@ -197,7 +197,7 @@ def import_incentive_snapshot(
             continue
 
         incoming_status = (_pick(row, "approval_status", "review_status") or "").strip().lower() or "pending"
-        values = {
+        values: dict[str, Any] = {
             "hsn_code": raw_code,
             "normalized_hsn_code": normalized,
             "digit_level": level,

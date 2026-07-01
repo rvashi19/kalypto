@@ -31,7 +31,7 @@ _HEADER_TOKENS = {"tariff item", "(2)", "description of goods"}
 def parse_4r_pdf(
     path: Path, *, scheme: str, effective_from: str, source_name: str
 ) -> list[dict[str, object]]:
-    import pdfplumber  # type: ignore[import-untyped]
+    import pdfplumber
 
     records: list[dict[str, object]] = []
     with pdfplumber.open(path) as pdf:

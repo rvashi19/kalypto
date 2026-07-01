@@ -108,7 +108,7 @@ def html_to_readable_document(*, source_url: str, raw_html: str) -> ScrapedSourc
 
 def pdf_to_readable_document(*, source_url: str, raw_pdf: bytes) -> ScrapedSourceDocument:
     try:
-        import pdfplumber  # type: ignore[import-untyped]  # noqa: PLC0415
+        import pdfplumber  # noqa: PLC0415
     except ImportError as error:
         raise ComplianceScraperError(
             "PDF extraction requires pdfplumber. Install the API requirements first.",

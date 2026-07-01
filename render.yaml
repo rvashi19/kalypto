@@ -6,25 +6,26 @@ services:
     name: kalypto-api
     runtime: docker
     repo: https://github.com/rvashi19/kalypto.git
-    branch: exporter-saas-chatbot-integration
-    plan: starter
+    branch: chore/free-tier-deployment
+    plan: free
     region: oregon
     dockerfilePath: ./apps/api/Dockerfile
     dockerCommand: /bin/sh ./scripts/start-render.sh
     healthCheckPath: /api/v1/health
     envVars:
+      - key: ENVIRONMENT
+        value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: kalypto-postgres
-          property: connectionString
+        sync: false
       - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: kalypto-redis
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ALLOW_ORIGIN_REGEX
+        value: https://.*\.vercel\.app
+      - key: OPENAI_API_KEY
         sync: false
       - key: XAI_API_KEY
         sync: false
@@ -38,10 +39,6 @@ services:
         value: https://api.x.ai/v1
       - key: COMPLIANCE_STORE_BACKEND
         value: postgres
-      - key: MONGODB_URL
-        sync: false
-      - key: MONGODB_DATABASE
-        value: kalypto
       - key: COMPLIANCE_REFRESH_INTERVAL_DAYS
         value: 3
       - key: COMPLIANCE_SCRAPER_PROVIDER
@@ -49,7 +46,7 @@ services:
       - key: COMPLIANCE_ALLOW_PRIVATE_SCRAPE
         value: "false"
       - key: UPLOAD_DIR
-        value: /var/data/uploads
+        value: /tmp/kalypto_uploads
       - key: SEED_DEMO_DATA
         value: "false"
       - key: PYTHONPATH
@@ -58,86 +55,3 @@ services:
       paths:
         - apps/api/**
         - render.yaml
-    disk:
-      name: kalypto-uploads
-      mountPath: /var/data/uploads
-      sizeGB: 10
-
-  - type: web
-    name: kalypto-web
-    runtime: static
-    repo: https://github.com/rvashi19/kalypto.git
-    branch: exporter-saas-chatbot-integration
-    buildCommand: corepack prepare pnpm@9.12.1 --activate && pnpm install --no-frozen-lockfile && pnpm --filter web build
-    staticPublishPath: ./apps/web/dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        sync: false
-    buildFilter:
-      paths:
-        - apps/web/**
-        - packages/shared/**
-        - packages/ui/**
-        - package.json
-        - pnpm-workspace.yaml
-        - tsconfig.base.json
-        - components.json
-        - render.yaml
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-
-  - type: cron
-    name: kalypto-compliance-refresh
-    runtime: docker
-    repo: https://github.com/rvashi19/kalypto.git
-    branch: exporter-saas-chatbot-integration
-    plan: starter
-    region: oregon
-    schedule: "0 3 * * *"
-    dockerfilePath: ./apps/api/Dockerfile
-    dockerCommand: python -m app.scripts.refresh_compliance_sources
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: kalypto-postgres
-          property: connectionString
-      - key: COMPLIANCE_STORE_BACKEND
-        value: postgres
-      - key: COMPLIANCE_REFRESH_INTERVAL_DAYS
-        value: 3
-      - key: COMPLIANCE_SCRAPER_PROVIDER
-        value: http
-      - key: COMPLIANCE_ALLOW_PRIVATE_SCRAPE
-        value: "false"
-      - key: PYTHONPATH
-        value: /workspace/apps/api
-
-  - type: keyvalue
-    name: kalypto-redis
-    plan: starter
-    region: oregon
-    maxmemoryPolicy: noeviction
-    persistenceMode: journal-snapshot
-    ipAllowList: []
-
-databases:
-  - name: kalypto-postgres
-    databaseName: kalypto
-    user: kalypto
-    plan: basic-256mb
-    region: oregon
-    ipAllowList: []

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 CALCULATION_VERSION = "export-quote-1.0"
 
@@ -113,7 +114,7 @@ def _money(value: Decimal) -> float:
     return float(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
-def calculate_quote(inputs: QuoteInputs) -> dict:
+def calculate_quote(inputs: QuoteInputs) -> dict[str, Any]:
     warnings: list[str] = []
     assumptions: list[str] = [
         "All monetary inputs are treated as INR; per-unit invoice values are converted to the quote currency using the user FX rate.",
@@ -158,7 +159,7 @@ def calculate_quote(inputs: QuoteInputs) -> dict:
     invoice_value = basis_map[_INVOICE_BASIS.get(incoterm, "fob_value")]
 
     # Incentives (percentage of FOB, capped per unit if a cap is set).
-    incentive_breakdown: list[dict] = []
+    incentive_breakdown: list[dict[str, object]] = []
     incentive_total = Decimal("0")
     if inputs.include_incentives:
         for inc in inputs.incentives:

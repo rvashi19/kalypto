@@ -117,7 +117,7 @@ def _extract_text_from_image(file_path: str) -> str:
 
 def _extract_text_from_excel(file_path: str) -> str:
     try:
-        from openpyxl import load_workbook  # type: ignore[import-untyped] # noqa: PLC0415
+        from openpyxl import load_workbook  # noqa: PLC0415
     except ImportError:
         return ""
 

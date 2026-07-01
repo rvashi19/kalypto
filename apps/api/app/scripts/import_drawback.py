@@ -38,7 +38,7 @@ _UNITS = {"Kg", "Piece", "Pair", "Sqm", "Gross", "Litre", "Tonne", "Set", "Dozen
 def parse_drawback_pdf(
     path: Path, *, effective_from: str, source_name: str
 ) -> list[dict[str, object]]:
-    import pdfplumber  # type: ignore[import-untyped]
+    import pdfplumber
 
     records: list[dict[str, object]] = []
     with pdfplumber.open(path) as pdf:

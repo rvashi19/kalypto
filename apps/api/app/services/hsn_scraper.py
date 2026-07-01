@@ -22,6 +22,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
@@ -235,7 +236,7 @@ def _eximguru_get(url: str) -> str:
     except URLError as error:
         raise HsnScrapeError(f"EximGuru request failed for {url}: {error}") from error
     time.sleep(_CRAWL_DELAY_SECONDS)
-    return raw.decode("utf-8", errors="replace")
+    return cast(str, raw.decode("utf-8", errors="replace"))
 
 
 def _chapter_links() -> dict[int, str]:

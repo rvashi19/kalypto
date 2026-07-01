@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -106,7 +107,7 @@ def _download(url: str) -> bytes:
         raise IncentiveSourceError(f"Source request failed: {error}") from error
     if len(raw) > MAX_FILE_BYTES:
         raise IncentiveSourceError("Source file is too large to import safely.")
-    return raw
+    return cast(bytes, raw)
 
 
 def refresh_source(*, session: Session, source: IncentiveSource, created_by: str | None = None) -> RefreshOutcome:

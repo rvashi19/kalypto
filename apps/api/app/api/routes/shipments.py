@@ -98,10 +98,12 @@ def _shipment_rows(file_name: str, contents: bytes) -> list[dict[str, Any]]:
         text = contents.decode("utf-8-sig")
         return [dict(row) for row in csv.DictReader(StringIO(text))]
     if suffix == ".xlsx":
-        from openpyxl import load_workbook  # type: ignore[import-untyped] # noqa: PLC0415
+        from openpyxl import load_workbook  # noqa: PLC0415
 
         workbook = load_workbook(BytesIO(contents), read_only=True, data_only=True)
         worksheet = workbook.active
+        if worksheet is None:
+            return []
         rows = worksheet.iter_rows(values_only=True)
         headers = [str(value or "").strip() for value in next(rows, ())]
         return [

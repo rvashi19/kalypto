@@ -182,13 +182,14 @@ def chapters(session: DbSession, current_user: CurrentUser) -> list[HsnChapterRe
         .where(HsnCode.digit_level == 2, HsnCode.is_active.is_(True))
         .order_by(HsnCode.normalized_code)
     ).all()
-    counts = dict(
-        session.execute(
+    counts: dict[str | None, int] = {
+        chapter_code: count
+        for chapter_code, count in session.execute(
             select(HsnCode.chapter_code, func.count())
             .where(HsnCode.is_active.is_(True))
             .group_by(HsnCode.chapter_code)
         ).all()
-    )
+    }
     return [
         HsnChapterResponse(
             code=row.normalized_code,
