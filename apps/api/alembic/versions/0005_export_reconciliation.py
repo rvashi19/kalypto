@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0005_export_reconciliation"
-down_revision = "0004_compliance_source_monitoring"
+down_revision = "0004_compliance_monitoring"
 branch_labels = None
 depends_on = None
 

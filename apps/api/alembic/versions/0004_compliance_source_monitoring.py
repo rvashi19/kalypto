@@ -11,7 +11,7 @@ import app.models  # noqa: F401
 from alembic import op
 from app.db.base import Base
 
-revision = "0004_compliance_source_monitoring"
+revision = "0004_compliance_monitoring"
 down_revision = "0003_compliance_review_freshness"
 branch_labels = None
 depends_on = None
