@@ -17,6 +17,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if "incentive_rates" in sa.inspect(op.get_bind()).get_table_names():
+        return
+
     op.create_table(
         "incentive_rates",
         sa.Column("id", sa.Uuid(), nullable=False),

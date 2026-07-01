@@ -35,6 +35,9 @@ _RATE_COLS = [
 
 
 def upgrade() -> None:
+    if "export_quote_calculations" in sa.inspect(op.get_bind()).get_table_names():
+        return
+
     columns = [
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("tenant_id", sa.Uuid(), nullable=False),

@@ -21,6 +21,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if "hsn_product_aliases" in sa.inspect(op.get_bind()).get_table_names():
+        return
+
     op.create_table(
         "hsn_product_aliases",
         sa.Column("id", sa.Uuid(), nullable=False),
