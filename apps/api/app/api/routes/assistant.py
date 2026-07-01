@@ -15,11 +15,13 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
 @router.get("/docs/status", response_model=DocumentationAssistantStatusResponse)
-def get_documentation_assistant_status(current_user: CurrentUser) -> DocumentationAssistantStatusResponse:
+def get_documentation_assistant_status(
+    current_user: CurrentUser,
+) -> DocumentationAssistantStatusResponse:
     service = DocumentationAssistantService()
     return DocumentationAssistantStatusResponse(
         configured=service.is_configured,
-        model=service.settings.openai_model,
+        model=service.settings.xai_model,
         message=service.status_message(),
     )
 
@@ -33,7 +35,9 @@ def ask_documentation_assistant(
     try:
         answer = service.answer(payload.question)
     except DocumentationAssistantNotConfiguredError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
+        ) from error
     except Exception as error:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -43,5 +47,5 @@ def ask_documentation_assistant(
     return DocumentationAssistantResponse(
         answer=answer,
         configured=service.is_configured,
-        model=service.settings.openai_model,
+        model=service.settings.xai_model,
     )

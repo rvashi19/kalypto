@@ -1,0 +1,339 @@
+term,code,description
+turmeric powder,09103030,"Turmeric (curcuma), powder"
+turmeric,09103020,"Turmeric (curcuma), dried"
+fresh turmeric,09103010,"Turmeric (curcuma), fresh"
+haldi,09103020,"Turmeric (curcuma), dried"
+cumin,09093121,Cumin seeds neither crushed nor ground
+cumin seeds,09093121,Cumin seeds neither crushed nor ground
+jeera,09093121,Cumin seeds neither crushed nor ground
+coriander,09092100,Coriander seeds neither crushed nor ground
+coriander seeds,09092100,Coriander seeds neither crushed nor ground
+dhania,09092100,Coriander seeds neither crushed nor ground
+fennel,09096100,Fennel seeds neither crushed nor ground
+fennel seeds,09096100,Fennel seeds neither crushed nor ground
+saunf,09096100,Fennel seeds (saunf)
+fenugreek,09109912,Fenugreek (methi) seeds
+methi,09109912,Fenugreek (methi) seeds
+cloves,09071010,Cloves (whole fruit, cloves and stems)
+laung,09071010,Cloves (laung)
+cinnamon,09061110,"Cinnamon (Cinnamomum zeylanicum), neither crushed nor ground"
+dalchini,09061110,Cinnamon (dalchini)
+nutmeg,09081110,"Nutmeg, neither crushed nor ground"
+jaiphal,09081110,Nutmeg (jaiphal)
+mace,09082010,Mace (javitri)
+black pepper,09041120,Black pepper neither crushed nor ground
+pepper,09041120,Black pepper neither crushed nor ground
+kali mirch,09041120,Black pepper (kali mirch)
+white pepper,09041190,"White pepper, neither crushed nor ground"
+green tea,09021010,"Green tea (not fermented), in packings not exceeding 3 kg"
+black tea,09024040,"Black tea (fermented), other"
+tea,09024040,Black tea (fermented)
+red chilli,09042120,"Dried chilli (Capsicum), crushed or ground"
+chilli,09042120,Dried chilli (Capsicum)
+chilli powder,09042120,Dried chilli powder
+ginger,09101110,"Ginger, fresh, neither crushed nor ground"
+dry ginger,09101120,"Ginger, dried, unbleached"
+cardamom,09083110,"Cardamoms, large, neither crushed nor ground"
+elaichi,09083110,Cardamoms (elaichi)
+saffron,09102010,Saffron (kesar)
+asafoetida,13019013,Asafoetida (hing)
+hing,13019013,Asafoetida (hing)
+tamarind,08109020,Tamarind (imli), fresh or dried
+basmati rice,10063020,Basmati rice semi-milled or wholly milled
+non basmati rice,10063090,Rice semi-milled or wholly milled other than basmati
+white rice,10063090,Rice semi-milled or wholly milled
+milled rice,10063090,Rice semi-milled or wholly milled
+brown rice,10062000,Husked (brown) rice
+paddy,10061090,Rice in husk (paddy or rough)
+rice,10063090,Rice semi-milled or wholly milled
+wheat,10019910,"Wheat, other than seed/durum"
+maize,10059000,"Maize (corn), other than seed"
+corn,10059000,Maize (corn)
+barley,10039000,"Barley, other than seed"
+millet,10082900,Millet
+bajra,10082910,Pearl millet (bajra)
+jowar,10079000,Grain sorghum (jowar)
+sorghum,10079000,Grain sorghum
+oats,10049000,Oats
+chickpea,07132000,"Chickpeas (garbanzos), dried and shelled"
+chana,07132000,Chickpeas / Bengal gram (chana)
+gram,07132000,Chickpeas / gram
+lentil,07134000,"Lentils (masoor), dried"
+masoor,07134000,Lentils (masoor)
+pigeon pea,07136000,"Pigeon peas (tur/arhar), dried"
+tur dal,07136000,Pigeon peas (tur/arhar)
+green gram,07133110,"Green gram (moong), dried"
+moong,07133110,Green gram (moong)
+black gram,07133190,"Black gram (urad), dried"
+urad,07133190,Black gram (urad)
+kidney bean,07133310,"Kidney beans (rajma), dried"
+rajma,07133310,Kidney beans (rajma)
+peas,07131000,"Peas (matar), dried and shelled"
+almond,08021200,"Almonds, fresh or dried, shelled"
+almond in shell,08021100,"Almonds, in shell"
+badam,08021200,Almonds (badam)
+cashew,08013210,"Cashew nuts, shelled (kernels)"
+cashew nut,08013210,Cashew kernels
+cashew kernel,08013210,Cashew kernels
+walnut,08023200,"Walnuts, fresh or dried, shelled"
+akhrot,08023200,Walnuts (akhrot)
+pistachio,08025200,"Pistachios, shelled"
+pista,08025200,Pistachios (pista)
+hazelnut,08022200,"Hazelnuts, shelled"
+raisins,08062010,Dried grapes (raisins/kishmish)
+kishmish,08062010,Raisins (kishmish)
+dates,08041020,"Dates, fresh or dried"
+khajur,08041020,Dates (khajur)
+fig,08042010,"Figs, dried"
+apricot,08135010,"Dried apricots"
+groundnut,12024210,"Groundnuts (peanuts), shelled"
+peanut,12024210,Groundnuts (peanuts) shelled
+moongphali,12024210,Groundnuts (moongphali)
+sesame seed,12074090,Sesame seeds
+til,12074090,Sesame seeds (til)
+soybean,12019000,Soya beans
+soya bean,12019000,Soya beans
+mustard seed,12075000,Mustard seeds
+sarso,12075000,Mustard seeds (sarso)
+castor seed,12073090,Castor oil seeds
+sunflower seed,12060090,Sunflower seeds
+guar gum,13023230,Guar gum
+isabgol,12119032,Psyllium husk (isabgol)
+psyllium,12119032,Psyllium husk (isabgol)
+makhana,08029900,Makhana / fox nuts
+onion,07031010,"Onions, fresh or chilled"
+dried onion,07122000,"Onions, dried"
+garlic,07032000,"Garlic, fresh or chilled"
+potato,07019000,"Potatoes, fresh or chilled"
+tomato,07020000,"Tomatoes, fresh or chilled"
+green chilli,07096010,"Chillies (Capsicum), fresh or chilled"
+okra,07099930,"Okra (bhindi), fresh or chilled"
+bhindi,07099930,Okra (bhindi)
+mushroom,07095100,"Mushrooms, fresh or chilled"
+banana,08039010,"Bananas, fresh"
+mango,08045020,"Mangoes, fresh"
+mango pulp,20079910,Mango pulp / puree
+grapes,08061000,"Grapes, fresh"
+pomegranate,08109010,"Pomegranates, fresh"
+anar,08109010,Pomegranate (anar)
+apple,08081000,"Apples, fresh"
+orange,08051000,"Oranges, fresh"
+guava,08045010,"Guavas, fresh"
+papaya,08072000,"Papayas, fresh"
+watermelon,08071100,"Watermelons, fresh"
+lemon,08055000,"Lemons and limes, fresh"
+coconut,08011920,"Coconut, fresh (other than desiccated)"
+desiccated coconut,08011100,Desiccated coconut
+sugar,17019990,"Cane or beet sugar, other"
+white sugar,17019910,Refined white cane sugar
+refined sugar,17019910,Refined white sugar
+jaggery,17011490,Jaggery (gur), cane sugar
+gur,17011490,Jaggery (gur)
+honey,04090000,Natural honey
+ghee,04059020,Ghee (clarified butter)
+butter,04051000,Butter
+milk powder,04022100,"Milk powder, not containing added sugar"
+skimmed milk powder,04021020,Skimmed milk powder
+paneer,04061000,Fresh cheese / paneer
+cheese,04069000,"Cheese, other"
+egg,04072100,"Fresh eggs of fowls, in shell"
+buffalo meat,02023000,"Frozen boneless bovine (buffalo) meat"
+frozen beef,02023000,Frozen boneless bovine meat
+chicken,02071400,"Frozen cuts of fowls (chicken)"
+mutton,02042300,Frozen boneless sheep meat (mutton)
+shrimp,03061700,"Frozen shrimps and prawns, other"
+prawn,03061700,Frozen shrimps and prawns
+frozen fish,03038900,"Frozen fish, other"
+fish fillet,03047900,"Frozen fish fillets, other"
+fish,03038900,"Frozen fish, other"
+wheat flour,11010000,Wheat or meslin flour (atta/maida)
+atta,11010000,Wheat flour (atta)
+maida,11010000,Wheat flour (maida)
+besan,11061000,Flour of dried leguminous vegetables (besan/gram flour)
+gram flour,11061000,Gram flour (besan)
+biscuit,19053100,Sweet biscuits
+namkeen,21069099,Namkeen / savoury food preparations
+papad,19059040,Papad
+pickle,20019000,Pickle (vegetables preserved by vinegar)
+achar,20019000,Pickle (achar)
+jam,20079910,Jam / fruit jelly
+fruit juice,20098990,Fruit juice
+tomato ketchup,21039040,Tomato ketchup and sauces
+sauce,21039090,Sauces and preparations
+masala,21039010,Spice mix / curry paste (masala)
+instant coffee,21011110,Instant coffee
+coffee,09011190,"Coffee, not roasted, not decaffeinated"
+coffee beans,09011111,"Coffee, arabica, not roasted"
+noodles,19023010,Instant noodles
+pasta,19021900,Pasta / macaroni
+cotton,52010020,"Raw cotton, not carded or combed"
+raw cotton,52010020,Raw cotton
+cotton yarn,52051120,Cotton yarn (single, uncombed)
+jute,53031010,"Raw jute, processed but not spun"
+gunny bag,53101013,Jute sacks and bags (gunny bags)
+silk,50020010,Raw silk (not thrown)
+raw wool,51011100,"Greasy shorn wool, not carded or combed"
+tobacco,24012090,"Unmanufactured tobacco, partly or wholly stemmed"
+palm oil,15119090,"Palm oil, refined"
+crude palm oil,15111000,Crude palm oil
+soybean oil,15079010,"Soya-bean oil, refined edible grade"
+sunflower oil,15121910,"Sunflower oil, refined"
+mustard oil,15141990,"Mustard oil, refined"
+coconut oil,15131900,"Coconut oil, other than crude"
+groundnut oil,15089010,"Groundnut oil, refined"
+castor oil,15153091,"Castor oil, edible grade"
+rice bran oil,15152990,"Rice bran oil, refined"
+sesame oil,15159091,Sesame (til) oil
+vanaspati,15161000,Vanaspati / hydrogenated vegetable fat
+soybean meal,23040030,Soyabean oil-cake / meal
+animal feed,23099090,"Animal feed preparations, other"
+gold,71081200,"Gold, unwrought (non-monetary)"
+gold bar,71081200,Gold bars (unwrought)
+gold jewellery,71131910,Articles of jewellery of gold or other precious metal
+gold jewelry,71131910,Articles of jewellery of gold
+gold ornaments,71131910,Gold jewellery / ornaments
+silver,71069210,"Silver, semi-manufactured"
+silver jewellery,71131120,Articles of jewellery of silver
+diamond,71023910,"Cut and polished diamonds, non-industrial"
+polished diamond,71023910,Cut and polished diamonds
+rough diamond,71023100,"Rough diamonds, unworked"
+pearl,71011010,Natural pearls
+gemstone,71039910,"Precious or semi-precious stones, worked"
+imitation jewellery,71171910,Imitation jewellery of base metal
+crude oil,27090000,Petroleum oils and oils from bituminous minerals (crude)
+petroleum,27090000,Crude petroleum oils
+petrol,27101219,"Motor spirit (petrol), other"
+diesel,27101944,High speed diesel (HSD) oil
+kerosene,27101910,Kerosene
+lpg,27111900,Liquefied petroleum gas (LPG)
+naphtha,27101220,Naphtha
+bitumen,27132000,Bitumen / asphalt
+lubricating oil,27101980,Lubricating oil
+coal,27011990,"Coal, other"
+natural gas,27111100,Natural gas (liquefied)
+iron ore,26011190,"Iron ore, non-agglomerated"
+steel,72142090,"Bars and rods of iron or non-alloy steel"
+tmt bar,72142090,TMT steel bars and rods
+steel rod,72142090,Steel bars and rods
+stainless steel,72193390,Stainless steel cold-rolled sheet
+steel pipe,73063090,Welded tubes/pipes of iron or steel
+hr coil,72083790,Hot-rolled steel coil
+aluminium,76011010,"Aluminium, unwrought, not alloyed"
+aluminium foil,76071110,"Aluminium foil, rolled, not backed"
+aluminium utensils,76151030,Aluminium table/kitchen utensils
+copper,74031100,"Refined copper cathodes"
+copper wire,74081190,Copper wire
+zinc,79011100,"Zinc, unwrought, not alloyed"
+lead,78011000,"Refined lead, unwrought"
+tin,80011000,"Tin, unwrought, not alloyed"
+nickel,75021000,"Nickel, unwrought, not alloyed"
+cement,25232930,"Portland cement, other"
+urea,31021000,Urea fertiliser
+dap fertilizer,31053000,Diammonium phosphate (DAP)
+npk fertilizer,31052000,NPK mineral fertiliser
+potash,31042000,Muriate of potash (MOP)
+medicine,30049099,"Medicaments for retail sale, other"
+medicament,30049099,Medicaments for retail sale
+tablet medicine,30049099,Medicaments for retail sale
+vaccine,30022041,Vaccines for human medicine
+insulin,30043110,Insulin medicament
+antibiotic,30042090,"Antibiotic medicaments, other"
+paracetamol,29242950,Paracetamol
+methanol,29051100,Methanol (methyl alcohol)
+ethanol,22072000,Denatured ethyl alcohol (ethanol)
+acetic acid,29152100,Acetic acid
+citric acid,29181400,Citric acid
+caustic soda,28151200,Caustic soda (sodium hydroxide) in solution
+soda ash,28362000,Soda ash (disodium carbonate)
+plastic granules,39011010,"Polyethylene granules (LDPE)"
+polypropylene,39021000,Polypropylene in primary forms
+pvc,39041010,PVC resin (poly vinyl chloride)
+plastic bottle,39233090,"Plastic bottles, carboys and flasks"
+plastic bag,39232990,Plastic bags and sacks
+natural rubber,40012200,Technically specified natural rubber (TSNR)
+tyre,40111010,Pneumatic tyres for motor cars
+rubber,40012200,Natural rubber
+soap,34011190,Toilet soap
+detergent,34022090,Detergent / washing powder
+shampoo,33051090,"Shampoos, other"
+toothpaste,33061020,Toothpaste
+perfume,33030020,Perfumes
+lipstick,33041000,Lip make-up preparations
+face cream,33049990,Beauty or skin-care preparations
+hair oil,33059019,"Hair oil, other"
+henna,14041019,Henna (mehndi) powder
+mobile phone,85171210,Telephones for cellular networks (mobile phones)
+smartphone,85171210,Telephones for cellular networks (smartphones)
+cell phone,85171210,Telephones for cellular networks
+iphone,85171210,Telephones for cellular networks (smartphones)
+laptop,84713010,"Portable computers (laptops), not exceeding 10 kg"
+computer,84714900,Automatic data processing machine (computer)
+desktop computer,84714900,Desktop computer system
+printer,84433100,Printers capable of connecting to a computer/network
+led tv,85287200,"Colour television (LED/LCD) reception apparatus"
+television,85287200,Colour television reception apparatus
+charger,85044030,Battery charger / power adapter
+earphone,85183000,Headphones and earphones
+headphone,85183000,Headphones and earphones
+solar panel,85414300,Photovoltaic solar cells assembled in modules/panels
+battery,85076000,Lithium-ion battery / accumulator
+led bulb,85395000,LED lamps (bulbs)
+ceiling fan,84145110,Ceiling fan (table/roof/wall electric fan)
+air conditioner,84151010,"Air conditioner, window/wall type"
+refrigerator,84182100,"Refrigerator, household compression type"
+washing machine,84501100,"Washing machine, fully automatic, up to 10 kg"
+microwave oven,85165000,Microwave oven
+water pump,84137010,"Power-driven water pump for handling water"
+generator,85021100,Generating set up to 75 kVA
+diesel engine,84082020,"Diesel engine, stationary"
+ball bearing,84821011,Ball bearings
+transformer,85043100,"Electrical transformer, small"
+car,87032291,"Motor car, petrol, 1000-1500 cc"
+motor car,87032291,Passenger motor car
+motorcycle,87112019,Motorcycle (250-500 cc)
+bike,87112019,Motorcycle
+scooter,87112011,Scooter
+bicycle,87120010,"Bicycle, not motorised"
+truck,87042319,"Truck/lorry, diesel, heavy goods vehicle"
+tractor,87019300,"Agricultural tractor, 18-37 kW"
+auto parts,87089900,"Parts and accessories of motor vehicles, other"
+wooden furniture,94036000,"Wooden furniture, other"
+furniture,94036000,"Furniture, other"
+office chair,94013000,Swivel office chair with adjustable height
+chair,94016900,"Seats with wooden frames, other"
+mattress,94042090,"Mattress, other than of cellular rubber/plastic"
+sofa,94016100,Upholstered seats with wooden frames (sofa)
+paper,48025590,Uncoated writing/printing paper
+newsprint,48010010,Newsprint in rolls or sheets
+notebook,48202000,Exercise notebooks
+ceramic tiles,69072100,Ceramic flags and tiles (vitrified)
+vitrified tiles,69072300,Vitrified ceramic tiles
+ceramic mug,69120010,Ceramic tableware and kitchenware
+crockery,69120010,Ceramic tableware and kitchenware
+glassware,70139900,"Glassware for table/kitchen, other"
+sanitaryware,69101000,Ceramic sinks, wash basins and sanitary fixtures
+leather,41071200,"Finished leather of bovine animals, grain splits"
+leather bag,42022210,"Handbag with outer surface of plastic/textile"
+leather wallet,42023110,Wallets and purses with outer surface of leather
+wallet,42023110,Wallets and purses of leather
+leather belt,42033000,Belts of leather
+leather shoes,64039910,Leather footwear with leather upper
+leather footwear,64039910,Leather footwear with leather upper
+sports shoes,64041100,Sports footwear with textile upper
+sandals,64041900,"Footwear with textile upper, other"
+chappal,64019920,Rubber/plastic slippers (chappal)
+cotton t-shirt,61091000,T-shirts and singlets of cotton (knitted)
+t-shirt,61091000,T-shirts and singlets of cotton (knitted)
+cotton shirt,62052000,Men's or boys' shirts of cotton (woven)
+mens shirt,62052000,Men's or boys' cotton shirts (woven)
+jeans,62034200,Men's or boys' cotton trousers (jeans/denim)
+denim trousers,62034200,Men's cotton trousers (denim)
+trousers,62034200,Men's or boys' cotton trousers
+saree,50071000,Woven silk fabric (saree)
+kurta,62043290,Women's cotton jackets/garments (kurta)
+bedsheet,63022100,Printed cotton bed linen (bedsheet)
+towel,63026000,Toilet/kitchen linen of terry cotton (towel)
+carpet,57011000,Knotted carpets of wool
+handicraft,44209090,Wooden handicraft / decorative articles
+agarbatti,33074100,"Agarbatti and incense preparations"
+incense stick,33074100,Agarbatti / incense sticks

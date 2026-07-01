@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 export function LoginPage() {
@@ -12,61 +12,97 @@ export function LoginPage() {
   const location = useLocation();
   const { setSession } = useAuth();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const reason = (location.state as { reason?: string } | null)?.reason;
+
+  useEffect(() => {
+    if (reason === "session-expired") {
+      navigate("/login", { replace: true, state: { from } });
+    }
+  }, [from, navigate, reason]);
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) =>
       api.login({
         email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? "")
+        password: String(formData.get("password") ?? ""),
       }),
     onSuccess: (session) => {
       setSession(session);
       navigate(from, { replace: true });
-    }
+    },
   });
 
-  const errorMessage =
-    mutation.isError && mutation.error instanceof Error ? mutation.error.message : null;
+  const errorMessage = mutation.isError ? userMessageForError(mutation.error) : null;
+  const sessionMessage =
+    reason === "session-expired" ? "Your session expired for security. Please sign in again." : null;
 
   return (
     <AuthShell
-      eyebrow="Secure exporter workspace"
-      title="Recover incentive leakage without exposing tenant data."
-      description="Start in the clean Phase 0 shell: email/password auth, organization-scoped access, and an audit-ready backend for the workflows we'll add next."
+      eyebrow="Export assurance platform"
+      title="Control export documents, incentives, and compliance from one workspace."
+      description="KALYPTO helps Indian exporters prepare shipment records, verify documentation, monitor destination requirements, and keep incentive claims visible."
     >
       <Card>
         <CardHeader>
-          <CardTitle>Log in</CardTitle>
-          <CardDescription>Use your organization account to enter the dashboard.</CardDescription>
+          <CardTitle>Sign in to KALYPTO</CardTitle>
+          <CardDescription>Access your secure export assurance workspace.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
-            className="space-y-5"
+            className="space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
               mutation.mutate(new FormData(event.currentTarget));
             }}
           >
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" placeholder="owner@exportco.in" type="email" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="owner@exportco.in"
+                defaultValue="demo@example.com"
+                required
+              />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" placeholder="Minimum 12 characters" type="password" required />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Your password"
+                defaultValue="DemoPassword123!"
+                required
+              />
             </div>
+
+            {sessionMessage ? (
+              <p
+                className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100"
+                role="status"
+              >
+                {sessionMessage}
+              </p>
+            ) : null}
+
             {errorMessage ? (
-              <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+              <p
+                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                role="alert"
+              >
                 {errorMessage}
               </p>
             ) : null}
+
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Signing in..." : "Log in"}
+              {mutation.isPending ? "Signing in..." : "Sign in"}
             </Button>
-            <p className="text-sm text-slate-400">
-              Need an account?{" "}
-              <Link className="text-cyan-300 hover:text-cyan-200" to="/signup">
-                Create your organization
+            <p className="text-center text-sm text-slate-500">
+              New to KALYPTO?{" "}
+              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/signup">
+                Create a workspace
               </Link>
             </p>
           </form>

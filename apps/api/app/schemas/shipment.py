@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import DocumentType, DocumentUploadStatus, ShipmentMode, ShipmentStage
 
@@ -68,6 +69,18 @@ class ShipmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ShipmentImportError(BaseModel):
+    row: int
+    message: str
+
+
+class ShipmentImportResponse(BaseModel):
+    created: int
+    failed: int
+    shipments: list[ShipmentResponse]
+    errors: list[ShipmentImportError]
+
+
 class DocumentResponse(BaseModel):
     id: UUID
     shipment_id: UUID
@@ -77,7 +90,7 @@ class DocumentResponse(BaseModel):
     file_size_bytes: int | None
     mime_type: str | None
     upload_status: DocumentUploadStatus
-    extracted_fields: dict | None
+    extracted_fields: dict[str, Any] | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -103,9 +116,9 @@ class DiscrepancyItem(BaseModel):
     field: str
     severity: str
     document_a: str
-    document_b: str
+    document_b: str | None = None
     value_a: str
-    value_b: str
+    value_b: str | None = None
     message: str
     suggested_fix: str
 
@@ -113,10 +126,29 @@ class DiscrepancyItem(BaseModel):
 class IncentiveEstimate(BaseModel):
     scheme: str
     eligible: bool
-    estimated_amount: float | None
-    rate_percent: float | None
-    notes: str
-    action_items: list[str]
+    estimated_amount: float | None = None
+    rate_percent: float | None = None
+    notes: str = ""
+    action_items: list[str] = Field(default_factory=list)
+
+    @field_validator("eligible", mode="before")
+    @classmethod
+    def coerce_eligible(cls, v: object) -> bool:
+        return False if v is None else bool(v)
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def coerce_notes(cls, v: object) -> str:
+        return "" if v is None else str(v)
+
+    @field_validator("action_items", mode="before")
+    @classmethod
+    def coerce_action_items(cls, v: object) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(item) for item in v]
+        return [str(v)]
 
 
 class VerificationReport(BaseModel):
@@ -129,4 +161,42 @@ class VerificationReport(BaseModel):
     finance_readiness_score: int
     finance_readiness_notes: str
     recommendations: list[str]
+    disclaimer: str
+
+
+class HsnRateLookupResponse(BaseModel):
+    found: bool
+    hsn_code: str
+    hsn_prefix_matched: str | None = None
+    description: str | None = None
+    duty_drawback_rate: float | None = None
+    rodtep_rate: float | None = None
+    rosctl_rate: float | None = None
+    notes: str | None = None
+    estimated_amounts_inr: dict[str, float] | None = None
+    fob_inr_basis: float | None = None
+    exchange_rate_note: str | None = None
+    message: str | None = None
+    rate_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    disclaimer: str
+
+
+class ReconciliationIssueResponse(BaseModel):
+    id: UUID
+    shipment_id: UUID
+    type: str
+    severity: str
+    message: str
+    suggested_fix: str | None
+    lock_risk: bool
+    potential_amount: float | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReconciliationResponse(BaseModel):
+    shipment_id: UUID
+    discrepancies: list[ReconciliationIssueResponse]
+    potential_amount: float
     disclaimer: str

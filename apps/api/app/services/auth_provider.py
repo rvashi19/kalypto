@@ -55,7 +55,9 @@ def slugify_organization(name: str) -> str:
     return collapsed[:120] or "organization"
 
 
-def build_auth_response(*, user: User, organization: Organization, membership: Membership) -> AuthResponse:
+def build_auth_response(
+    *, user: User, organization: Organization, membership: Membership
+) -> AuthResponse:
     access_token, expires_at, _ = create_access_token(
         user_id=user.id,
         tenant_id=organization.id,
@@ -87,7 +89,9 @@ class LocalAuthProvider:
             raise AuthenticationError("An account with that email already exists.")
 
         slug = organization_slug or slugify_organization(organization_name)
-        existing_org = session.scalars(select(Organization).where(Organization.slug == slug)).first()
+        existing_org = session.scalars(
+            select(Organization).where(Organization.slug == slug)
+        ).first()
         if existing_org is not None:
             raise AuthenticationError("That organization slug is already in use.")
 
