@@ -100,12 +100,11 @@ export function IncentiveFinderPage() {
           Incentive Finder
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-          Look up approved, tenant-verified incentive/rate records for a selected HSN code. This
-          module does not classify products —{" "}
+          Look up RoDTEP, Drawback, and RoSCTL rates for any Indian export HSN code.{" "}
           <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
-            classify the product in HSN Finder
+            Find your HSN code first
           </Link>{" "}
-          first for best accuracy.
+          for best accuracy.
         </p>
 
         <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
@@ -210,7 +209,7 @@ export function IncentiveFinderPage() {
               />
             ) : (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-                Select a rate to view source evidence, validity, and verification details.
+                Select a rate to view full details, validity period, and conditions.
               </div>
             )}
           </aside>
@@ -417,10 +416,9 @@ function RateCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <span className="font-mono text-sm font-semibold text-slate-100">{item.hsn_code}</span>
-          <ApprovalBadge item={item} />
           {item.match_level === "prefix" ? (
             <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
-              parent {item.normalized_hsn_code}
+              applies at {item.normalized_hsn_code}
             </span>
           ) : null}
         </span>
@@ -435,7 +433,6 @@ function RateCard({
       {item.condition_text ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
       ) : null}
-      <p className="mt-1 text-[11px] text-slate-600">Source: {item.source_name}</p>
     </button>
   );
 }
@@ -472,13 +469,10 @@ function DetailPanel({
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
-            {schemeName(detail.scheme)}
-          </p>
-          <ApprovalBadge item={detail} />
-        </div>
-        <p className="mt-1 font-mono text-xl font-bold text-amber-300">{formatRate(detail)}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+          {schemeName(detail.scheme)}
+        </p>
+        <p className="mt-1 font-mono text-2xl font-bold text-amber-300">{formatRate(detail)}</p>
         <p className="mt-1 text-sm text-slate-300">
           HSN {detail.hsn_code}
           {detail.product_description ? ` · ${detail.product_description}` : ""}
@@ -492,33 +486,6 @@ function DetailPanel({
         <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
         <Row label="Valid to" value={detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"} />
         {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
-      </Section>
-
-      <Section title="Verification">
-        <Row label="Status" value={detail.approval_status} />
-        <Row label="Verified by" value={detail.verified_by ?? "—"} />
-        <Row label="Verified at" value={detail.verified_at ? new Date(detail.verified_at).toLocaleString() : "—"} />
-      </Section>
-
-      <Section title="Source evidence">
-        <div className="space-y-2">
-          {detail.source_evidence.length ? (
-            detail.source_evidence.map((e, i) => (
-              <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs leading-5 text-slate-400">
-                <p className="font-medium text-slate-200">{e.source_name} · {e.evidence_type}</p>
-                {e.document_title ? <p className="mt-0.5">{e.document_title}</p> : null}
-                {e.document_date ? <p className="text-slate-500">{new Date(e.document_date).toLocaleDateString()}</p> : null}
-                {e.source_url ? (
-                  <a href={e.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium text-amber-300 hover:text-amber-200">
-                    Open source ↗
-                  </a>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No evidence rows attached.</p>
-          )}
-        </div>
       </Section>
 
       {isAdmin && detail.approval_status !== "approved" ? (

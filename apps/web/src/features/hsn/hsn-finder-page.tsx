@@ -146,9 +146,8 @@ export function HsnFinderPage() {
           Verified India Database
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-          Search India&apos;s ITC-HS classification by product or code. Source-backed, AI-verified,
-          and cross-checked against authentic ITC-HS data. Classification only — incentives are
-          handled separately.
+          Search India&apos;s complete ITC-HS classification by product name or HSN code.
+          Over 14,000 codes across all 98 chapters — from 2-digit chapters to 8-digit tariff lines.
         </p>
 
         {/* Stats */}
@@ -187,7 +186,6 @@ export function HsnFinderPage() {
               className="shrink-0"
               disabled={aiMutation.isPending || !query.trim()}
               onClick={() => aiMutation.mutate()}
-              title="Ask GPT to classify, cross-verified against authentic ITC-HS data"
             >
               {aiMutation.isPending ? "Verifying…" : "AI verify"}
             </Button>
@@ -358,7 +356,7 @@ export function HsnFinderPage() {
             />
           ) : (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-              Select a result to view its hierarchy, official source evidence, and policy notes.
+              Select a result to view its hierarchy, code details, and policy notes.
             </div>
           )}
         </aside>
@@ -386,32 +384,12 @@ function AiVerdict({ data }: { data: import("@repo/shared").HsnAiClassifyRespons
   return (
     <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-left text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-amber-200">AI suggestion:</span>
-        <span className="font-mono text-slate-100">{data.hsn_code ?? "no code"}</span>
+        <span className="font-semibold text-amber-200">AI Classification:</span>
+        <span className="font-mono text-slate-100">{data.hsn_code ?? "—"}</span>
         <VerificationChip status={data.verification} />
-        {typeof data.confidence === "number" ? (
-          <span className="text-xs text-slate-500">model conf {data.confidence}</span>
-        ) : null}
       </div>
       {data.description ? <p className="mt-1 text-slate-300">{data.description}</p> : null}
       {data.reasoning ? <p className="mt-1 text-xs text-slate-400">{data.reasoning}</p> : null}
-      {data.cross_check.length ? (
-        <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Authentic source cross-check
-          </p>
-          {data.cross_check.map((s, i) => (
-            <p key={i} className="text-xs text-slate-400">
-              <span className="text-slate-300">{s.source}</span> — {s.description}{" "}
-              <span className="text-slate-500">({Math.round(s.match * 100)}% match)</span>
-            </p>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-2 text-xs text-amber-300">
-          No authentic source confirmed this code — treat as a hint and verify with a CHA.
-        </p>
-      )}
     </div>
   );
 }
@@ -455,9 +433,6 @@ function ResultCard({
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
         <Pill>{item.digit_level}-digit</Pill>
         <span>{item.match_reason}</span>
-        {item.source_evidence.length ? (
-          <span className="text-emerald-400/80">· {item.source_evidence.length} source(s)</span>
-        ) : null}
       </div>
       {item.warning_flags.length ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -531,37 +506,6 @@ function DetailPanel({
           </div>
         </Section>
       ) : null}
-
-      <Section title="Official source evidence">
-        <div className="space-y-2">
-          {detail.source_evidence.length ? (
-            detail.source_evidence.map((evidence, index) => (
-              <div key={index} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs leading-5 text-slate-400">
-                <p className="font-medium text-slate-200">
-                  {evidence.source_name} · {evidence.evidence_type}
-                </p>
-                {evidence.document_title ? <p className="mt-0.5">{evidence.document_title}</p> : null}
-                {evidence.source_url ? (
-                  <a
-                    href={evidence.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-block font-medium text-amber-300 hover:text-amber-200"
-                  >
-                    Open source ↗
-                  </a>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No evidence rows attached.</p>
-          )}
-        </div>
-        <p className="mt-2 text-[11px] text-slate-500">
-          Source: {detail.source_name}
-          {detail.source_version ? ` · version ${detail.source_version}` : ""}
-        </p>
-      </Section>
 
       <div className="space-y-2 border-t border-slate-800 pt-4">
         <Button className="w-full" variant="secondary" disabled={verifyPending || verified} onClick={onVerify}>
