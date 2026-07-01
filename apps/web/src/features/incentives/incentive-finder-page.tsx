@@ -137,6 +137,17 @@ export function IncentiveFinderPage() {
           </Button>
         </div>
 
+        {hsn.trim() ? (
+          <div className="mt-3">
+            <Link
+              to={`/calculators/export-quote?hsn_code=${encodeURIComponent(hsn.trim())}`}
+              className="text-xs font-medium text-amber-300 hover:text-amber-200"
+            >
+              Calculate landed cost / export quote for this HSN →
+            </Link>
+          </div>
+        ) : null}
+
         {isAdmin ? (
           <label className="mt-3 inline-flex items-center gap-2 text-xs text-slate-400">
             <input

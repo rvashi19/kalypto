@@ -26,6 +26,10 @@ import type {
   HsnImportJobResponse,
   HsnImportResponse,
   HsnStatsResponse,
+  ExportQuoteCalcRequest,
+  ExportQuoteCalcResponse,
+  ExportQuoteDetailResponse,
+  ExportQuoteListItem,
   IncentiveAnomalyResponse,
   IncentiveBulkApproveResponse,
   IncentiveDetailResponse,
@@ -370,6 +374,26 @@ export const api = {
   // HSN Finder (standalone classification) — decoupled from incentives.
 
   hsnStats: (token: string) => request<HsnStatsResponse>("/hsn/stats", {}, token),
+
+  // Landed Cost / Export Quote calculator
+  calculateExportQuoteV2: (payload: ExportQuoteCalcRequest, token: string) =>
+    request<ExportQuoteCalcResponse>(
+      "/calculators/export-quote/calculate",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+  saveExportQuote: (payload: ExportQuoteCalcRequest, token: string) =>
+    request<ExportQuoteDetailResponse>(
+      "/calculators/export-quote/save",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+  listExportQuotes: (token: string) =>
+    request<ExportQuoteListItem[]>("/calculators/export-quote", {}, token),
+  getExportQuote: (id: string, token: string) =>
+    request<ExportQuoteDetailResponse>(`/calculators/export-quote/${id}`, {}, token),
+  duplicateExportQuote: (id: string, token: string) =>
+    request<ExportQuoteDetailResponse>(`/calculators/export-quote/${id}/duplicate`, { method: "POST" }, token),
 
   hsnChapters: (token: string) => request<HsnChapterResponse[]>("/hsn/chapters", {}, token),
 

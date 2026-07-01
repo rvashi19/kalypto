@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     assistant,
     auth,
+    calculators,
     compliance,
     dashboard,
     health,
@@ -22,5 +23,6 @@ api_router.include_router(shipments.router)
 api_router.include_router(compliance.router)
 api_router.include_router(hsn.router)
 api_router.include_router(incentives.router)
+api_router.include_router(calculators.router)
 api_router.include_router(rates.router)
 api_router.include_router(tools.router)

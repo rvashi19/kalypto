@@ -47,6 +47,7 @@ from app.models.compliance import (
     ComplianceSourceSnapshot,
     ProductCategory,
 )
+from app.models.export_quote import ExportQuoteCalculation
 from app.models.hsn import (
     HsnClassificationQuery,
     HsnCode,
@@ -84,6 +85,7 @@ __all__ = [
     "DocumentType",
     "DocumentUploadStatus",
     "ExportDiscrepancy",
+    "ExportQuoteCalculation",
     "ExportShipment",
     "GstExportInvoice",
     "HsnClassificationQuery",

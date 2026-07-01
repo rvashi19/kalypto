@@ -776,3 +776,93 @@ export interface IncentiveImportJobResponse {
   created_by: string | null;
   created_at: string;
 }
+
+// ── Landed Cost / Export Quote calculator ──────────────────────────────────────
+
+export interface ExportQuoteCalcRequest {
+  buyer_name?: string | null;
+  buyer_country?: string | null;
+  seller_country?: string | null;
+  origin_city_or_place?: string | null;
+  port_of_loading?: string | null;
+  port_of_discharge?: string | null;
+  final_destination?: string | null;
+  incoterm: string;
+  incoterms_version?: string;
+  quote_currency: string;
+  hsn_code?: string | null;
+  product_description?: string | null;
+  packaging_description?: string | null;
+  quantity: number;
+  unit?: string | null;
+  unit_price: number;
+  product_value?: number | null;
+  target_profit_per_unit?: number | null;
+  target_profit_total?: number | null;
+  include_incentives?: boolean;
+  incentive_scheme_rates?: { scheme: string; rate: number }[] | null;
+  fx_rate_to_inr?: number | null;
+  notes?: string | null;
+  quote_number?: string | null;
+  status?: string;
+  [key: string]: unknown; // the many optional charge fields
+}
+
+export interface ExportQuoteCalcResponse {
+  input_summary: Record<string, unknown>;
+  incoterm: string;
+  incoterms_version: string;
+  named_place_summary: string;
+  hsn_code: string | null;
+  quote_currency: string;
+  product_value: number;
+  origin_cost_breakdown: Record<string, number>;
+  total_origin_charges: number;
+  fob_value: number;
+  fob_per_unit: number;
+  fob_per_unit_quote_ccy: number | null;
+  cfr_value: number;
+  cfr_per_unit: number;
+  cif_value: number;
+  cif_per_unit: number;
+  cif_per_unit_quote_ccy: number | null;
+  buyer_landed_cost_breakdown: Record<string, number | boolean>;
+  import_duty_amount: number;
+  destination_tax_amount: number;
+  total_landed_cost: number;
+  landed_cost_per_unit: number;
+  invoice_value: number;
+  exporter_realization_breakdown: Record<string, number>;
+  gross_exporter_realization: number;
+  incentive_breakdown: Array<{ scheme: string; rate_percent: number; source: string; amount_inr: number; cap_applied: boolean }>;
+  incentive_amount: number;
+  net_exporter_realization: number;
+  net_realization_per_unit: number;
+  exporter_margin_amount: number;
+  exporter_margin_percent: number;
+  warnings: string[];
+  assumptions: string[];
+  calculation_version: string;
+  disclaimer: string;
+}
+
+export interface ExportQuoteListItem {
+  id: string;
+  quote_number: string | null;
+  buyer_name: string | null;
+  buyer_country: string | null;
+  incoterm: string;
+  hsn_code: string | null;
+  quote_currency: string;
+  fob_value: number;
+  cif_value: number;
+  net_exporter_realization: number;
+  exporter_margin_percent: number;
+  status: string;
+  created_at: string;
+}
+
+export interface ExportQuoteDetailResponse extends ExportQuoteListItem {
+  calculation: ExportQuoteCalcResponse;
+  notes: string | null;
+}

@@ -352,6 +352,9 @@ export function HsnFinderPage() {
               onUseForIncentives={() =>
                 navigate(`/incentives?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
               }
+              onUseForExportQuote={() =>
+                navigate(`/calculators/export-quote?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
+              }
             />
           ) : (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
@@ -491,12 +494,14 @@ function DetailPanel({
   verifyPending,
   verified,
   onUseForIncentives,
+  onUseForExportQuote,
 }: {
   detail: HsnDetailResponse;
   onVerify: () => void;
   verifyPending: boolean;
   verified: boolean;
   onUseForIncentives: () => void;
+  onUseForExportQuote: () => void;
 }) {
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -567,6 +572,9 @@ function DetailPanel({
           onClick={onUseForIncentives}
         >
           Use this HSN for Incentive Finder
+        </Button>
+        <Button className="w-full" variant="secondary" onClick={onUseForExportQuote}>
+          Use in Export Quote calculator
         </Button>
         {!detail.incentive_rate_available ? (
           <p className="text-[11px] leading-5 text-slate-500">
