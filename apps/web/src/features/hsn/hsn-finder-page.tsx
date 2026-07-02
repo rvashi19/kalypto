@@ -1,6 +1,6 @@
-import type { HsnDetailResponse, HsnScrapeRequest, HsnSearchItem } from "@repo/shared";
+import type { HsnDetailResponse, HsnSearchItem } from "@repo/shared";
 import { Button } from "@repo/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -124,7 +124,6 @@ export function HsnFinderPage() {
     return list;
   }, [searchMutation.data, sort]);
 
-  const isAdmin = session?.membership.role === "owner";
   const hasSearched = Boolean(searchMutation.data) || searchMutation.isPending;
   const stats = statsQuery.data;
 
@@ -146,9 +145,8 @@ export function HsnFinderPage() {
           Verified India Database
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-          Search India&apos;s ITC-HS classification by product or code. Source-backed, AI-verified,
-          and cross-checked against authentic ITC-HS data. Classification only — incentives are
-          handled separately.
+          Search India&apos;s complete ITC-HS classification by product name or HSN code.
+          Over 14,000 codes across all 98 chapters — from 2-digit chapters to 8-digit tariff lines.
         </p>
 
         {/* Stats */}
@@ -187,7 +185,6 @@ export function HsnFinderPage() {
               className="shrink-0"
               disabled={aiMutation.isPending || !query.trim()}
               onClick={() => aiMutation.mutate()}
-              title="Ask GPT to classify, cross-verified against authentic ITC-HS data"
             >
               {aiMutation.isPending ? "Verifying…" : "AI verify"}
             </Button>
@@ -358,13 +355,12 @@ export function HsnFinderPage() {
             />
           ) : (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-              Select a result to view its hierarchy, official source evidence, and policy notes.
+              Select a result to view its hierarchy, code details, and policy notes.
             </div>
           )}
         </aside>
       </div>
 
-      {isAdmin ? <AdminDataPanel token={token!} /> : null}
     </DashboardShell>
   );
 }
@@ -386,32 +382,12 @@ function AiVerdict({ data }: { data: import("@repo/shared").HsnAiClassifyRespons
   return (
     <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-left text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-amber-200">AI suggestion:</span>
-        <span className="font-mono text-slate-100">{data.hsn_code ?? "no code"}</span>
+        <span className="font-semibold text-amber-200">AI Classification:</span>
+        <span className="font-mono text-slate-100">{data.hsn_code ?? "—"}</span>
         <VerificationChip status={data.verification} />
-        {typeof data.confidence === "number" ? (
-          <span className="text-xs text-slate-500">model conf {data.confidence}</span>
-        ) : null}
       </div>
       {data.description ? <p className="mt-1 text-slate-300">{data.description}</p> : null}
       {data.reasoning ? <p className="mt-1 text-xs text-slate-400">{data.reasoning}</p> : null}
-      {data.cross_check.length ? (
-        <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Authentic source cross-check
-          </p>
-          {data.cross_check.map((s, i) => (
-            <p key={i} className="text-xs text-slate-400">
-              <span className="text-slate-300">{s.source}</span> — {s.description}{" "}
-              <span className="text-slate-500">({Math.round(s.match * 100)}% match)</span>
-            </p>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-2 text-xs text-amber-300">
-          No authentic source confirmed this code — treat as a hint and verify with a CHA.
-        </p>
-      )}
     </div>
   );
 }
@@ -455,9 +431,6 @@ function ResultCard({
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
         <Pill>{item.digit_level}-digit</Pill>
         <span>{item.match_reason}</span>
-        {item.source_evidence.length ? (
-          <span className="text-emerald-400/80">· {item.source_evidence.length} source(s)</span>
-        ) : null}
       </div>
       {item.warning_flags.length ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -532,37 +505,6 @@ function DetailPanel({
         </Section>
       ) : null}
 
-      <Section title="Official source evidence">
-        <div className="space-y-2">
-          {detail.source_evidence.length ? (
-            detail.source_evidence.map((evidence, index) => (
-              <div key={index} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs leading-5 text-slate-400">
-                <p className="font-medium text-slate-200">
-                  {evidence.source_name} · {evidence.evidence_type}
-                </p>
-                {evidence.document_title ? <p className="mt-0.5">{evidence.document_title}</p> : null}
-                {evidence.source_url ? (
-                  <a
-                    href={evidence.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-block font-medium text-amber-300 hover:text-amber-200"
-                  >
-                    Open source ↗
-                  </a>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No evidence rows attached.</p>
-          )}
-        </div>
-        <p className="mt-2 text-[11px] text-slate-500">
-          Source: {detail.source_name}
-          {detail.source_version ? ` · version ${detail.source_version}` : ""}
-        </p>
-      </Section>
-
       <div className="space-y-2 border-t border-slate-800 pt-4">
         <Button className="w-full" variant="secondary" disabled={verifyPending || verified} onClick={onVerify}>
           {verified ? "✓ Verification requested" : verifyPending ? "Submitting…" : "Verify with CHA / customs broker"}
@@ -588,163 +530,12 @@ function DetailPanel({
   );
 }
 
-function AdminDataPanel({ token }: { token: string }) {
-  const queryClient = useQueryClient();
-  const [source, setSource] = useState<"eximguru" | "ogd" | "file">("eximguru");
-  const [sourceVersion, setSourceVersion] = useState("itchs-2026");
-  const [chapters, setChapters] = useState("9, 10, 85");
-  const [resourceId, setResourceId] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-
-  const jobsQuery = useQuery({
-    queryKey: ["hsn-import-jobs", token],
-    queryFn: () => api.listHsnImportJobs(token),
-  });
-
-  const scrapeMutation = useMutation({
-    mutationFn: () => {
-      let payload: HsnScrapeRequest;
-      if (source === "ogd") {
-        payload = { source, source_version: sourceVersion, resource_id: resourceId, api_key: apiKey || null };
-      } else if (source === "file") {
-        payload = { source, source_version: sourceVersion, url: fileUrl };
-      } else {
-        payload = {
-          source,
-          source_version: sourceVersion,
-          chapters: chapters.trim()
-            ? chapters.split(",").map((c) => Number(c.trim())).filter((n) => Number.isFinite(n) && n > 0)
-            : null,
-        };
-      }
-      return api.scrapeHsn(payload, token);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hsn-import-jobs"] }),
-  });
-
-  const jobs = jobsQuery.data ?? [];
-  const sources = [
-    { id: "eximguru", label: "EximGuru (ITC-HS)" },
-    { id: "ogd", label: "data.gov.in API" },
-    { id: "file", label: "Official file URL" },
-  ] as const;
-
-  return (
-    <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="font-serif text-xl font-semibold tracking-tight text-white">
-        Official HSN data <span className="text-amber-300">· admin</span>
-      </h2>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-        Refresh the HSN master from an official or aggregator source. Runs are rate-limited and
-        source-versioned, and import idempotently. EximGuru is a secondary ITC-HS aggregator;
-        official DGFT/CBIC and data.gov.in remain primary.
-      </p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {sources.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSource(s.id)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-              source === s.id
-                ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                : "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200"
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <AdminField label="Source version">
-          <input className={inputClass} value={sourceVersion} onChange={(e) => setSourceVersion(e.target.value)} />
-        </AdminField>
-        {source === "eximguru" ? (
-          <AdminField label="Chapters (comma-separated, blank = all)">
-            <input className={inputClass} value={chapters} onChange={(e) => setChapters(e.target.value)} placeholder="9, 10, 85" />
-          </AdminField>
-        ) : source === "ogd" ? (
-          <>
-            <AdminField label="Resource id (data.gov.in)">
-              <input className={inputClass} value={resourceId} onChange={(e) => setResourceId(e.target.value)} placeholder="35985678-0d79-…" />
-            </AdminField>
-            <AdminField label="API key (optional if set on server)">
-              <input className={inputClass} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="api.data.gov.in key" />
-            </AdminField>
-          </>
-        ) : (
-          <AdminField label="Official file URL">
-            <input className={inputClass} value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://<gov-domain>/itc-hs.csv" />
-          </AdminField>
-        )}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button
-          disabled={
-            scrapeMutation.isPending ||
-            !sourceVersion ||
-            (source === "ogd" && !resourceId) ||
-            (source === "file" && !fileUrl)
-          }
-          onClick={() => scrapeMutation.mutate()}
-        >
-          {scrapeMutation.isPending ? "Fetching…" : "Fetch & import"}
-        </Button>
-        {scrapeMutation.isPending ? (
-          <span className="text-xs text-slate-500">Crawling official source — this can take a moment…</span>
-        ) : null}
-      </div>
-
-      {scrapeMutation.error instanceof Error ? (
-        <p className="mt-3 text-sm text-rose-300">{scrapeMutation.error.message}</p>
-      ) : null}
-      {scrapeMutation.data ? (
-        <p className="mt-3 text-sm text-emerald-300">
-          {scrapeMutation.data.status}: {scrapeMutation.data.records_created} created,{" "}
-          {scrapeMutation.data.records_updated} updated, {scrapeMutation.data.errors.length} error(s).
-        </p>
-      ) : null}
-
-      <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recent import jobs</p>
-        <div className="mt-2 space-y-1.5 text-xs">
-          {jobs.length ? (
-            jobs.slice(0, 6).map((job) => (
-              <div key={job.id} className="flex flex-wrap justify-between gap-2 text-slate-400">
-                <span className="text-slate-300">{job.source_name}</span>
-                <span>
-                  {job.import_type} · {job.status} · +{job.records_created}/~{job.records_updated} ·{" "}
-                  {new Date(job.created_at).toLocaleString()}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-500">No import jobs yet.</p>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
       <div className="mt-2">{children}</div>
     </div>
-  );
-}
-
-function AdminField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{label}</span>
-      {children}
-    </label>
   );
 }
 

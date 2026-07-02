@@ -1,6 +1,6 @@
-import type { IncentiveDetailResponse, IncentiveRateItem, IncentiveSourceCreate } from "@repo/shared";
+import type { IncentiveDetailResponse, IncentiveRateItem } from "@repo/shared";
 import { Button } from "@repo/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -100,12 +100,11 @@ export function IncentiveFinderPage() {
           Incentive Finder
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-          Look up approved, tenant-verified incentive/rate records for a selected HSN code. This
-          module does not classify products —{" "}
+          Look up RoDTEP, Drawback, and RoSCTL rates for any Indian export HSN code.{" "}
           <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
-            classify the product in HSN Finder
+            Find your HSN code first
           </Link>{" "}
-          first for best accuracy.
+          for best accuracy.
         </p>
 
         <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
@@ -210,14 +209,13 @@ export function IncentiveFinderPage() {
               />
             ) : (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-                Select a rate to view source evidence, validity, and verification details.
+                Select a rate to view full details, validity period, and conditions.
               </div>
             )}
           </aside>
         </div>
       ) : null}
 
-      {isAdmin ? <IncentiveAdminPanel token={token!} /> : null}
     </DashboardShell>
   );
 
@@ -229,160 +227,6 @@ export function IncentiveFinderPage() {
       })
       .catch(() => undefined);
   }
-}
-
-function IncentiveAdminPanel({ token }: { token: string }) {
-  const qc = useQueryClient();
-  const [form, setForm] = useState<IncentiveSourceCreate>({
-    source_name: "",
-    scheme: "rodtep",
-    source_url: "",
-    source_type: "csv",
-    refresh_interval_days: 3,
-  });
-  const [file, setFile] = useState<File | null>(null);
-  const [importScheme, setImportScheme] = useState("rodtep");
-  const [importSource, setImportSource] = useState("");
-
-  const sourcesQuery = useQuery({ queryKey: ["inc-sources", token], queryFn: () => api.listIncentiveSources(token) });
-  const pendingQuery = useQuery({ queryKey: ["inc-pending", token], queryFn: () => api.incentivePendingQueue(token) });
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["inc-sources"] });
-    qc.invalidateQueries({ queryKey: ["inc-pending"] });
-  };
-
-  const registerMut = useMutation({ mutationFn: () => api.registerIncentiveSource(form, token), onSuccess: invalidate });
-  const refreshMut = useMutation({ mutationFn: (id: string) => api.refreshIncentiveSource(id, token), onSuccess: invalidate });
-  const approveMut = useMutation({ mutationFn: (id: string) => api.approveIncentive(id, token), onSuccess: invalidate });
-  const rejectMut = useMutation({ mutationFn: (id: string) => api.rejectIncentive(id, token), onSuccess: invalidate });
-  const anomalyMut = useMutation({ mutationFn: () => api.incentiveAnomalyCheck(token), onSuccess: invalidate });
-  const bulkApproveMut = useMutation({ mutationFn: (sourceId?: string) => api.bulkApproveIncentives(token, sourceId), onSuccess: invalidate });
-  const importMut = useMutation({
-    mutationFn: () => api.importIncentivesFile(file!, { source_name: importSource || "Official schedule", scheme: importScheme }, token),
-    onSuccess: invalidate,
-  });
-
-  const sources = sourcesQuery.data ?? [];
-  const pending = pendingQuery.data ?? [];
-
-  return (
-    <section className="mt-8 space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="font-serif text-xl font-semibold tracking-tight text-white">
-        Official sources & approvals <span className="text-amber-300">· admin</span>
-      </h2>
-      <p className="max-w-3xl text-sm leading-6 text-slate-400">
-        Register official DGFT/CBIC/MoT schedule files (URL re-fetched on a schedule, or upload
-        directly). Imported rates land as <span className="text-amber-300">pending</span> and stay
-        hidden from users until you approve them. GPT only flags anomalies — never sets rates.
-      </p>
-
-      {/* Register source */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Register official source</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-          <input className={inputClass} placeholder="Source name (e.g. DGFT RoDTEP Appendix 4R)" value={form.source_name} onChange={(e) => setForm({ ...form, source_name: e.target.value })} />
-          <select className={inputClass} value={form.scheme ?? ""} onChange={(e) => setForm({ ...form, scheme: e.target.value })}>
-            <option value="rodtep">RoDTEP</option>
-            <option value="drawback">Drawback</option>
-            <option value="rosctl">RoSCTL</option>
-          </select>
-          <select className={inputClass} value={form.source_type} onChange={(e) => setForm({ ...form, source_type: e.target.value as IncentiveSourceCreate["source_type"] })}>
-            <option value="csv">CSV</option>
-            <option value="xlsx">XLSX</option>
-            <option value="pdf">PDF</option>
-          </select>
-          <input className={`${inputClass} lg:col-span-2`} placeholder="Official file URL (https://…gov.in/…)" value={form.source_url ?? ""} onChange={(e) => setForm({ ...form, source_url: e.target.value })} />
-          <input className={inputClass} type="number" placeholder="Refresh every N days" value={form.refresh_interval_days ?? ""} onChange={(e) => setForm({ ...form, refresh_interval_days: Number(e.target.value) || null })} />
-        </div>
-        <Button className="mt-3" disabled={registerMut.isPending || !form.source_name} onClick={() => registerMut.mutate()}>
-          {registerMut.isPending ? "Saving…" : "Register source"}
-        </Button>
-        {registerMut.error instanceof Error ? <p className="mt-2 text-sm text-rose-300">{registerMut.error.message}</p> : null}
-      </div>
-
-      {/* Sources list */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Registered sources</p>
-        <div className="mt-2 space-y-2">
-          {sources.length ? sources.map((s) => (
-            <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 p-3 text-xs">
-              <div>
-                <p className="text-slate-200">{s.source_name} <span className="text-slate-500">· {s.scheme ?? "—"} · {s.source_type}</span></p>
-                <p className="text-slate-500">
-                  {s.last_status} · {s.last_records} rows · {s.last_fetched_at ? `fetched ${new Date(s.last_fetched_at).toLocaleString()}` : "never fetched"}
-                  {s.due_for_refresh ? <span className="ml-2 text-amber-300">due</span> : null}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {s.source_url ? (
-                  <Button size="sm" variant="secondary" disabled={refreshMut.isPending} onClick={() => refreshMut.mutate(s.id)}>
-                    {refreshMut.isPending ? "…" : "Refresh"}
-                  </Button>
-                ) : <span className="self-center text-slate-600">upload-only</span>}
-                <Button size="sm" disabled={bulkApproveMut.isPending} onClick={() => bulkApproveMut.mutate(s.id)}>
-                  Approve all
-                </Button>
-              </div>
-            </div>
-          )) : <p className="text-sm text-slate-500">No sources registered yet.</p>}
-        </div>
-        {refreshMut.data ? <p className="mt-2 text-sm text-emerald-300">{refreshMut.data.message}</p> : null}
-        {refreshMut.error instanceof Error ? <p className="mt-2 text-sm text-rose-300">{refreshMut.error.message}</p> : null}
-      </div>
-
-      {/* Upload import */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Upload official file (CSV / XLSX / PDF)</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-3">
-          <input className={inputClass} placeholder="Source name" value={importSource} onChange={(e) => setImportSource(e.target.value)} />
-          <select className={inputClass} value={importScheme} onChange={(e) => setImportScheme(e.target.value)}>
-            <option value="rodtep">RoDTEP</option>
-            <option value="drawback">Drawback</option>
-            <option value="rosctl">RoSCTL</option>
-          </select>
-          <input className="text-xs text-slate-400" type="file" accept=".csv,.xlsx,.pdf,.json" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        </div>
-        <Button className="mt-3" disabled={importMut.isPending || !file} onClick={() => importMut.mutate()}>
-          {importMut.isPending ? "Importing…" : "Import as pending"}
-        </Button>
-        {importMut.data ? <p className="mt-2 text-sm text-emerald-300">Imported: {importMut.data.records_created} new, {importMut.data.records_updated} updated, {importMut.data.errors.length} error(s) — pending approval.</p> : null}
-        {importMut.error instanceof Error ? <p className="mt-2 text-sm text-rose-300">{importMut.error.message}</p> : null}
-      </div>
-
-      {/* Pending approval queue */}
-      <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">Pending approval ({pending.length})</p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" disabled={anomalyMut.isPending || !pending.length} onClick={() => anomalyMut.mutate()}>
-              {anomalyMut.isPending ? "Checking…" : "AI anomaly check"}
-            </Button>
-            <Button size="sm" disabled={bulkApproveMut.isPending || !pending.length} onClick={() => bulkApproveMut.mutate(undefined)}>
-              {bulkApproveMut.isPending ? "Approving…" : `Approve all (${pending.length})`}
-            </Button>
-          </div>
-        </div>
-        {anomalyMut.data ? <p className="mt-1 text-xs text-slate-400">Checked {anomalyMut.data.checked}, flagged {anomalyMut.data.flagged}.</p> : null}
-        {anomalyMut.error instanceof Error ? <p className="mt-1 text-xs text-amber-300">{anomalyMut.error.message}</p> : null}
-        <div className="mt-2 space-y-2">
-          {pending.length ? pending.map((r) => (
-            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs">
-              <div>
-                <p className="text-slate-200">
-                  <span className="font-mono text-amber-300">{r.hsn_code}</span> · {schemeName(r.scheme)} · {formatRate(r)} · <span className="uppercase text-slate-400">{r.approval_status}</span>
-                </p>
-                <p className="text-slate-500">{r.source_name}{r.review_note ? <span className="text-amber-300"> · ⚠ {r.review_note}</span> : null}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" disabled={approveMut.isPending} onClick={() => approveMut.mutate(r.id)}>Approve</Button>
-                <Button size="sm" variant="secondary" disabled={rejectMut.isPending} onClick={() => rejectMut.mutate(r.id)}>Reject</Button>
-              </div>
-            </div>
-          )) : <p className="text-sm text-slate-500">No pending rates. Imported/refreshed rates appear here for approval.</p>}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function EmptyState({ data }: { data: { hsn_exists: boolean; message: string | null } }) {
@@ -417,10 +261,9 @@ function RateCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <span className="font-mono text-sm font-semibold text-slate-100">{item.hsn_code}</span>
-          <ApprovalBadge item={item} />
           {item.match_level === "prefix" ? (
             <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
-              parent {item.normalized_hsn_code}
+              applies at {item.normalized_hsn_code}
             </span>
           ) : null}
         </span>
@@ -435,7 +278,6 @@ function RateCard({
       {item.condition_text ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
       ) : null}
-      <p className="mt-1 text-[11px] text-slate-600">Source: {item.source_name}</p>
     </button>
   );
 }
@@ -472,13 +314,10 @@ function DetailPanel({
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
-            {schemeName(detail.scheme)}
-          </p>
-          <ApprovalBadge item={detail} />
-        </div>
-        <p className="mt-1 font-mono text-xl font-bold text-amber-300">{formatRate(detail)}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+          {schemeName(detail.scheme)}
+        </p>
+        <p className="mt-1 font-mono text-2xl font-bold text-amber-300">{formatRate(detail)}</p>
         <p className="mt-1 text-sm text-slate-300">
           HSN {detail.hsn_code}
           {detail.product_description ? ` · ${detail.product_description}` : ""}
@@ -492,33 +331,6 @@ function DetailPanel({
         <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
         <Row label="Valid to" value={detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"} />
         {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
-      </Section>
-
-      <Section title="Verification">
-        <Row label="Status" value={detail.approval_status} />
-        <Row label="Verified by" value={detail.verified_by ?? "—"} />
-        <Row label="Verified at" value={detail.verified_at ? new Date(detail.verified_at).toLocaleString() : "—"} />
-      </Section>
-
-      <Section title="Source evidence">
-        <div className="space-y-2">
-          {detail.source_evidence.length ? (
-            detail.source_evidence.map((e, i) => (
-              <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs leading-5 text-slate-400">
-                <p className="font-medium text-slate-200">{e.source_name} · {e.evidence_type}</p>
-                {e.document_title ? <p className="mt-0.5">{e.document_title}</p> : null}
-                {e.document_date ? <p className="text-slate-500">{new Date(e.document_date).toLocaleDateString()}</p> : null}
-                {e.source_url ? (
-                  <a href={e.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium text-amber-300 hover:text-amber-200">
-                    Open source ↗
-                  </a>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No evidence rows attached.</p>
-          )}
-        </div>
       </Section>
 
       {isAdmin && detail.approval_status !== "approved" ? (

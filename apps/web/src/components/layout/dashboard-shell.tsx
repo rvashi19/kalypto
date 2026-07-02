@@ -7,6 +7,7 @@ const NAV = [
   { label: "HSN Finder", href: "/hsn" },
   { label: "Incentive Finder", href: "/incentives" },
   { label: "Export Quote", href: "/calculators/export-quote" },
+  { label: "Document Builder", href: "/documents" },
   { label: "Shipments", href: "/shipments" },
   { label: "Compliance", href: "/compliance" },
   { label: "Dashboard", href: "/dashboard" },
