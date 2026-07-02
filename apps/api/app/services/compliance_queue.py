@@ -21,17 +21,41 @@ from app.db.session import session_scope
 from app.models import ComplianceRetrievalJob
 from app.services.compliance_retrieval_job import run_retrieval_job
 
+# Auto-retry: transient failures (network/timeout) are retried; permanent ones
+# (e.g. no official source registered, non-whitelisted domain) are not.
+_MAX_ATTEMPTS = 3
+_PERMANENT_MARKERS = (
+    "No active official source",
+    "non-whitelisted domain",
+    "Refused to fetch",
+)
+
+
+def _is_permanent_failure(message: str | None) -> bool:
+    if not message:
+        return False
+    return any(marker in message for marker in _PERMANENT_MARKERS)
+
 
 def _run_job_in_new_session(job_id: UUID, tenant_id: UUID, force: bool) -> None:
-    """Background entrypoint. Uses its own DB session (request session is closed)."""
-    with session_scope() as session:
-        try:
-            run_retrieval_job(session, job_id=job_id, tenant_id=tenant_id, force=force)
-        except Exception as exc:  # pragma: no cover - defensive; mark job failed
-            job = session.get(ComplianceRetrievalJob, job_id)
-            if job is not None:
-                job.status = "failed"
-                job.error_message = str(exc)[:4000]
+    """Background entrypoint. Uses its own DB session (request session is closed).
+
+    Retries transient failures up to _MAX_ATTEMPTS times; skips retry for permanent
+    failures (no registered source, non-whitelisted domain).
+    """
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        with session_scope() as session:
+            try:
+                job = run_retrieval_job(session, job_id=job_id, tenant_id=tenant_id, force=force)
+                status, message = job.status, job.error_message
+            except Exception as exc:  # pragma: no cover - defensive; mark job failed
+                job = session.get(ComplianceRetrievalJob, job_id)
+                if job is not None:
+                    job.status = "failed"
+                    job.error_message = str(exc)[:4000]
+                status, message = "failed", str(exc)
+        if status != "failed" or _is_permanent_failure(message) or attempt == _MAX_ATTEMPTS:
+            return
 
 
 def enqueue_retrieval_job(background_tasks, *, job_id: UUID, tenant_id: UUID, force: bool = False) -> None:
