@@ -2,6 +2,8 @@ import type {
   ComplianceCheckRequestV1,
   ComplianceCheckResponseV1,
   ReviewQueueItem,
+  SourceRegistryCreateRequest,
+  SourceRegistryResponse,
 } from "@repo/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -225,6 +227,110 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
   );
 }
 
+const SOURCE_DEFAULT: SourceRegistryCreateRequest = {
+  country: "Canada",
+  authority_name: "",
+  source_name: "",
+  base_url: "",
+  allowed_domains: [],
+  source_type: "html",
+  product_categories: ["textiles"],
+  refresh_frequency_days: 30,
+};
+
+function AdminSourceManager() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<SourceRegistryCreateRequest>(SOURCE_DEFAULT);
+
+  const sourcesQuery = useQuery({
+    queryKey: ["compliance-sources"],
+    queryFn: () => api.listComplianceSources(token!),
+    enabled: Boolean(token),
+  });
+
+  const createMut = useMutation({
+    mutationFn: () => api.createComplianceSource(form, token!),
+    onSuccess: () => {
+      setForm(SOURCE_DEFAULT);
+      queryClient.invalidateQueries({ queryKey: ["compliance-sources"] });
+    },
+  });
+
+  const sources: SourceRegistryResponse[] = sourcesQuery.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Official sources (admin)</CardTitle>
+        <CardDescription>
+          Register the government/regulatory page or PDF to fetch. Only whitelisted official
+          domains are accepted (e.g. cbsa-asfc.gc.ca, inspection.canada.ca, fda.gov, apeda.gov.in).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <SelectField
+            label="Country"
+            value={form.country}
+            options={COUNTRIES}
+            onChange={(v) => setForm((c) => ({ ...c, country: v }))}
+          />
+          <SelectField
+            label="Category"
+            value={(form.product_categories ?? ["textiles"])[0] ?? "textiles"}
+            options={CATEGORIES}
+            onChange={(v) => setForm((c) => ({ ...c, product_categories: [v] }))}
+          />
+        </div>
+        <Field
+          label="Authority name"
+          value={form.authority_name}
+          placeholder="Canada Border Services Agency"
+          onChange={(v) => setForm((c) => ({ ...c, authority_name: v }))}
+        />
+        <Field
+          label="Source name"
+          value={form.source_name}
+          placeholder="CBSA import requirements"
+          onChange={(v) => setForm((c) => ({ ...c, source_name: v }))}
+        />
+        <Field
+          label="Official source URL"
+          value={form.base_url}
+          placeholder="https://www.cbsa-asfc.gc.ca/import/..."
+          onChange={(v) => setForm((c) => ({ ...c, base_url: v }))}
+        />
+        <Button
+          onClick={() => createMut.mutate()}
+          disabled={createMut.isPending || !form.base_url || !form.authority_name}
+        >
+          {createMut.isPending ? "Adding…" : "Add official source"}
+        </Button>
+        {createMut.isError && (
+          <p className="text-sm text-red-400">{userMessageForError(createMut.error)}</p>
+        )}
+
+        {sources.length > 0 && (
+          <div className="space-y-1 pt-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Registered sources
+            </p>
+            {sources.map((s) => (
+              <div key={s.id} className="text-xs text-slate-400">
+                {s.country} · {s.product_categories.join(", ") || "all"} —{" "}
+                <a className="text-cyan-300 underline" href={s.base_url} target="_blank" rel="noreferrer">
+                  {s.source_name}
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdminReviewQueue() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -382,6 +488,7 @@ export function CountryComplianceCheckerPage() {
               </CardContent>
             </Card>
           )}
+          {isAdmin && <AdminSourceManager />}
           {isAdmin && <AdminReviewQueue />}
         </div>
       </div>
