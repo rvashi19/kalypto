@@ -47,6 +47,14 @@ services:
         value: "false"
       - key: UPLOAD_DIR
         value: /tmp/kalypto_uploads
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
       - key: SEED_DEMO_DATA
         value: "false"
       - key: PYTHONPATH

@@ -56,6 +56,11 @@ from app.models.hsn import (
     HsnSourceEvidence,
     HsnVerificationRequest,
 )
+from app.models.documents import (
+    DocumentImportSession,
+    ExportDocumentPack,
+    GeneratedExportDocument,
+)
 from app.models.incentive import (
     IncentiveImportJob,
     IncentiveRate,
@@ -65,6 +70,9 @@ from app.models.incentive import (
 
 __all__ = [
     "Alert",
+    "DocumentImportSession",
+    "ExportDocumentPack",
+    "GeneratedExportDocument",
     "AlertSeverity",
     "AuditLog",
     "BankRealization",

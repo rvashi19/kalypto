@@ -532,4 +532,155 @@ export const api = {
       { method: "POST", body: JSON.stringify(payload) },
       token
     ),
+
+  // Document Builder
+
+  validateDocumentData: (data: unknown, token: string) =>
+    request<{ valid: boolean; errors: { code: string; message: string; severity: string }[]; warnings: { code: string; message: string; severity: string }[] }>(
+      "/documents/validate",
+      { method: "POST", body: JSON.stringify({ data }) },
+      token
+    ),
+
+  generateDocuments: async (
+    data: unknown,
+    documentTypes: string[],
+    savePack: boolean,
+    token: string
+  ): Promise<{ blob: Blob; packId: string | null; filename: string }> => {
+    const response = await fetch(`${API_BASE_URL}/documents/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ data, document_types: documentTypes, save_pack: savePack }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ detail: "Generation failed." })) as { detail?: unknown };
+      const msg = typeof body.detail === "string" ? body.detail
+        : (body.detail as { message?: string })?.message ?? "Document generation failed.";
+      throw new Error(msg);
+    }
+    const blob = await response.blob();
+    const packId = response.headers.get("x-pack-id");
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return { blob, packId, filename: match?.[1] ?? "ExportDocs.zip" };
+  },
+
+  listDocumentPacks: (token: string, limit = 20, offset = 0) =>
+    request<Array<{
+      id: string; pack_number: string | null; invoice_number: string | null;
+      buyer_name: string | null; destination_country: string | null;
+      incoterm: string | null; currency: string | null;
+      total_invoice_value: number | null; status: string;
+      created_at: string; updated_at: string;
+    }>>(`/documents/packs?limit=${limit}&offset=${offset}`, {}, token),
+
+  getDocumentPack: (packId: string, token: string) =>
+    request<{
+      id: string; pack_number: string | null; invoice_number: string | null;
+      buyer_name: string | null; destination_country: string | null;
+      incoterm: string | null; currency: string | null;
+      total_invoice_value: number | null; status: string;
+      created_at: string; updated_at: string;
+      shipment_data: unknown; generated_documents: unknown[];
+    }>(`/documents/packs/${packId}`, {}, token),
+
+  downloadDocumentPack: async (packId: string, token: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/documents/packs/${packId}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Download failed.");
+    const blob = await response.blob();
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] ?? `ExportDocs_${packId.slice(0, 8)}.zip`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  archiveDocumentPack: async (packId: string, token: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/documents/packs/${packId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Organisation logo for document builder
+
+  uploadLogo: async (file: File, token: string): Promise<void> => {
+    const form = new FormData();
+    form.append("file", file);
+    const resp = await fetch(`${API_BASE_URL}/documents/logo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
+      throw new Error(body.detail ?? "Logo upload failed.");
+    }
+  },
+
+  getLogoUrl: () => `${API_BASE_URL}/documents/logo`,
+
+  deleteLogo: async (token: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/documents/logo`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  uploadImportFile: async (
+    file: File,
+    token: string,
+    sheetName?: string
+  ): Promise<{
+    session_id: string; original_filename: string; file_type: string;
+    sheet_names: string[]; detected_columns: string[];
+    suggested_mapping: Record<string, string>;
+    parsed_preview: unknown[]; warnings: { code: string; message: string; severity: string }[];
+    status: string;
+  }> => {
+    const form = new FormData();
+    form.append("file", file);
+    if (sheetName) form.append("sheet_name", sheetName);
+    const response = await fetch(`${API_BASE_URL}/documents/import/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => ({ detail: "Upload failed." }));
+    if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Upload failed.");
+    return body;
+  },
+
+  extractFromDocument: async (
+    file: File,
+    token: string,
+    sheetName?: string
+  ): Promise<{
+    extracted: Record<string, unknown>;
+    confidence: number;
+    missing_fields: string[];
+    notes: string | null;
+    file_type: string;
+    used_llm: boolean;
+    sheet_names: string[];
+  }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (sheetName) fd.append("sheet_name", sheetName);
+    const response = await fetch(`${API_BASE_URL}/documents/import/extract`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    const body = await response.json().catch(() => ({ detail: "Extraction failed." }));
+    if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Extraction failed.");
+    return body;
+  },
 };
