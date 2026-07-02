@@ -10,6 +10,7 @@ import { ExportQuotePage } from "./features/calculators/export-quote-page";
 import { ShipmentsPage } from "./features/shipments/shipments-page";
 import { NewShipmentPage } from "./features/shipments/new-shipment-page";
 import { ShipmentDetailPage } from "./features/shipments/shipment-detail-page";
+import { DocumentBuilderPage } from "./features/documents/document-builder-page";
 import { ToolsPage } from "./features/tools/tools-page";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
       <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />
       <Route path="/shipments/:id" element={<ProtectedRoute><ShipmentDetailPage /></ProtectedRoute>} />
+      <Route path="/documents" element={<ProtectedRoute><DocumentBuilderPage /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/tools" replace />} />
       <Route path="*" element={<Navigate to="/tools" replace />} />
     </Routes>
