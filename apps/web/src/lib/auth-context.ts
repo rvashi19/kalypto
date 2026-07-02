@@ -1,40 +1,25 @@
 import { createContext } from "react";
 
-import type { AuthResponse } from "@repo/shared";
+import type { AuthResponse, CurrentUserResponse } from "@repo/shared";
 
-const STORAGE_KEY = "export-assurance.session";
+export const COOKIE_SESSION_TOKEN = "__cookie_session__";
+
+export type AuthSession = CurrentUserResponse & Partial<Pick<AuthResponse, "expires_at">>;
 
 export interface AuthContextValue {
-  session: AuthResponse | null;
+  session: AuthSession | null;
   token: string | null;
-  setSession: (session: AuthResponse | null) => void;
+  loading: boolean;
+  setSession: (session: AuthSession | AuthResponse | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function readStoredSession(): AuthResponse | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as AuthResponse;
-  } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return null;
-  }
-}
-
-export function persistSession(session: AuthResponse | null) {
-  if (session) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    return;
-  }
-
-  window.localStorage.removeItem(STORAGE_KEY);
+export function toAuthSession(session: AuthSession | AuthResponse): AuthSession {
+  return {
+    user: session.user,
+    organization: session.organization,
+    membership: session.membership,
+    expires_at: "expires_at" in session ? session.expires_at : undefined,
+  };
 }

@@ -60,6 +60,7 @@ import type {
   SourceChangeReviewRequest,
   VerificationReport,
 } from "@repo/shared";
+import { COOKIE_SESSION_TOKEN } from "./auth-context";
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
@@ -97,6 +98,14 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+
+function authHeaders(token?: string): HeadersInit {
+  if (!token || token === COOKIE_SESSION_TOKEN) {
+    return {};
+  }
+
+  return { Authorization: `Bearer ${token}` };
+}
 
 export class ApiError extends Error {
   status: number;
@@ -153,6 +162,7 @@ export interface LoginPayload {
   email: string;
   password: string;
   organization_id?: string;
+  otp_code?: string;
 }
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
@@ -162,9 +172,10 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
       ...options,
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...authHeaders(token),
         ...options.headers
-      }
+      },
+      credentials: "include"
     });
   } catch {
     throw new Error(
@@ -189,11 +200,28 @@ export const api = {
   login: (payload: LoginPayload) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
-  logout: (token: string) =>
+  logout: (token?: string) =>
     request<{ success: boolean }>("/auth/logout", { method: "POST" }, token),
 
-  me: (token: string) =>
+  me: (token?: string) =>
     request<CurrentUserResponse>("/auth/me", {}, token),
+
+  setupTwoFactor: (token?: string) =>
+    request<{ secret: string; otpauth_uri: string }>("/auth/2fa/setup", {}, token),
+
+  enableTwoFactor: (otp_code: string, token?: string) =>
+    request<CurrentUserResponse>(
+      "/auth/2fa/enable",
+      { method: "POST", body: JSON.stringify({ otp_code }) },
+      token
+    ),
+
+  disableTwoFactor: (otp_code: string, token?: string) =>
+    request<CurrentUserResponse>(
+      "/auth/2fa/disable",
+      { method: "POST", body: JSON.stringify({ otp_code }) },
+      token
+    ),
 
   dashboardOverview: (token: string) =>
     request<DashboardOverview>("/dashboard/overview", {}, token),
@@ -327,8 +355,9 @@ export const api = {
     form.append("file", file);
     const response = await fetch(`${API_BASE_URL}/rates/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
+      headers: authHeaders(token),
+      body: form,
+      credentials: "include"
     });
     const body = await response.json().catch(() => ({ detail: "Rate import failed." }));
     if (!response.ok) {
@@ -350,8 +379,9 @@ export const api = {
     form.append("file", file);
     const response = await fetch(`${API_BASE_URL}/shipments/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
+      headers: authHeaders(token),
+      body: form,
+      credentials: "include"
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) {
@@ -366,7 +396,8 @@ export const api = {
   deleteShipment: async (id: string, token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/shipments/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -381,7 +412,7 @@ export const api = {
     form.append("file", file);
     const response = await fetch(
       `${API_BASE_URL}/shipments/${shipmentId}/documents?document_type=${documentType}`,
-      { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
+      { method: "POST", headers: authHeaders(token), body: form, credentials: "include" }
     );
     if (!response.ok) {
       const body = await response.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
@@ -405,7 +436,7 @@ export const api = {
   ): Promise<void> => {
     const response = await fetch(
       `${API_BASE_URL}/shipments/${shipmentId}/documents/${documentId}/download`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: authHeaders(token), credentials: "include" }
     );
     if (!response.ok) {
       throw new Error("Document download failed.");
@@ -562,8 +593,9 @@ export const api = {
     });
     const response = await fetch(`${API_BASE_URL}/incentives/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
@@ -582,8 +614,9 @@ export const api = {
     });
     const response = await fetch(`${API_BASE_URL}/incentives/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
@@ -614,8 +647,9 @@ export const api = {
   ): Promise<{ blob: Blob; packId: string | null; filename: string }> => {
     const response = await fetch(`${API_BASE_URL}/documents/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify({ data, document_types: documentTypes, save_pack: savePack }),
+      credentials: "include",
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ detail: "Generation failed." })) as { detail?: unknown };
@@ -651,7 +685,8 @@ export const api = {
 
   downloadDocumentPack: async (packId: string, token: string): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/documents/packs/${packId}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
     if (!response.ok) throw new Error("Download failed.");
     const blob = await response.blob();
@@ -669,7 +704,8 @@ export const api = {
   archiveDocumentPack: async (packId: string, token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/documents/packs/${packId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -680,8 +716,9 @@ export const api = {
     form.append("file", file);
     const resp = await fetch(`${API_BASE_URL}/documents/logo`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
@@ -694,7 +731,8 @@ export const api = {
   deleteLogo: async (token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/documents/logo`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -714,8 +752,9 @@ export const api = {
     if (sheetName) form.append("sheet_name", sheetName);
     const response = await fetch(`${API_BASE_URL}/documents/import/upload`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Upload failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Upload failed.");
@@ -740,8 +779,9 @@ export const api = {
     if (sheetName) fd.append("sheet_name", sheetName);
     const response = await fetch(`${API_BASE_URL}/documents/import/extract`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: fd,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Extraction failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Extraction failed.");

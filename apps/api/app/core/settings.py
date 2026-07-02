@@ -90,6 +90,19 @@ class Settings(BaseSettings):
     bright_data_api_key: str | None = Field(default=None, alias="BRIGHT_DATA_API_KEY")
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60
+    auth_cookie_name: str = Field(default="exportpilotai_session", alias="AUTH_COOKIE_NAME")
+    auth_cookie_domain: str | None = Field(default=None, alias="AUTH_COOKIE_DOMAIN")
+    auth_cookie_samesite: str = Field(default="lax", alias="AUTH_COOKIE_SAMESITE")
+    rate_limit_auth_window_seconds: int = Field(default=900, alias="RATE_LIMIT_AUTH_WINDOW_SECONDS")
+    rate_limit_auth_attempts_per_window: int = Field(
+        default=5,
+        alias="RATE_LIMIT_AUTH_ATTEMPTS_PER_WINDOW",
+    )
+    require_email_verification: bool = Field(default=False, alias="REQUIRE_EMAIL_VERIFICATION")
+    password_breach_check_enabled: bool = Field(
+        default=False,
+        alias="PASSWORD_BREACH_CHECK_ENABLED",
+    )
     audit_logging_enabled: bool = True
     rate_limit_auth_per_minute: int = 20
     rate_limit_uploads_per_minute: int = 10
@@ -109,6 +122,14 @@ class Settings(BaseSettings):
         if value.startswith("postgresql://") and "+psycopg" not in value:
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
         return value
+
+    @field_validator("auth_cookie_samesite", mode="before")
+    @classmethod
+    def normalize_auth_cookie_samesite(cls, value: str) -> str:
+        normalized = value.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError("AUTH_COOKIE_SAMESITE must be one of: lax, strict, none.")
+        return normalized
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> Self:

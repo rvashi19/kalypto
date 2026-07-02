@@ -25,6 +25,7 @@ export function LoginPage() {
       api.login({
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
+        otp_code: String(formData.get("otp_code") ?? "").trim() || undefined,
       }),
     onSuccess: (session) => {
       setSession(session);
@@ -62,7 +63,6 @@ export function LoginPage() {
                 name="email"
                 type="email"
                 placeholder="owner@exportco.in"
-                defaultValue="demo@example.com"
                 required
               />
             </div>
@@ -73,8 +73,17 @@ export function LoginPage() {
                 name="password"
                 type="password"
                 placeholder="Your password"
-                defaultValue="DemoPassword123!"
                 required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="otp_code">Authenticator code</Label>
+              <Input
+                id="otp_code"
+                name="otp_code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6-digit code if enabled"
               />
             </div>
 

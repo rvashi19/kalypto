@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -13,6 +13,11 @@ export function DashboardPage() {
   const [assistantQuestion, setAssistantQuestion] = useState(
     "What should I verify before my next export shipment?",
   );
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{
+    secret: string;
+    otpauth_uri: string;
+  } | null>(null);
 
   const shipmentsQuery = useQuery({
     queryKey: ["shipments", token],
@@ -49,6 +54,31 @@ export function DashboardPage() {
     onSettled: () => setSession(null),
   });
 
+  const setupTwoFactorMutation = useMutation({
+    mutationFn: () => api.setupTwoFactor(token!),
+    onSuccess: setTwoFactorSetup,
+  });
+
+  const enableTwoFactorMutation = useMutation({
+    mutationFn: () => api.enableTwoFactor(twoFactorCode, token!),
+    onSuccess: async (currentSession) => {
+      setSession(currentSession);
+      setTwoFactorCode("");
+      setTwoFactorSetup(null);
+      await meQuery.refetch();
+    },
+  });
+
+  const disableTwoFactorMutation = useMutation({
+    mutationFn: () => api.disableTwoFactor(twoFactorCode, token!),
+    onSuccess: async (currentSession) => {
+      setSession(currentSession);
+      setTwoFactorCode("");
+      setTwoFactorSetup(null);
+      await meQuery.refetch();
+    },
+  });
+
   const shipments = shipmentsQuery.data ?? [];
   const preCount = shipments.filter((shipment) => shipment.shipment_stage === "pre_shipment").length;
   const postCount = shipments.filter((shipment) => shipment.shipment_stage === "post_shipment").length;
@@ -57,6 +87,11 @@ export function DashboardPage() {
   const user = meQuery.data?.user ?? session?.user;
   const org = meQuery.data?.organization ?? session?.organization;
   const role = meQuery.data?.membership.role ?? session?.membership.role ?? "";
+  const twoFactorEnabled = Boolean(user?.two_factor_enabled);
+  const twoFactorError =
+    setupTwoFactorMutation.error ||
+    enableTwoFactorMutation.error ||
+    disableTwoFactorMutation.error;
 
   return (
     <DashboardShell
@@ -198,6 +233,65 @@ export function DashboardPage() {
               <Row label="Name" value={user?.full_name ?? "-"} />
               <Row label="Email" value={user?.email ?? "-"} />
               <Row label="Role" value={role.replaceAll("_", " ")} />
+              <Row label="2FA" value={twoFactorEnabled ? "enabled" : "off"} />
+              <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                {twoFactorSetup ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="two_factor_code">Authenticator code</Label>
+                    <p className="break-all rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 font-mono text-[11px] text-cyan-100">
+                      {twoFactorSetup.secret}
+                    </p>
+                    <Input
+                      id="two_factor_code"
+                      inputMode="numeric"
+                      value={twoFactorCode}
+                      onChange={(event) => setTwoFactorCode(event.target.value)}
+                      placeholder="6-digit code"
+                    />
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      onClick={() => enableTwoFactorMutation.mutate()}
+                      disabled={enableTwoFactorMutation.isPending || twoFactorCode.length < 6}
+                    >
+                      {enableTwoFactorMutation.isPending ? "Enabling..." : "Enable 2FA"}
+                    </Button>
+                  </div>
+                ) : twoFactorEnabled ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="disable_two_factor_code">Authenticator code</Label>
+                    <Input
+                      id="disable_two_factor_code"
+                      inputMode="numeric"
+                      value={twoFactorCode}
+                      onChange={(event) => setTwoFactorCode(event.target.value)}
+                      placeholder="6-digit code"
+                    />
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => disableTwoFactorMutation.mutate()}
+                      disabled={disableTwoFactorMutation.isPending || twoFactorCode.length < 6}
+                    >
+                      {disableTwoFactorMutation.isPending ? "Disabling..." : "Disable 2FA"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setupTwoFactorMutation.mutate()}
+                    disabled={setupTwoFactorMutation.isPending}
+                  >
+                    {setupTwoFactorMutation.isPending ? "Creating secret..." : "Set up 2FA"}
+                  </Button>
+                )}
+                {twoFactorError ? (
+                  <p className="mt-2 text-xs text-rose-200">{userMessageForError(twoFactorError)}</p>
+                ) : null}
+              </div>
               <Button
                 className="mt-3 w-full"
                 size="sm"

@@ -400,7 +400,7 @@ function LogoPanel({ token }: { token: string }) {
     queryKey: ["org-logo"],
     queryFn: async () => {
       const resp = await fetch(api.getLogoUrl(), {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       return resp.ok;
     },

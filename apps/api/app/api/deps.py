@@ -3,12 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import TokenPayload, decode_access_token
+from app.core.settings import get_settings
 from app.db.session import get_db_session
 from app.models import Membership, Organization, RevokedToken, User
 from app.services.auth_provider import AuthProvider, LocalAuthProvider
@@ -29,14 +30,20 @@ def get_auth_provider() -> AuthProvider:
 
 
 def get_current_user_context(
+    request: Request,
     session: Annotated[Session, Depends(get_db_session)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> CurrentUserContext:
-    if credentials is None:
+    settings = get_settings()
+    raw_token = request.cookies.get(settings.auth_cookie_name)
+    if raw_token is None and credentials is not None:
+        raw_token = credentials.credentials
+
+    if raw_token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
 
     try:
-        token = decode_access_token(credentials.credentials)
+        token = decode_access_token(raw_token)
     except Exception as error:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

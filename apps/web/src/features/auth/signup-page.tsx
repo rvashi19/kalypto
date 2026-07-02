@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
 
@@ -6,9 +7,20 @@ import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
+function passwordPolicyError(password: string) {
+  const missing = [];
+  if (password.length < 12) missing.push("12 characters");
+  if (!/[a-z]/.test(password)) missing.push("a lowercase letter");
+  if (!/[A-Z]/.test(password)) missing.push("an uppercase letter");
+  if (!/\d/.test(password)) missing.push("a number");
+  if (!/[^A-Za-z0-9]/.test(password)) missing.push("a symbol");
+  return missing.length ? `Password must include ${missing.join(", ")}.` : null;
+}
+
 export function SignupPage() {
   const navigate = useNavigate();
   const { setSession } = useAuth();
+  const [clientError, setClientError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) =>
@@ -24,7 +36,7 @@ export function SignupPage() {
     },
   });
 
-  const errorMessage = mutation.isError ? userMessageForError(mutation.error) : null;
+  const errorMessage = clientError ?? (mutation.isError ? userMessageForError(mutation.error) : null);
 
   return (
     <AuthShell
@@ -42,7 +54,14 @@ export function SignupPage() {
             className="space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
-              mutation.mutate(new FormData(event.currentTarget));
+              const formData = new FormData(event.currentTarget);
+              const passwordError = passwordPolicyError(String(formData.get("password") ?? ""));
+              if (passwordError) {
+                setClientError(passwordError);
+                return;
+              }
+              setClientError(null);
+              mutation.mutate(formData);
             }}
           >
             <div className="space-y-1.5">
@@ -69,6 +88,8 @@ export function SignupPage() {
                 name="password"
                 type="password"
                 placeholder="Use at least 12 characters"
+                minLength={12}
+                autoComplete="new-password"
                 required
               />
             </div>

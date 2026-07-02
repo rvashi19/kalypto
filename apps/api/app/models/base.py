@@ -127,6 +127,9 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    two_factor_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class Membership(Base, UUIDPrimaryKeyMixin, TimestampMixin):

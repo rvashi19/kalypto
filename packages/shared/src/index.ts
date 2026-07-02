@@ -4,6 +4,8 @@ export interface UserSummary {
   id: string;
   email: string;
   full_name: string | null;
+  email_verified_at?: string | null;
+  two_factor_enabled?: boolean;
 }
 
 export interface OrganizationSummary {

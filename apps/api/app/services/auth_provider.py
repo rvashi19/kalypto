@@ -1,13 +1,20 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    hash_password,
+    validate_password_policy,
+    verify_password,
+    verify_totp_code,
+)
+from app.core.settings import get_settings
 from app.models import Membership, MembershipRole, Organization, RevokedToken, User
 from app.schemas.auth import AuthResponse, MembershipSummary, OrganizationSummary, UserSummary
 from app.services.audit import AuditLogger
@@ -36,6 +43,7 @@ class AuthProvider(Protocol):
         email: str,
         password: str,
         organization_id: UUID | None,
+        otp_code: str | None = None,
     ) -> AuthResponse: ...
 
     def logout(
@@ -87,6 +95,10 @@ class LocalAuthProvider:
         existing_user = session.scalars(select(User).where(User.email == email.lower())).first()
         if existing_user is not None:
             raise AuthenticationError("An account with that email already exists.")
+        try:
+            validate_password_policy(password)
+        except ValueError as error:
+            raise AuthenticationError(str(error)) from error
 
         slug = organization_slug or slugify_organization(organization_name)
         existing_org = session.scalars(
@@ -96,7 +108,15 @@ class LocalAuthProvider:
             raise AuthenticationError("That organization slug is already in use.")
 
         organization = Organization(name=organization_name, slug=slug)
-        user = User(email=email.lower(), password_hash=hash_password(password), full_name=full_name)
+        settings = get_settings()
+        user = User(
+            email=email.lower(),
+            password_hash=hash_password(password),
+            full_name=full_name,
+            email_verified_at=None
+            if settings.require_email_verification
+            else datetime.now(UTC),
+        )
 
         session.add_all([organization, user])
         session.flush()
@@ -128,11 +148,22 @@ class LocalAuthProvider:
         email: str,
         password: str,
         organization_id: UUID | None,
+        otp_code: str | None = None,
     ) -> AuthResponse:
         audit = AuditLogger(session)
         user = session.scalars(select(User).where(User.email == email.lower())).first()
         if user is None or not verify_password(password, user.password_hash):
             raise AuthenticationError("Invalid email or password.")
+        if not user.is_active:
+            raise AuthenticationError("This account is disabled.")
+        settings = get_settings()
+        if settings.require_email_verification and user.email_verified_at is None:
+            raise AuthenticationError("Please verify your email before signing in.")
+        if user.two_factor_enabled:
+            if not otp_code:
+                raise AuthenticationError("Two-factor authentication code required.")
+            if not user.two_factor_secret or not verify_totp_code(user.two_factor_secret, otp_code):
+                raise AuthenticationError("Invalid two-factor authentication code.")
 
         membership_query = select(Membership).where(Membership.user_id == user.id)
         if organization_id is not None:
