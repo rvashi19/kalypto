@@ -1,6 +1,7 @@
 import { Button } from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { ChangeEvent } from "react";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
@@ -295,6 +296,78 @@ function ValidationBadges({ issues }: { issues: { code: string; message: string;
   );
 }
 
+// ── Logo panel ───────────────────────────────────────────────────────────────
+
+function LogoPanel({ token }: { token: string }) {
+  const qc = useQueryClient();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const { data: hasLogo, refetch } = useQuery({
+    queryKey: ["org-logo"],
+    queryFn: async () => {
+      const resp = await fetch(api.getLogoUrl(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return resp.ok;
+    },
+  });
+
+  const uploadMut = useMutation({
+    mutationFn: (file: File) => api.uploadLogo(file, token),
+    onSuccess: () => { refetch(); setPreviewUrl(null); },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => api.deleteLogo(token),
+    onSuccess: () => { refetch(); setPreviewUrl(null); },
+  });
+
+  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    uploadMut.mutate(file);
+  }
+
+  return (
+    <div className={sectionCls}>
+      <p className={headingCls}>Company Logo</p>
+      <p className="mb-3 text-xs text-slate-400 leading-relaxed">
+        Upload once — your logo will appear on all generated documents automatically. PNG or JPG, under 2 MB.
+      </p>
+
+      {(hasLogo || previewUrl) && (
+        <div className="mb-3 flex items-center gap-3">
+          <img
+            src={previewUrl ?? `${api.getLogoUrl()}?t=${Date.now()}`}
+            alt="Company logo"
+            className="h-12 max-w-[120px] rounded border border-slate-700 bg-white object-contain p-1"
+            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          <button
+            className="text-xs text-slate-500 hover:text-red-400"
+            onClick={() => { if (confirm("Remove logo?")) deleteMut.mutate(); }}
+            disabled={deleteMut.isPending}
+          >
+            {deleteMut.isPending ? "Removing…" : "Remove"}
+          </button>
+        </div>
+      )}
+
+      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-800/40 px-3 py-2.5 text-sm text-slate-400 hover:border-indigo-500/60 hover:text-slate-200 transition-colors">
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={handleFile} />
+        {uploadMut.isPending ? "Uploading…" : hasLogo ? "Replace logo" : "Upload logo"}
+      </label>
+
+      {uploadMut.error && (
+        <p className="mt-1.5 text-xs text-red-400">{(uploadMut.error as Error).message}</p>
+      )}
+    </div>
+  );
+}
+
+
 // ── Packs history panel ──────────────────────────────────────────────────────
 
 function PacksHistory({ token }: { token: string }) {
@@ -588,6 +661,9 @@ export function DocumentBuilderPage() {
 
             {/* Right panel */}
             <div className="space-y-4">
+
+              {/* Logo upload */}
+              <LogoPanel token={token!} />
 
               {/* Document type selector */}
               <div className={sectionCls}>

@@ -1,7 +1,10 @@
 # ruff: noqa: E501
 """Document Builder API — /api/v1/documents.
 
-Eight endpoints:
+Ten endpoints:
+  POST /documents/logo                 — upload tenant logo (PNG/JPG, stored per org)
+  GET  /documents/logo                 — check if logo exists; return it as image
+  DELETE /documents/logo               — remove tenant logo
   POST /documents/import/upload        — upload XLSX/CSV, get column preview
   POST /documents/import/{session_id}/confirm-mapping  — confirm column mapping
   POST /documents/validate             — validate shipment data without generating
@@ -22,7 +25,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
@@ -98,6 +101,69 @@ def _load_file(storage_key: str) -> bytes:
 def _assert_pack_owner(pack: ExportDocumentPack, ctx: Any) -> None:
     if pack.tenant_id != ctx.organization.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pack not found.")
+
+
+def _logo_storage_key(tenant_id: UUID) -> str:
+    return _storage_key(tenant_id, "logo/org_logo")
+
+
+def _load_logo(tenant_id: UUID) -> bytes | None:
+    try:
+        return _load_file(_logo_storage_key(tenant_id))
+    except FileNotFoundError:
+        return None
+
+
+# ── Logo endpoints ────────────────────────────────────────────────────────────
+
+_ALLOWED_LOGO_MIME = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"}
+_LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+
+
+@router.post("/logo", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+async def upload_logo(
+    file: UploadFile = File(...),
+    db: DbSession = ...,
+    ctx: CurrentUser = ...,
+) -> None:
+    """Upload or replace the organisation logo used on all generated documents."""
+    raw = await file.read()
+    if len(raw) > _LOGO_MAX_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Logo file must be under 2 MB.")
+    content_type = file.content_type or ""
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if content_type not in _ALLOWED_LOGO_MIME and ext not in ("png", "jpg", "jpeg", "webp", "svg"):
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Accepted formats: PNG, JPG, WEBP, SVG.")
+    _save_file(_logo_storage_key(ctx.organization.id), raw)
+
+
+@router.get("/logo")
+def get_logo(ctx: CurrentUser = ...) -> Response:
+    """Return the organisation logo image, or 404 if none uploaded."""
+    raw = _load_logo(ctx.organization.id)
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No logo uploaded for this organisation.")
+    # Detect content type from magic bytes
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        media_type = "image/png"
+    elif raw[:2] == b"\xff\xd8":
+        media_type = "image/jpeg"
+    elif raw[:4] == b"RIFF" or raw[:4] == b"WEBP":
+        media_type = "image/webp"
+    elif raw[:4] == b"<svg" or raw[:5] == b"<?xml":
+        media_type = "image/svg+xml"
+    else:
+        media_type = "image/png"
+    return Response(content=raw, media_type=media_type)
+
+
+@router.delete("/logo", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+def delete_logo(ctx: CurrentUser = ...) -> None:
+    """Remove the organisation logo."""
+    settings = get_settings()
+    full_path = os.path.join(settings.upload_dir, _logo_storage_key(ctx.organization.id))
+    if os.path.exists(full_path):
+        os.remove(full_path)
 
 
 # ── 1. Upload spreadsheet ─────────────────────────────────────────────────────
@@ -251,12 +317,15 @@ def generate_documents(
     if not doc_types:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid document_types requested.")
 
+    # Load tenant logo (if uploaded) — embedded in every PDF automatically
+    logo_bytes = _load_logo(ctx.organization.id)
+
     # Generate all PDFs
     generated: list[tuple[str, bytes]] = []
     metas: list[GeneratedDocumentMeta] = []
     data_dict = body.data.model_dump()
     for doc_type in doc_types:
-        pdf_bytes, file_name = generate_document(doc_type, data_dict)
+        pdf_bytes, file_name = generate_document(doc_type, data_dict, logo_bytes)
         generated.append((file_name, pdf_bytes))
         metas.append(GeneratedDocumentMeta(
             document_type=doc_type,

@@ -24,6 +24,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # type: ig
 from reportlab.lib.units import mm  # type: ignore[import-untyped]
 from reportlab.platypus import (  # type: ignore[import-untyped]
     HRFlowable,
+    Image,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -73,6 +74,10 @@ def _styles() -> dict[str, ParagraphStyle]:
     return s
 
 
+_LOGO_MAX_H = 18 * mm
+_LOGO_MAX_W = 50 * mm
+
+
 def _doc(buffer: io.BytesIO, title: str) -> SimpleDocTemplate:
     return SimpleDocTemplate(
         buffer,
@@ -83,6 +88,45 @@ def _doc(buffer: io.BytesIO, title: str) -> SimpleDocTemplate:
         bottomMargin=15 * mm,
         title=title,
     )
+
+
+def _logo_image(logo_bytes: bytes) -> Image | None:
+    """Return a reportlab Image scaled to fit _LOGO_MAX_W × _LOGO_MAX_H, or None on error."""
+    try:
+        img = Image(io.BytesIO(logo_bytes))
+        w, h = img.imageWidth, img.imageHeight
+        if not w or not h:
+            return None
+        scale = min(_LOGO_MAX_W / w, _LOGO_MAX_H / h)
+        img.drawWidth = w * scale
+        img.drawHeight = h * scale
+        return img
+    except Exception:
+        return None
+
+
+def _title_row(title_text: str, subtitle_text: str | None, logo_bytes: bytes | None, s: dict) -> list:
+    """Return a story list: logo (if any) left-aligned beside the document title."""
+    if not logo_bytes:
+        return [Paragraph(title_text, s["title"]), Paragraph(subtitle_text or "", s["subtitle"])]
+
+    logo = _logo_image(logo_bytes)
+    if not logo:
+        return [Paragraph(title_text, s["title"]), Paragraph(subtitle_text or "", s["subtitle"])]
+
+    title_cell = [Paragraph(title_text, s["title"])]
+    if subtitle_text:
+        title_cell.append(Paragraph(subtitle_text, s["subtitle"]))
+
+    tbl = Table([[logo, title_cell]], colWidths=[_LOGO_MAX_W + 4 * mm, None])
+    tbl.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return [tbl]
 
 
 def _header_table(exporter: dict, buyer: dict, shipment: dict, s: dict) -> list:
@@ -251,7 +295,7 @@ def _signature_block(declarations: dict, s: dict) -> list:
 
 # ── Document generators ──────────────────────────────────────────────────────
 
-def generate_proforma_invoice(data: dict[str, Any]) -> bytes:
+def generate_proforma_invoice(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -263,8 +307,7 @@ def generate_proforma_invoice(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("PROFORMA INVOICE", s["title"]))
-    story.append(Paragraph("Subject to final commercial invoice on shipment.", s["subtitle"]))
+    story += _title_row("PROFORMA INVOICE", "Subject to final commercial invoice on shipment.", logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
     story += _header_table(exporter, buyer, shipment, s)
     story.append(Spacer(1, 3 * mm))
@@ -307,7 +350,7 @@ def generate_proforma_invoice(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_commercial_invoice(data: dict[str, Any]) -> bytes:
+def generate_commercial_invoice(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -319,7 +362,7 @@ def generate_commercial_invoice(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("COMMERCIAL INVOICE", s["title"]))
+    story += _title_row("COMMERCIAL INVOICE", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
     story += _header_table(exporter, buyer, shipment, s)
     story.append(Spacer(1, 3 * mm))
@@ -375,7 +418,7 @@ def generate_commercial_invoice(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_packing_list(data: dict[str, Any]) -> bytes:
+def generate_packing_list(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -388,7 +431,7 @@ def generate_packing_list(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("PACKING LIST", s["title"]))
+    story += _title_row("PACKING LIST", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
     story += _header_table(exporter, buyer, shipment, s)
     story.append(Spacer(1, 3 * mm))
@@ -427,7 +470,7 @@ def generate_packing_list(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_invoice_cum_packing_list(data: dict[str, Any]) -> bytes:
+def generate_invoice_cum_packing_list(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -440,7 +483,7 @@ def generate_invoice_cum_packing_list(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("COMMERCIAL INVOICE-CUM-PACKING LIST", s["title"]))
+    story += _title_row("COMMERCIAL INVOICE-CUM-PACKING LIST", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
     story += _header_table(exporter, buyer, shipment, s)
     story.append(Spacer(1, 3 * mm))
@@ -484,7 +527,7 @@ def generate_invoice_cum_packing_list(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_shipping_instruction(data: dict[str, Any]) -> bytes:
+def generate_shipping_instruction(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -496,12 +539,12 @@ def generate_shipping_instruction(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("SHIPPING INSTRUCTION — DRAFT", s["title"]))
-    story.append(Paragraph(
+    story += _title_row(
+        "SHIPPING INSTRUCTION — DRAFT",
         "This is a shipping instruction draft prepared for your CHA / Customs Broker / Freight Forwarder. "
         "It is NOT a Bill of Lading or Airway Bill. The official Bill of Lading / Airway Bill is issued by the carrier or freight forwarder.",
-        s["subtitle"]
-    ))
+        logo_bytes, s,
+    )
     story.append(Spacer(1, 4 * mm))
 
     story += _ref_table([
@@ -562,7 +605,7 @@ def generate_shipping_instruction(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_coo_application_data_sheet(data: dict[str, Any]) -> bytes:
+def generate_coo_application_data_sheet(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     exporter = data.get("exporter", {})
     buyer = data.get("buyer", {})
     shipment = data.get("shipment", {})
@@ -573,13 +616,11 @@ def generate_coo_application_data_sheet(data: dict[str, Any]) -> bytes:
     s = _styles()
     story: list = []
 
-    story.append(Paragraph("CERTIFICATE OF ORIGIN — APPLICATION DATA SHEET", s["title"]))
-    story.append(Paragraph(
-        "This is an application support draft prepared to assist in applying for a Certificate of Origin. "
-        "The official Certificate of Origin must be issued through DGFT/eCoO portal or an authorized issuing agency "
-        "(Export Promotion Councils, Trade Bodies, Chambers of Commerce). This document does NOT constitute an official Certificate of Origin.",
-        s["subtitle"]
-    ))
+    story += _title_row(
+        "CERTIFICATE OF ORIGIN — APPLICATION DATA SHEET",
+        "Application support draft only. Official CoO must be issued through DGFT/eCoO portal or authorized agency.",
+        logo_bytes, s,
+    )
     story.append(Spacer(1, 4 * mm))
 
     story += _ref_table([
@@ -638,7 +679,7 @@ def generate_coo_application_data_sheet(data: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
-def generate_export_document_checklist(data: dict[str, Any]) -> bytes:
+def generate_export_document_checklist(data: dict[str, Any], logo_bytes: bytes | None = None) -> bytes:
     shipment = data.get("shipment", {})
     items = data.get("items", [])
 
@@ -651,16 +692,11 @@ def generate_export_document_checklist(data: dict[str, Any]) -> bytes:
     dest = shipment.get("country_of_final_destination") or "destination country"
     hsns = [str(i.get("hsn_code", "")) for i in items if i.get("hsn_code")]
 
-    story.append(Paragraph("EXPORT DOCUMENT CHECKLIST", s["title"]))
-    story.append(Paragraph(
-        f"Reference: Invoice {shipment.get('invoice_number', '—')} | Destination: {dest} | Mode: {mode.title()}",
-        s["subtitle"]
-    ))
-    story.append(Paragraph(
-        "This checklist is guidance only. Actual document requirements depend on product, destination country, "
-        "buyer terms, applicable trade agreements, and your CHA/customs broker. Always verify before shipment.",
-        s["subtitle"]
-    ))
+    story += _title_row(
+        "EXPORT DOCUMENT CHECKLIST",
+        f"Invoice {shipment.get('invoice_number', '—')} · {dest} · {mode.title()} — guidance only, verify with your CHA.",
+        logo_bytes, s,
+    )
     story.append(Spacer(1, 4 * mm))
 
     def _section(title: str, items_list: list[tuple[str, str]]) -> list:
@@ -745,11 +781,11 @@ _DOC_FILENAMES = {
 }
 
 
-def generate_document(doc_type: str, data: dict[str, Any]) -> tuple[bytes, str]:
+def generate_document(doc_type: str, data: dict[str, Any], logo_bytes: bytes | None = None) -> tuple[bytes, str]:
     """Generate one document. Returns (pdf_bytes, suggested_filename)."""
     if doc_type not in _GENERATORS:
         raise ValueError(f"Unsupported document type: {doc_type}")
-    pdf_bytes = _GENERATORS[doc_type](data)
+    pdf_bytes = _GENERATORS[doc_type](data, logo_bytes)
     inv = (data.get("shipment") or {}).get("invoice_number") or "draft"
     filename = f"{_DOC_FILENAMES[doc_type]}_{inv}.pdf"
     return pdf_bytes, filename

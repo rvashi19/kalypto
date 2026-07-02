@@ -609,6 +609,31 @@ export const api = {
     });
   },
 
+  // Organisation logo for document builder
+
+  uploadLogo: async (file: File, token: string): Promise<void> => {
+    const form = new FormData();
+    form.append("file", file);
+    const resp = await fetch(`${API_BASE_URL}/documents/logo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
+      throw new Error(body.detail ?? "Logo upload failed.");
+    }
+  },
+
+  getLogoUrl: () => `${API_BASE_URL}/documents/logo`,
+
+  deleteLogo: async (token: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/documents/logo`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
   uploadImportFile: async (
     file: File,
     token: string,
