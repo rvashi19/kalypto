@@ -59,6 +59,21 @@ class Settings(BaseSettings):
         default=3,
         alias="COMPLIANCE_REFRESH_INTERVAL_DAYS",
     )
+    # Country Compliance Checker (retrieval + AI extraction controls).
+    # AI_PROVIDER selects which LLM the compliance extractor uses; "auto" falls back
+    # through groq -> openai -> xai based on whichever key is configured.
+    ai_provider: str = Field(default="auto", alias="AI_PROVIDER")
+    # Comma-separated official domains appended to the built-in whitelist
+    # (see compliance_whitelist.py). Only whitelisted domains are ever fetched.
+    compliance_allowed_domains: str = Field(default="", alias="COMPLIANCE_ALLOWED_DOMAINS")
+    compliance_max_pages_per_job: int = Field(default=10, alias="COMPLIANCE_MAX_PAGES_PER_JOB")
+    compliance_max_pdf_mb: int = Field(default=15, alias="COMPLIANCE_MAX_PDF_MB")
+    # Storage abstraction for raw snapshots + extracted text.
+    # local now; maps to S3/Cloudflare R2 in production (see services/storage.py).
+    compliance_storage_backend: str = Field(default="local", alias="COMPLIANCE_STORAGE_BACKEND")
+    compliance_storage_path: str = Field(
+        default="./.compliance_storage", alias="COMPLIANCE_STORAGE_PATH"
+    )
     firecrawl_api_key: str | None = Field(default=None, alias="FIRECRAWL_API_KEY")
     # HSN master scraper (admin-triggered, rate-limited, source-versioned).
     data_gov_in_api_key: str | None = Field(default=None, alias="DATA_GOV_IN_API_KEY")

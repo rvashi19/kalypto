@@ -107,6 +107,109 @@ export interface ComplianceCheckerResponse {
   disclaimer: string;
 }
 
+// ── Country Compliance Checker v1 ────────────────────────────────────────────
+
+export interface ComplianceCheckRequestV1 {
+  origin_country: string;
+  destination_country: string;
+  hsn_code?: string | null;
+  product_description: string;
+  product_category: string;
+  facts?: Record<string, string | number | boolean | null>;
+  start_retrieval?: boolean;
+}
+
+export interface ComplianceRequirementCard {
+  requirement_type: string;
+  title: string;
+  detail: string;
+  mandatory_or_conditional?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  last_checked_date?: string | null;
+  confidence_label?: "High" | "Medium" | "Low" | null;
+}
+
+export interface ComplianceCheckResponseV1 {
+  session_id: string;
+  status:
+    | "answered"
+    | "needs_more_info"
+    | "no_verified_source"
+    | "retrieval_queued"
+    | "pending_review";
+  answer_summary: string;
+  requirements: Record<string, ComplianceRequirementCard[]>;
+  missing_questions: string[];
+  buyer_questions: string[];
+  cha_questions: string[];
+  confidence_label: "High" | "Medium" | "Low";
+  confidence_score: number;
+  sources: ComplianceSourceReference[];
+  warnings: string[];
+  retrieval_job_id?: string | null;
+  disclaimer: string;
+}
+
+export interface RetrievalJobResponse {
+  id: string;
+  status: string;
+  destination_country: string;
+  product_category: string;
+  hsn_code?: string | null;
+  pages_fetched: number;
+  snapshots_created: number;
+  requirements_extracted: number;
+  source_registry_ids: string[];
+  error_message?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  message: string;
+}
+
+export interface ReviewQueueItem {
+  requirement_id: string;
+  country: string;
+  category: string;
+  hsn_code?: string | null;
+  requirement_type: string;
+  title: string;
+  detail: string;
+  confidence_score: number;
+  review_status: string;
+  source_name: string;
+  source_url: string;
+  evidence_excerpts: string[];
+  created_at: string;
+}
+
+export interface SourceRegistryCreateRequest {
+  country: string;
+  authority_name: string;
+  source_name: string;
+  base_url: string;
+  allowed_domains?: string[];
+  source_type?: "html" | "pdf" | "xlsx" | "csv" | "mixed";
+  product_categories?: string[];
+  refresh_frequency_days?: number;
+}
+
+export interface SourceRegistryResponse {
+  id: string;
+  country: string;
+  authority_name: string;
+  source_name: string;
+  base_url: string;
+  allowed_domains: string[];
+  source_type: string;
+  product_categories: string[];
+  is_active: boolean;
+  refresh_frequency_days: number;
+  last_checked_at?: string | null;
+  created_at: string;
+}
+
 // ── Shipment types ─────────────────────────────────────────────────────────────
 
 export interface ComplianceScrapeRunRequest {

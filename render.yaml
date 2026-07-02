@@ -45,6 +45,19 @@ services:
         value: http
       - key: COMPLIANCE_ALLOW_PRIVATE_SCRAPE
         value: "false"
+      # Country Compliance Checker v1 (official-source retrieval + AI extraction)
+      - key: AI_PROVIDER
+        value: auto
+      - key: COMPLIANCE_ALLOWED_DOMAINS
+        sync: false
+      - key: COMPLIANCE_MAX_PAGES_PER_JOB
+        value: "10"
+      - key: COMPLIANCE_MAX_PDF_MB
+        value: "15"
+      - key: COMPLIANCE_STORAGE_BACKEND
+        value: local
+      - key: COMPLIANCE_STORAGE_PATH
+        value: /tmp/kalypto_compliance_storage
       - key: UPLOAD_DIR
         value: /tmp/kalypto_uploads
       - key: R2_BUCKET_NAME

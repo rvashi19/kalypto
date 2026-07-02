@@ -2,15 +2,28 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.settings import get_settings
-from app.models import ComplianceScrapeRun, MembershipRole
+from app.models import (
+    ComplianceCheckSession,
+    ComplianceRequirement,
+    ComplianceRequirementEvidence,
+    ComplianceRetrievalJob,
+    ComplianceScrapeRun,
+    ComplianceSourceRegistry,
+    MembershipRole,
+)
 from app.schemas.compliance import (
     ComplianceCheckerRequest,
     ComplianceCheckerResponse,
+    ComplianceCheckRequest,
+    ComplianceCheckResponse,
+    ComplianceCheckSessionResponse,
     ComplianceCoverageCell,
     ComplianceCoverageResponse,
     ComplianceOptionsResponse,
@@ -21,10 +34,19 @@ from app.schemas.compliance import (
     DueComplianceSourceResponse,
     ManualComplianceIngestRequest,
     ManualComplianceIngestResponse,
+    RequirementReviewRequest,
+    RequirementReviewResponse,
+    RetrievalJobCreateRequest,
+    RetrievalJobResponse,
+    ReviewQueueItem,
     SourceChangeReviewRequest,
+    SourceRegistryCreateRequest,
+    SourceRegistryResponse,
 )
 from app.services.compliance_answer import CountryComplianceCheckerService
+from app.services.compliance_check_service import ComplianceCheckService
 from app.services.compliance_normalization import SUPPORTED_CATEGORIES, SUPPORTED_COUNTRIES
+from app.services.compliance_queue import enqueue_retrieval_job, retry_job
 from app.services.compliance_scraper import ComplianceScraperError, get_compliance_scraper
 from app.services.compliance_store import (
     ComplianceKnowledgeStore,
@@ -42,6 +64,15 @@ def require_editor(current_user: CurrentUser) -> None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Read-only members cannot update compliance source data.",
+        )
+
+
+def require_admin(current_user: CurrentUser) -> None:
+    """Admin actions (approve/reject requirements, manage sources) require OWNER role."""
+    if current_user.membership.role != MembershipRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only organisation owners can review compliance requirements or sources.",
         )
 
 
@@ -333,3 +364,353 @@ def review_source_change(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     session.commit()
     return _source_change_response(change)
+
+
+# ── Country Compliance Checker v1 endpoints ───────────────────────────────────
+
+def _retrieval_job_response(job: ComplianceRetrievalJob) -> RetrievalJobResponse:
+    return RetrievalJobResponse(
+        id=str(job.id),
+        status=job.status,
+        destination_country=job.destination_country,
+        product_category=job.product_category,
+        hsn_code=job.hsn_code,
+        pages_fetched=job.pages_fetched,
+        snapshots_created=job.snapshots_created,
+        requirements_extracted=job.requirements_extracted,
+        source_registry_ids=list(job.source_registry_ids_json or []),
+        error_message=job.error_message,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        created_at=job.created_at,
+        message={
+            "queued": "Official-source retrieval is in progress. Results will require review before becoming approved guidance.",
+            "running": "Official-source retrieval is running.",
+            "needs_review": "Retrieval complete. Extracted requirements are pending admin review.",
+            "completed": "Retrieval complete. No new pending requirements were extracted.",
+            "failed": job.error_message or "Retrieval failed.",
+        }.get(job.status, job.status),
+    )
+
+
+@router.post("/check", response_model=ComplianceCheckResponse)
+def run_compliance_check(
+    payload: ComplianceCheckRequest,
+    background_tasks: BackgroundTasks,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceCheckResponse:
+    service = ComplianceCheckService(session)
+    response = service.check(
+        payload=payload,
+        tenant_id=current_user.organization.id,
+        user_id=current_user.user.id,
+    )
+    # Non-blocking: kick off the queued retrieval job after the response returns.
+    if response.retrieval_job_id:
+        enqueue_retrieval_job(
+            background_tasks,
+            job_id=UUID(response.retrieval_job_id),
+            tenant_id=current_user.organization.id,
+        )
+    return response
+
+
+@router.get("/sessions/{session_id}", response_model=ComplianceCheckSessionResponse)
+def get_compliance_check_session(
+    session_id: UUID,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> ComplianceCheckSessionResponse:
+    from app.schemas.compliance import ComplianceRequirementCard, ComplianceSourceReference
+    from app.services.compliance_answer import DISCLAIMER
+    from app.services.compliance_check_service import WARNINGS
+
+    row = session.get(ComplianceCheckSession, session_id)
+    if row is None or row.tenant_id != current_user.organization.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found.")
+    summary = row.answer_summary_json or {}
+    groups = summary.get("groups", {}) if isinstance(summary, dict) else {}
+    requirements = {
+        key: [ComplianceRequirementCard(**card) for card in cards]
+        for key, cards in groups.items()
+    }
+    sources: list[ComplianceSourceReference] = []
+    for cards in requirements.values():
+        for card in cards:
+            if card.source_url:
+                sources.append(
+                    ComplianceSourceReference(
+                        source_name=card.source_name or "",
+                        source_url=card.source_url,
+                        last_checked_date=card.last_checked_date,
+                        expires_at=None,
+                        source_authority_level="official",
+                    )
+                )
+    return ComplianceCheckSessionResponse(
+        session_id=str(row.id),
+        status=row.status,
+        answer_summary=summary.get("summary", "") if isinstance(summary, dict) else "",
+        requirements=requirements,
+        missing_questions=list(row.missing_questions_json or []),
+        buyer_questions=[],
+        cha_questions=[],
+        confidence_label=row.confidence_label or "Low",  # type: ignore[arg-type]
+        confidence_score=0.0,
+        sources=sources,
+        warnings=list(WARNINGS),
+        retrieval_job_id=str(row.retrieval_job_id) if row.retrieval_job_id else None,
+        disclaimer=DISCLAIMER,
+        origin_country=row.origin_country,
+        destination_country=row.destination_country,
+        product_category=row.product_category,
+        hsn_code=row.hsn_code,
+        created_at=row.created_at,
+    )
+
+
+@router.post("/retrieval-jobs", response_model=RetrievalJobResponse)
+def create_retrieval_job(
+    payload: RetrievalJobCreateRequest,
+    background_tasks: BackgroundTasks,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RetrievalJobResponse:
+    require_editor(current_user)
+    job = ComplianceRetrievalJob(
+        tenant_id=current_user.organization.id,
+        requested_by_user_id=current_user.user.id,
+        origin_country=payload.origin_country,
+        destination_country=payload.destination_country,
+        product_category=payload.product_category,
+        hsn_code=payload.hsn_code,
+        product_description=payload.product_description,
+        status="queued",
+    )
+    session.add(job)
+    session.commit()
+    enqueue_retrieval_job(
+        background_tasks, job_id=job.id, tenant_id=current_user.organization.id
+    )
+    return _retrieval_job_response(job)
+
+
+@router.get("/retrieval-jobs/{job_id}", response_model=RetrievalJobResponse)
+def get_retrieval_job(
+    job_id: UUID,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RetrievalJobResponse:
+    job = session.get(ComplianceRetrievalJob, job_id)
+    if job is None or job.tenant_id != current_user.organization.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retrieval job not found.")
+    return _retrieval_job_response(job)
+
+
+@router.post("/retrieval-jobs/{job_id}/retry", response_model=RetrievalJobResponse)
+def retry_retrieval_job(
+    job_id: UUID,
+    background_tasks: BackgroundTasks,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RetrievalJobResponse:
+    require_editor(current_user)
+    job = retry_job(
+        background_tasks, session, job_id=job_id, tenant_id=current_user.organization.id
+    )
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retrieval job not found.")
+    session.commit()
+    return _retrieval_job_response(job)
+
+
+@router.get("/review-queue", response_model=list[ReviewQueueItem])
+def list_review_queue(
+    session: DbSession,
+    current_user: CurrentUser,
+    limit: int = 50,
+) -> list[ReviewQueueItem]:
+    require_admin(current_user)
+    from app.models import ComplianceCountry, ProductCategory
+
+    rows = session.execute(
+        select(ComplianceRequirement, ComplianceCountry, ProductCategory)
+        .join(ComplianceCountry, ComplianceRequirement.country_id == ComplianceCountry.id)
+        .join(ProductCategory, ComplianceRequirement.category_id == ProductCategory.id)
+        .where(
+            ComplianceRequirement.tenant_id == current_user.organization.id,
+            ComplianceRequirement.review_status == "pending",
+        )
+        .order_by(ComplianceRequirement.created_at.desc())
+        .limit(max(1, min(limit, 200)))
+    ).all()
+    items: list[ReviewQueueItem] = []
+    for requirement, country, category in rows:
+        evidence = session.scalars(
+            select(ComplianceRequirementEvidence).where(
+                ComplianceRequirementEvidence.requirement_id == requirement.id
+            )
+        ).all()
+        items.append(
+            ReviewQueueItem(
+                requirement_id=str(requirement.id),
+                country=country.name,
+                category=category.name,
+                hsn_code=requirement.hsn_code,
+                requirement_type=requirement.requirement_type,
+                title=requirement.requirement_text[:120],
+                detail=requirement.requirement_text,
+                confidence_score=float(requirement.confidence_score),
+                review_status=requirement.review_status,
+                source_name=requirement.source_name,
+                source_url=requirement.source_url,
+                evidence_excerpts=[e.evidence_excerpt for e in evidence],
+                created_at=requirement.created_at,
+            )
+        )
+    return items
+
+
+@router.post("/requirements/{requirement_id}/approve", response_model=RequirementReviewResponse)
+def approve_requirement(
+    requirement_id: UUID,
+    payload: RequirementReviewRequest,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RequirementReviewResponse:
+    require_admin(current_user)
+    requirement = session.get(ComplianceRequirement, requirement_id)
+    if requirement is None or requirement.tenant_id != current_user.organization.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found.")
+    requirement.review_status = "approved"
+    requirement.status = "active"  # now eligible to appear in answers
+    requirement.reviewed_by = current_user.user.email
+    requirement.reviewed_at = datetime.now(UTC)
+    if payload.notes:
+        requirement.notes = payload.notes
+    session.commit()
+    return RequirementReviewResponse(
+        requirement_id=str(requirement.id),
+        review_status=requirement.review_status,
+        status=requirement.status,
+        reviewed_by=requirement.reviewed_by,
+    )
+
+
+@router.post("/requirements/{requirement_id}/reject", response_model=RequirementReviewResponse)
+def reject_requirement(
+    requirement_id: UUID,
+    payload: RequirementReviewRequest,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RequirementReviewResponse:
+    require_admin(current_user)
+    requirement = session.get(ComplianceRequirement, requirement_id)
+    if requirement is None or requirement.tenant_id != current_user.organization.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found.")
+    requirement.review_status = "rejected"
+    requirement.status = "archived"
+    requirement.reviewed_by = current_user.user.email
+    requirement.reviewed_at = datetime.now(UTC)
+    if payload.notes:
+        requirement.notes = payload.notes
+    session.commit()
+    return RequirementReviewResponse(
+        requirement_id=str(requirement.id),
+        review_status=requirement.review_status,
+        status=requirement.status,
+        reviewed_by=requirement.reviewed_by,
+    )
+
+
+def _source_registry_response(row: ComplianceSourceRegistry) -> SourceRegistryResponse:
+    return SourceRegistryResponse(
+        id=str(row.id),
+        country=row.country,
+        authority_name=row.authority_name,
+        source_name=row.source_name,
+        base_url=row.base_url,
+        allowed_domains=list(row.allowed_domains_json or []),
+        source_type=row.source_type,
+        product_categories=list(row.product_categories_json or []),
+        is_active=row.is_active,
+        refresh_frequency_days=row.refresh_frequency_days,
+        last_checked_at=row.last_checked_at,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/sources", response_model=list[SourceRegistryResponse])
+def list_sources(
+    session: DbSession,
+    current_user: CurrentUser,
+) -> list[SourceRegistryResponse]:
+    require_admin(current_user)
+    rows = session.scalars(
+        select(ComplianceSourceRegistry)
+        .where(ComplianceSourceRegistry.tenant_id == current_user.organization.id)
+        .order_by(ComplianceSourceRegistry.country, ComplianceSourceRegistry.source_name)
+    ).all()
+    return [_source_registry_response(r) for r in rows]
+
+
+@router.post("/sources", response_model=SourceRegistryResponse, status_code=status.HTTP_201_CREATED)
+def create_source(
+    payload: SourceRegistryCreateRequest,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> SourceRegistryResponse:
+    require_admin(current_user)
+    # Enforce whitelist: base_url host must be officially allowed (builtin/env/its own domains).
+    from app.services.compliance_whitelist import DomainNotWhitelistedError, assert_domain_allowed
+
+    try:
+        assert_domain_allowed(payload.base_url, payload.allowed_domains)
+    except DomainNotWhitelistedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    row = ComplianceSourceRegistry(
+        tenant_id=current_user.organization.id,
+        country=payload.country,
+        authority_name=payload.authority_name,
+        source_name=payload.source_name,
+        base_url=payload.base_url,
+        allowed_domains_json=payload.allowed_domains,
+        source_type=payload.source_type,
+        product_categories_json=payload.product_categories,
+        refresh_frequency_days=payload.refresh_frequency_days,
+        is_active=True,
+    )
+    session.add(row)
+    session.commit()
+    return _source_registry_response(row)
+
+
+@router.post("/sources/{source_id}/refresh", response_model=RetrievalJobResponse)
+def refresh_source(
+    source_id: UUID,
+    background_tasks: BackgroundTasks,
+    session: DbSession,
+    current_user: CurrentUser,
+) -> RetrievalJobResponse:
+    require_admin(current_user)
+    source = session.get(ComplianceSourceRegistry, source_id)
+    if source is None or source.tenant_id != current_user.organization.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found.")
+    category = (source.product_categories_json or ["food/agri"])[0]
+    job = ComplianceRetrievalJob(
+        tenant_id=current_user.organization.id,
+        requested_by_user_id=current_user.user.id,
+        destination_country=source.country,
+        product_category=category,
+        status="queued",
+        source_registry_ids_json=[str(source.id)],
+    )
+    session.add(job)
+    session.commit()
+    enqueue_retrieval_job(
+        background_tasks, job_id=job.id, tenant_id=current_user.organization.id, force=True
+    )
+    return _retrieval_job_response(job)
