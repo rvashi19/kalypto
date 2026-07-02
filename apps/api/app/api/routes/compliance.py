@@ -688,6 +688,37 @@ def create_source(
     return _source_registry_response(row)
 
 
+@router.post("/sources/seed")
+def seed_sources(
+    session: DbSession,
+    current_user: CurrentUser,
+) -> dict[str, int]:
+    """Idempotently register the curated official sources for this org (admin)."""
+    require_admin(current_user)
+    from app.services.compliance_source_seed import seed_official_sources
+
+    result = seed_official_sources(session, current_user.organization.id)
+    session.commit()
+    return result
+
+
+@router.post("/refresh-due")
+def refresh_due(
+    session: DbSession,
+    current_user: CurrentUser,
+    limit: int = 25,
+) -> dict:
+    """Re-crawl all due official sources for this org (admin / scheduler entrypoint)."""
+    require_admin(current_user)
+    from app.services.compliance_refresh import refresh_due_sources
+
+    result = refresh_due_sources(
+        session, tenant_id=current_user.organization.id, limit=max(1, min(limit, 100))
+    )
+    session.commit()
+    return result
+
+
 @router.post("/sources/{source_id}/refresh", response_model=RetrievalJobResponse)
 def refresh_source(
     source_id: UUID,

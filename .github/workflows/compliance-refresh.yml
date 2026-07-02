@@ -1,0 +1,41 @@
+name: Compliance source refresh
+
+# Scheduled re-crawl of registered official compliance sources.
+# Logs in as an admin, then calls POST /compliance/refresh-due. The runner's
+# checksum dedup means unchanged sources cost nothing (no repeat AI extraction).
+#
+# Required repository secrets:
+#   COMPLIANCE_API_URL       e.g. https://kalypto-api.onrender.com  (no trailing slash)
+#   COMPLIANCE_ADMIN_EMAIL   an OWNER-role user in the target org
+#   COMPLIANCE_ADMIN_PASSWORD
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # daily at 03:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in and refresh due sources
+        env:
+          API_URL: ${{ secrets.COMPLIANCE_API_URL }}
+          EMAIL: ${{ secrets.COMPLIANCE_ADMIN_EMAIL }}
+          PASSWORD: ${{ secrets.COMPLIANCE_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_URL:-}" ]; then echo "COMPLIANCE_API_URL secret not set"; exit 1; fi
+
+          echo "Authenticating…"
+          TOKEN=$(curl -sS -X POST "$API_URL/api/v1/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+          if [ -z "$TOKEN" ]; then echo "Login failed"; exit 1; fi
+
+          echo "Refreshing due official sources…"
+          RESPONSE=$(curl -sS -X POST "$API_URL/api/v1/compliance/refresh-due" \
+            -H "Authorization: Bearer $TOKEN")
+          echo "Refresh summary: $RESPONSE"

@@ -257,6 +257,19 @@ function AdminSourceManager() {
     },
   });
 
+  const seedMut = useMutation({
+    mutationFn: () => api.seedComplianceSources(token!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["compliance-sources"] }),
+  });
+
+  const refreshMut = useMutation({
+    mutationFn: () => api.refreshDueComplianceSources(token!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compliance-sources"] });
+      queryClient.invalidateQueries({ queryKey: ["compliance-review-queue"] });
+    },
+  });
+
   const sources: SourceRegistryResponse[] = sourcesQuery.data ?? [];
 
   return (
@@ -269,6 +282,25 @@ function AdminSourceManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+            {seedMut.isPending ? "Seeding…" : "Seed official sources"}
+          </Button>
+          <Button variant="secondary" onClick={() => refreshMut.mutate()} disabled={refreshMut.isPending}>
+            {refreshMut.isPending ? "Refreshing…" : "Refresh due now"}
+          </Button>
+        </div>
+        {seedMut.data && (
+          <p className="text-xs text-emerald-300">
+            Seeded {seedMut.data.created} new source(s) ({seedMut.data.skipped} already present).
+          </p>
+        )}
+        {refreshMut.data && (
+          <p className="text-xs text-emerald-300">
+            Ran {refreshMut.data.jobs_run} job(s) · {refreshMut.data.snapshots_created} snapshot(s) ·{" "}
+            {refreshMut.data.requirements_extracted} extracted (pending review).
+          </p>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           <SelectField
             label="Country"

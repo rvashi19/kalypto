@@ -394,3 +394,94 @@ def test_session_tenant_scoping(client_factory) -> None:
     other = uuid.uuid4()
     resp = client.get(f"/api/v1/compliance/sessions/{other}")
     assert resp.status_code == 404
+
+
+# ── Automation: seed sources, refresh-due, auto-retry ─────────────────────────
+
+def test_seed_official_sources_is_idempotent(session) -> None:
+    from app.services.compliance_source_seed import OFFICIAL_SOURCES, seed_official_sources
+
+    org, _, _ = _tenant(session)
+    first = seed_official_sources(session, org.id)
+    session.flush()
+    assert first["created"] == len(OFFICIAL_SOURCES)
+    assert first["created"] > 0
+
+    second = seed_official_sources(session, org.id)
+    session.flush()
+    assert second["created"] == 0  # nothing re-created on a second run
+    total = session.query(ComplianceSourceRegistry).filter_by(tenant_id=org.id).count()
+    assert total == len(OFFICIAL_SOURCES)
+
+
+def test_seeded_sources_are_all_whitelisted() -> None:
+    from app.services.compliance_source_seed import OFFICIAL_SOURCES
+
+    for _country, _auth, _name, url, _type, _cats in OFFICIAL_SOURCES:
+        assert is_domain_allowed(url), f"seed URL not whitelisted: {url}"
+
+
+def test_refresh_due_runs_jobs_for_due_sources(session, monkeypatch, tmp_path) -> None:
+    from app.core.settings import get_settings
+    from app.services.compliance_refresh import refresh_due_sources
+
+    org, _, _ = _tenant(session)
+    _register_source(session, org)  # last_checked_at is None -> due
+    session.flush()
+
+    monkeypatch.setattr(get_settings(), "compliance_storage_path", str(tmp_path))
+    reset_compliance_storage()
+    fake = _FakeExtractor()
+    monkeypatch.setattr(job_module, "get_compliance_ai_extractor", lambda: fake)
+    monkeypatch.setattr(
+        job_module,
+        "get_compliance_scraper",
+        lambda: type("S", (), {"scrape": lambda self, url: ScrapedSourceDocument(
+            source_url=url, title="CBSA", markdown="Importers must file a declaration. " * 20
+        )})(),
+    )
+
+    summary = refresh_due_sources(session, tenant_id=org.id)
+    session.flush()
+    assert summary["due_groups"] == 1
+    assert summary["jobs_run"] == 1
+    assert summary["requirements_extracted"] == 1
+
+
+def test_refresh_due_skips_recently_checked(session) -> None:
+    from datetime import UTC, datetime
+
+    from app.services.compliance_refresh import refresh_due_sources
+
+    org, _, _ = _tenant(session)
+    src = _register_source(session, org)
+    src.last_checked_at = datetime.now(UTC)  # just checked -> not due
+    session.flush()
+
+    summary = refresh_due_sources(session, tenant_id=org.id)
+    assert summary["due_groups"] == 0
+    assert summary["jobs_run"] == 0
+
+
+def test_auto_retry_skips_permanent_failure() -> None:
+    from app.services.compliance_queue import _is_permanent_failure
+
+    assert _is_permanent_failure("No active official source registered for this country/category.")
+    assert _is_permanent_failure("Refused to fetch non-whitelisted domain: 'blog.com'.")
+    assert not _is_permanent_failure("Source request failed: timed out")
+    assert not _is_permanent_failure(None)
+
+
+def test_seed_endpoint_admin_only(client_factory) -> None:
+    client, _, _ = client_factory(MembershipRole.STAFF)
+    resp = client.post("/api/v1/compliance/sources/seed")
+    assert resp.status_code == 403
+
+
+def test_seed_endpoint_owner_seeds(client_factory) -> None:
+    from app.services.compliance_source_seed import OFFICIAL_SOURCES
+
+    client, _, _ = client_factory(MembershipRole.OWNER)
+    resp = client.post("/api/v1/compliance/sources/seed")
+    assert resp.status_code == 200
+    assert resp.json()["created"] == len(OFFICIAL_SOURCES)

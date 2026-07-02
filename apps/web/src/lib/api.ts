@@ -303,6 +303,23 @@ export const api = {
       token
     ),
 
+  seedComplianceSources: (token: string) =>
+    request<{ created: number; skipped: number; total: number }>(
+      "/compliance/sources/seed",
+      { method: "POST" },
+      token
+    ),
+
+  refreshDueComplianceSources: (token: string) =>
+    request<{
+      due_groups: number;
+      jobs_run: number;
+      pages_fetched: number;
+      snapshots_created: number;
+      requirements_extracted: number;
+      failures: number;
+    }>("/compliance/refresh-due", { method: "POST" }, token),
+
   listRates: (token: string) => request<RateRecordResponse[]>("/rates", {}, token),
 
   importRates: async (file: File, token: string): Promise<RateImportResponse> => {
