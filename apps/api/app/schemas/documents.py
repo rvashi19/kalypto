@@ -187,6 +187,19 @@ class GenerateResponse(BaseModel):
     download_url: str | None = None
 
 
+# ── Smart extraction ─────────────────────────────────────────────────────────
+
+class ExtractResponse(BaseModel):
+    """Returned by POST /documents/import/extract."""
+    extracted: dict[str, Any]
+    confidence: int = Field(ge=0, le=100)
+    missing_fields: list[str]
+    notes: str | None = None
+    file_type: str
+    used_llm: bool
+    sheet_names: list[str] = Field(default_factory=list)
+
+
 # ── Pack list & detail ────────────────────────────────────────────────────────
 
 class PackSummary(BaseModel):

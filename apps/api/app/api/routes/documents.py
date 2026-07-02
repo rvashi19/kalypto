@@ -35,6 +35,7 @@ from app.models.documents import (
     GeneratedExportDocument,
 )
 from app.schemas.documents import (
+    ExtractResponse,
     GenerateRequest,
     GenerateResponse,
     GeneratedDocumentMeta,
@@ -73,6 +74,9 @@ _ALLOWED_MIME = {
     "application/octet-stream",  # some clients send this for xlsx
 }
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+_EXTRACT_ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "xlsx", "xls", "csv"}
+_EXTRACT_MAX_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
 def _storage_key(tenant_id: UUID, sub_path: str) -> str:
@@ -150,6 +154,51 @@ def get_logo(ctx: CurrentUser = ...) -> Response:
 def delete_logo(ctx: CurrentUser = ...) -> None:
     """Remove the organisation logo."""
     storage.delete(_logo_storage_key(ctx.organization.id))
+
+
+# ── 0. Smart document extraction ──────────────────────────────────────────────
+
+@router.post("/import/extract", response_model=ExtractResponse)
+async def extract_from_document(
+    file: UploadFile = File(...),
+    sheet_name: str | None = Form(default=None),
+    ctx: CurrentUser = ...,
+) -> ExtractResponse:
+    """Upload any export document (PDF, DOCX, XLSX, CSV) and auto-extract shipment data.
+
+    The response contains all fields that could be found. Missing fields are
+    listed in `missing_fields` so the frontend can highlight them for the user.
+    """
+    from app.services.document_extractor import SUPPORTED_EXTRACT_EXTENSIONS, extract_and_parse
+
+    raw = await file.read()
+    if len(raw) > _EXTRACT_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds {_EXTRACT_MAX_BYTES // (1024*1024)} MB limit.",
+        )
+
+    filename = file.filename or "upload"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in SUPPORTED_EXTRACT_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file type '{ext}'. Accepted: {', '.join(sorted(SUPPORTED_EXTRACT_EXTENSIONS))}.",
+        )
+
+    try:
+        result = extract_and_parse(
+            file_bytes=raw,
+            filename=filename,
+            content_type=file.content_type or "application/octet-stream",
+            sheet_name=sheet_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return ExtractResponse(**result)
 
 
 # ── 1. Upload spreadsheet ─────────────────────────────────────────────────────

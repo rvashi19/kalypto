@@ -21,3 +21,4 @@ uvicorn[standard]==0.34.2
 groq
 pdfplumber
 boto3
+python-docx

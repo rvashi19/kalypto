@@ -657,4 +657,30 @@ export const api = {
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Upload failed.");
     return body;
   },
+
+  extractFromDocument: async (
+    file: File,
+    token: string,
+    sheetName?: string
+  ): Promise<{
+    extracted: Record<string, unknown>;
+    confidence: number;
+    missing_fields: string[];
+    notes: string | null;
+    file_type: string;
+    used_llm: boolean;
+    sheet_names: string[];
+  }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (sheetName) fd.append("sheet_name", sheetName);
+    const response = await fetch(`${API_BASE_URL}/documents/import/extract`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    const body = await response.json().catch(() => ({ detail: "Extraction failed." }));
+    if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Extraction failed.");
+    return body;
+  },
 };

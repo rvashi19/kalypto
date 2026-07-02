@@ -1,7 +1,7 @@
 import { Button } from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import type { ChangeEvent } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
@@ -236,17 +236,24 @@ function buildPayload(form: FormState, items: ItemRow[]) {
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function Field({
-  label, value, onChange, placeholder, type = "text", required,
+  label, value, onChange, placeholder, type = "text", required, highlight,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; required?: boolean;
+  placeholder?: string; type?: string; required?: boolean; highlight?: boolean;
 }) {
+  const cls = highlight
+    ? inputCls.replace("border-slate-700", "border-amber-500/60") + " ring-1 ring-amber-500/30"
+    : inputCls;
   return (
     <div>
-      <label className={labelCls}>{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
+      <label className={labelCls}>
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
+        {highlight && <span className="ml-1 text-amber-400 text-xs">← fill in</span>}
+      </label>
       <input
         type={type}
-        className={inputCls}
+        className={cls}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
@@ -256,18 +263,20 @@ function Field({
 }
 
 function SelectField({
-  label, value, onChange, options,
+  label, value, onChange, options, highlight,
 }: {
-  label: string; value: string; onChange: (v: string) => void; options: string[];
+  label: string; value: string; onChange: (v: string) => void; options: string[]; highlight?: boolean;
 }) {
+  const cls = highlight
+    ? inputCls.replace("border-slate-700", "border-amber-500/60") + " ring-1 ring-amber-500/30 cursor-pointer"
+    : inputCls + " cursor-pointer";
   return (
     <div>
-      <label className={labelCls}>{label}</label>
-      <select
-        className={inputCls + " cursor-pointer"}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-      >
+      <label className={labelCls}>
+        {label}
+        {highlight && <span className="ml-1 text-amber-400 text-xs">← fill in</span>}
+      </label>
+      <select className={cls} value={value} onChange={e => onChange(e.target.value)}>
         {options.map(o => <option key={o}>{o}</option>)}
       </select>
     </div>
@@ -295,6 +304,91 @@ function ValidationBadges({ issues }: { issues: { code: string; message: string;
     </div>
   );
 }
+
+// ── Smart extraction panel ───────────────────────────────────────────────────
+
+const EXTRACT_ACCEPT = ".pdf,.docx,.doc,.xlsx,.xls,.csv";
+
+function ExtractPanel({
+  token,
+  onExtracted,
+}: {
+  token: string;
+  onExtracted: (result: {
+    extracted: Record<string, unknown>;
+    confidence: number;
+    missing_fields: string[];
+    notes: string | null;
+    used_llm: boolean;
+  }) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const mut = useMutation({
+    mutationFn: (file: File) => api.extractFromDocument(file, token),
+    onSuccess: (res) => onExtracted(res),
+  });
+
+  function handleFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    mut.mutate(file);
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    handleFiles(e.dataTransfer.files);
+  }
+
+  return (
+    <div className={sectionCls + " mb-1"}>
+      <p className={headingCls}>Auto-fill from existing document</p>
+      <p className="mb-3 text-xs text-slate-400 leading-relaxed">
+        Upload a previous invoice, Excel sheet, or Word document — we'll extract all information automatically and fill in the form.
+        Missing fields will be highlighted in orange.
+      </p>
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => fileRef.current?.click()}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${
+          dragging
+            ? "border-indigo-400 bg-indigo-500/10"
+            : "border-slate-600 bg-slate-800/30 hover:border-indigo-500/60 hover:bg-slate-800/50"
+        }`}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept={EXTRACT_ACCEPT}
+          className="sr-only"
+          onChange={e => handleFiles(e.target.files)}
+        />
+        {mut.isPending ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+            <span className="text-xs text-slate-400">Extracting information…</span>
+          </div>
+        ) : (
+          <>
+            <span className="text-2xl">📄</span>
+            <span className="text-sm text-slate-300 font-medium">Drop file here or click to browse</span>
+            <span className="text-xs text-slate-500">PDF, Word, Excel, CSV — up to 20 MB</span>
+          </>
+        )}
+      </div>
+
+      {mut.error && (
+        <p className="mt-2 text-xs text-red-400">{(mut.error as Error).message}</p>
+      )}
+    </div>
+  );
+}
+
 
 // ── Logo panel ───────────────────────────────────────────────────────────────
 
@@ -433,10 +527,113 @@ export function DocumentBuilderPage() {
   });
   const logout = () => logoutMut.mutate();
 
+  // Smart extraction state (declared first so `set` closure can reference setMissingFields)
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
+  const [extractBanner, setExtractBanner] = useState<{
+    confidence: number; notes: string | null; usedLlm: boolean; fileName?: string;
+  } | null>(null);
+
   const [form, setForm] = useState<FormState>(DEFAULTS);
-  const set = (k: keyof FormState) => (v: string) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: keyof FormState) => (v: string) => {
+    setForm(f => ({ ...f, [k]: v }));
+    if (v.trim()) setMissingFields(s => { const n = new Set(s); n.delete(k); return n; });
+  };
 
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ITEM }]);
+
+  function applyExtracted(result: {
+    extracted: Record<string, unknown>;
+    confidence: number;
+    missing_fields: string[];
+    notes: string | null;
+    used_llm: boolean;
+  }) {
+    const { extracted, confidence, missing_fields, notes, used_llm } = result;
+    const s = (v: unknown) => (v != null && String(v).trim() !== "" ? String(v) : "");
+
+    const exp = (extracted.exporter as Record<string, unknown>) ?? {};
+    const byr = (extracted.buyer as Record<string, unknown>) ?? {};
+    const shp = (extracted.shipment as Record<string, unknown>) ?? {};
+    const pkg = (extracted.packing as Record<string, unknown>) ?? {};
+    const dcl = (extracted.declarations as Record<string, unknown>) ?? {};
+    const rawItems = (extracted.items as Record<string, unknown>[]) ?? [];
+
+    setForm(prev => ({
+      ...prev,
+      ...(s(exp.company_name) && { company_name: s(exp.company_name) }),
+      ...(s(exp.address) && { address: s(exp.address) }),
+      ...(s(exp.city) && { city: s(exp.city) }),
+      ...(s(exp.state) && { state: s(exp.state) }),
+      ...(s(exp.postal_code) && { postal_code: s(exp.postal_code) }),
+      ...(s(exp.country) && { country: s(exp.country) }),
+      ...(s(exp.iec) && { iec: s(exp.iec) }),
+      ...(s(exp.gstin) && { gstin: s(exp.gstin) }),
+      ...(s(exp.email) && { exporter_email: s(exp.email) }),
+      ...(s(exp.bank_name) && { bank_name: s(exp.bank_name) }),
+      ...(s(exp.bank_account) && { bank_account: s(exp.bank_account) }),
+      ...(s(exp.ifsc_swift) && { ifsc_swift: s(exp.ifsc_swift) }),
+      ...(s(exp.ad_code) && { ad_code: s(exp.ad_code) }),
+      ...(s(byr.buyer_name) && { buyer_name: s(byr.buyer_name) }),
+      ...(s(byr.buyer_address) && { buyer_address: s(byr.buyer_address) }),
+      ...(s(byr.buyer_country) && { buyer_country: s(byr.buyer_country) }),
+      ...(s(byr.consignee_name) && { consignee_name: s(byr.consignee_name) }),
+      ...(s(byr.consignee_address) && { consignee_address: s(byr.consignee_address) }),
+      ...(s(shp.invoice_number) && { invoice_number: s(shp.invoice_number) }),
+      ...(s(shp.invoice_date) && { invoice_date: s(shp.invoice_date).slice(0, 10) }),
+      ...(s(shp.buyer_order_number) && { buyer_order_number: s(shp.buyer_order_number) }),
+      ...(s(shp.country_of_origin) && { country_of_origin: s(shp.country_of_origin) }),
+      ...(s(shp.country_of_final_destination) && { country_of_final_destination: s(shp.country_of_final_destination) }),
+      ...(s(shp.port_of_loading) && { port_of_loading: s(shp.port_of_loading) }),
+      ...(s(shp.port_of_discharge) && { port_of_discharge: s(shp.port_of_discharge) }),
+      ...(s(shp.incoterm) && { incoterm: s(shp.incoterm) }),
+      ...(s(shp.mode_of_transport) && { mode_of_transport: s(shp.mode_of_transport) }),
+      ...(s(shp.currency) && { currency: s(shp.currency) }),
+      ...(s(shp.payment_terms) && { payment_terms: s(shp.payment_terms) }),
+      ...(s(shp.marks_and_numbers) && { marks_and_numbers: s(shp.marks_and_numbers) }),
+      ...(s(pkg.total_packages) && { total_packages: s(pkg.total_packages) }),
+      ...(s(pkg.package_type) && { package_type_global: s(pkg.package_type) }),
+      ...(s(pkg.total_net_weight) && { total_net_weight: s(pkg.total_net_weight) }),
+      ...(s(pkg.total_gross_weight) && { total_gross_weight: s(pkg.total_gross_weight) }),
+      ...(s(pkg.freight) && { freight: s(pkg.freight) }),
+      ...(s(pkg.insurance) && { insurance: s(pkg.insurance) }),
+      ...(s(dcl.authorized_signatory_name) && { authorized_signatory_name: s(dcl.authorized_signatory_name) }),
+      ...(s(dcl.authorized_signatory_designation) && { authorized_signatory_designation: s(dcl.authorized_signatory_designation) }),
+      ...(s(dcl.place_of_issue) && { place_of_issue: s(dcl.place_of_issue) }),
+      ...(s(dcl.date_of_issue) && { date_of_issue: s(dcl.date_of_issue).slice(0, 10) }),
+    }));
+
+    if (rawItems.length > 0) {
+      setItems(rawItems.map(it => ({
+        product_description: s(it.product_description),
+        hsn_code: s(it.hsn_code),
+        quantity: s(it.quantity),
+        unit: s(it.unit) || "KGS",
+        unit_price: s(it.unit_price),
+        total_value: s(it.total_value),
+        net_weight: s(it.net_weight),
+        gross_weight: s(it.gross_weight),
+        package_count: s(it.package_count),
+        package_type: s(it.package_type),
+      })));
+    }
+
+    // Map dotted missing-field paths to form keys for orange highlighting
+    const MF_TO_FORM: Record<string, keyof FormState> = {
+      "exporter.company_name": "company_name", "exporter.iec": "iec", "exporter.gstin": "gstin",
+      "exporter.address": "address", "exporter.bank_name": "bank_name", "exporter.bank_account": "bank_account",
+      "buyer.buyer_name": "buyer_name", "buyer.buyer_country": "buyer_country",
+      "shipment.invoice_number": "invoice_number", "shipment.incoterm": "incoterm",
+      "shipment.currency": "currency", "shipment.port_of_loading": "port_of_loading",
+      "shipment.port_of_discharge": "port_of_discharge", "shipment.payment_terms": "payment_terms",
+    };
+    const highlighted = new Set<string>();
+    for (const mf of missing_fields) {
+      const formKey = MF_TO_FORM[mf];
+      if (formKey) highlighted.add(formKey);
+    }
+    setMissingFields(highlighted);
+    setExtractBanner({ confidence, notes, usedLlm: used_llm });
+  }
   const setItem = (idx: number, k: keyof ItemRow, v: string) =>
     setItems(rows => rows.map((r, i) => i === idx ? { ...r, [k]: v } : r));
 
@@ -526,24 +723,52 @@ export function DocumentBuilderPage() {
             {/* Left: form */}
             <div className="space-y-5">
 
+              {/* Smart extraction */}
+              <ExtractPanel token={token!} onExtracted={applyExtracted} />
+
+              {/* Extraction result banner */}
+              {extractBanner && (
+                <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+                  extractBanner.confidence >= 70
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                }`}>
+                  <span className="text-base">{extractBanner.confidence >= 70 ? "✓" : "⚠"}</span>
+                  <div>
+                    <p className="font-medium">
+                      Extracted with {extractBanner.confidence}% confidence
+                      {extractBanner.usedLlm ? " (AI)" : " (spreadsheet columns)"}.
+                      {missingFields.size > 0 && ` ${missingFields.size} field(s) need your input — highlighted below.`}
+                    </p>
+                    {extractBanner.notes && <p className="mt-0.5 opacity-80">{extractBanner.notes}</p>}
+                    <button
+                      className="mt-1 underline opacity-60 hover:opacity-100"
+                      onClick={() => { setExtractBanner(null); setMissingFields(new Set()); }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Exporter */}
               <div className={sectionCls}>
                 <p className={headingCls}>Exporter / Shipper</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <Field label="Company Name" value={form.company_name} onChange={set("company_name")} placeholder="Spice Exports Pvt Ltd" required />
+                    <Field label="Company Name" value={form.company_name} onChange={set("company_name")} placeholder="Spice Exports Pvt Ltd" required highlight={missingFields.has("company_name")} />
                   </div>
                   <div className="sm:col-span-2">
-                    <Field label="Address" value={form.address} onChange={set("address")} placeholder="12 Industrial Estate, Unjha" required />
+                    <Field label="Address" value={form.address} onChange={set("address")} placeholder="12 Industrial Estate, Unjha" required highlight={missingFields.has("address")} />
                   </div>
                   <Field label="City" value={form.city} onChange={set("city")} placeholder="Unjha" />
                   <Field label="State" value={form.state} onChange={set("state")} placeholder="Gujarat" />
                   <Field label="Postal Code" value={form.postal_code} onChange={set("postal_code")} placeholder="384170" />
                   <Field label="Country" value={form.country} onChange={set("country")} placeholder="India" />
-                  <Field label="IEC" value={form.iec} onChange={set("iec")} placeholder="0900000001" />
-                  <Field label="GSTIN" value={form.gstin} onChange={set("gstin")} placeholder="24AAACP0000A1Z5" />
-                  <Field label="Bank Name" value={form.bank_name} onChange={set("bank_name")} placeholder="State Bank of India" />
-                  <Field label="Account No." value={form.bank_account} onChange={set("bank_account")} placeholder="30000000001" />
+                  <Field label="IEC" value={form.iec} onChange={set("iec")} placeholder="0900000001" highlight={missingFields.has("iec")} />
+                  <Field label="GSTIN" value={form.gstin} onChange={set("gstin")} placeholder="24AAACP0000A1Z5" highlight={missingFields.has("gstin")} />
+                  <Field label="Bank Name" value={form.bank_name} onChange={set("bank_name")} placeholder="State Bank of India" highlight={missingFields.has("bank_name")} />
+                  <Field label="Account No." value={form.bank_account} onChange={set("bank_account")} placeholder="30000000001" highlight={missingFields.has("bank_account")} />
                   <Field label="IFSC / SWIFT" value={form.ifsc_swift} onChange={set("ifsc_swift")} placeholder="SBININBB210" />
                   <Field label="AD Code" value={form.ad_code} onChange={set("ad_code")} placeholder="1234567" />
                 </div>
@@ -554,12 +779,12 @@ export function DocumentBuilderPage() {
                 <p className={headingCls}>Buyer / Consignee</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <Field label="Buyer Name" value={form.buyer_name} onChange={set("buyer_name")} placeholder="Dubai Spices Trading LLC" required />
+                    <Field label="Buyer Name" value={form.buyer_name} onChange={set("buyer_name")} placeholder="Dubai Spices Trading LLC" required highlight={missingFields.has("buyer_name")} />
                   </div>
                   <div className="sm:col-span-2">
                     <Field label="Buyer Address" value={form.buyer_address} onChange={set("buyer_address")} placeholder="PO Box 12345, Jebel Ali Free Zone, Dubai" />
                   </div>
-                  <Field label="Buyer Country" value={form.buyer_country} onChange={set("buyer_country")} placeholder="UAE" required />
+                  <Field label="Buyer Country" value={form.buyer_country} onChange={set("buyer_country")} placeholder="UAE" required highlight={missingFields.has("buyer_country")} />
                   <Field label="Consignee Name (if different)" value={form.consignee_name} onChange={set("consignee_name")} placeholder="Same as buyer" />
                   <div className="sm:col-span-2">
                     <Field label="Consignee Address" value={form.consignee_address} onChange={set("consignee_address")} placeholder="If different from buyer" />
@@ -571,18 +796,18 @@ export function DocumentBuilderPage() {
               <div className={sectionCls}>
                 <p className={headingCls}>Shipment Details</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Invoice Number" value={form.invoice_number} onChange={set("invoice_number")} placeholder="SEP/2024-25/001" required />
+                  <Field label="Invoice Number" value={form.invoice_number} onChange={set("invoice_number")} placeholder="SEP/2024-25/001" required highlight={missingFields.has("invoice_number")} />
                   <Field label="Invoice Date" value={form.invoice_date} onChange={set("invoice_date")} type="date" required />
                   <Field label="Buyer PO / Order No." value={form.buyer_order_number} onChange={set("buyer_order_number")} placeholder="PO-2024-001" />
                   <Field label="Country of Origin" value={form.country_of_origin} onChange={set("country_of_origin")} placeholder="India" />
                   <Field label="Country of Final Destination" value={form.country_of_final_destination} onChange={set("country_of_final_destination")} placeholder="UAE" required />
-                  <Field label="Port of Loading" value={form.port_of_loading} onChange={set("port_of_loading")} placeholder="Mundra" />
-                  <Field label="Port of Discharge" value={form.port_of_discharge} onChange={set("port_of_discharge")} placeholder="Jebel Ali" />
-                  <SelectField label="Incoterm" value={form.incoterm} onChange={set("incoterm")} options={INCOTERMS} />
+                  <Field label="Port of Loading" value={form.port_of_loading} onChange={set("port_of_loading")} placeholder="Mundra" highlight={missingFields.has("port_of_loading")} />
+                  <Field label="Port of Discharge" value={form.port_of_discharge} onChange={set("port_of_discharge")} placeholder="Jebel Ali" highlight={missingFields.has("port_of_discharge")} />
+                  <SelectField label="Incoterm" value={form.incoterm} onChange={set("incoterm")} options={INCOTERMS} highlight={missingFields.has("incoterm")} />
                   <SelectField label="Mode of Transport" value={form.mode_of_transport} onChange={set("mode_of_transport")} options={MODES} />
-                  <SelectField label="Currency" value={form.currency} onChange={set("currency")} options={CURRENCIES} />
+                  <SelectField label="Currency" value={form.currency} onChange={set("currency")} options={CURRENCIES} highlight={missingFields.has("currency")} />
                   <div className="sm:col-span-2">
-                    <Field label="Payment Terms" value={form.payment_terms} onChange={set("payment_terms")} placeholder="30 days from BL date" />
+                    <Field label="Payment Terms" value={form.payment_terms} onChange={set("payment_terms")} placeholder="30 days from BL date" highlight={missingFields.has("payment_terms")} />
                   </div>
                   <div className="sm:col-span-2">
                     <Field label="Marks & Numbers" value={form.marks_and_numbers} onChange={set("marks_and_numbers")} placeholder="SPICE / JEBEL ALI / 2025 / 001-020" />
