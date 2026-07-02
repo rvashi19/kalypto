@@ -196,13 +196,7 @@ def _call_llm(document_text: str) -> dict[str, Any]:
     if provider is None:
         raise RuntimeError("No LLM provider configured. Set OPENAI_API_KEY, XAI_API_KEY, or GROQ_API_KEY.")
 
-    _name, api_key, base_url, model = provider
-    openai_module: Any = importlib.import_module("openai")
-    client = (
-        openai_module.OpenAI(api_key=api_key, base_url=base_url)
-        if base_url
-        else openai_module.OpenAI(api_key=api_key)
-    )
+    name, api_key, base_url, model = provider
 
     # Truncate to ~12k chars to stay within token limits
     truncated = document_text[:12000]
@@ -211,16 +205,37 @@ def _call_llm(document_text: str) -> dict[str, Any]:
 
     user_message = f"Extract all export document fields from the following document:\n\n{truncated}"
 
+    # Groq only supports the Chat Completions API — route through the dedicated
+    # native-SDK client (JSON mode) rather than OpenAI's Responses API.
+    if name == "groq":
+        from app.services.groq_client import GroqClientError, call_groq
+        try:
+            return call_groq(system_prompt=_EXTRACTION_SYSTEM, user_message=user_message)
+        except GroqClientError as e:
+            raise RuntimeError(f"LLM extraction failed: {e}") from e
+
+    # OpenAI / xAI: Chat Completions with JSON mode is universally supported.
+    openai_module: Any = importlib.import_module("openai")
+    client = (
+        openai_module.OpenAI(api_key=api_key, base_url=base_url)
+        if base_url
+        else openai_module.OpenAI(api_key=api_key)
+    )
+
     try:
-        response = client.responses.create(
+        completion = client.chat.completions.create(
             model=model,
-            instructions=_EXTRACTION_SYSTEM,
-            input=user_message,
+            messages=[
+                {"role": "system", "content": _EXTRACTION_SYSTEM},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
         )
     except Exception as e:
         raise RuntimeError(f"LLM extraction failed: {e}") from e
 
-    text = (getattr(response, "output_text", "") or "").strip()
+    text = (completion.choices[0].message.content or "").strip()
     text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
     # Find JSON object in response even if there's surrounding text
