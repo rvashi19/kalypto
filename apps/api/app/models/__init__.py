@@ -40,12 +40,21 @@ from app.models.base import (
 from app.models.compliance import (
     ComplianceChatMessage,
     ComplianceChatSession,
+    ComplianceCheckSession,
     ComplianceCountry,
     ComplianceRequirement,
+    ComplianceRequirementEvidence,
+    ComplianceRetrievalJob,
     ComplianceScrapeRun,
     ComplianceSourceChange,
+    ComplianceSourceRegistry,
     ComplianceSourceSnapshot,
     ProductCategory,
+)
+from app.models.documents import (
+    DocumentImportSession,
+    ExportDocumentPack,
+    GeneratedExportDocument,
 )
 from app.models.export_quote import ExportQuoteCalculation
 from app.models.hsn import (
@@ -55,11 +64,6 @@ from app.models.hsn import (
     HsnProductAlias,
     HsnSourceEvidence,
     HsnVerificationRequest,
-)
-from app.models.documents import (
-    DocumentImportSession,
-    ExportDocumentPack,
-    GeneratedExportDocument,
 )
 from app.models.incentive import (
     IncentiveImportJob,
@@ -79,11 +83,15 @@ __all__ = [
     "Buyer",
     "ComplianceChatMessage",
     "ComplianceChatSession",
+    "ComplianceCheckSession",
     "ComplianceCountry",
     "ComplianceItem",
     "ComplianceRequirement",
+    "ComplianceRequirementEvidence",
+    "ComplianceRetrievalJob",
     "ComplianceScrapeRun",
     "ComplianceSourceChange",
+    "ComplianceSourceRegistry",
     "ComplianceSourceSnapshot",
     "ComplianceStatus",
     "ConsentRecord",

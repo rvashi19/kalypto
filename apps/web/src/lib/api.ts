@@ -2,6 +2,8 @@ import type {
   AuthResponse,
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
+  ComplianceCheckRequestV1,
+  ComplianceCheckResponseV1,
   ComplianceCoverageResponse,
   ComplianceOptionsResponse,
   ComplianceScrapeRunRequest,
@@ -9,6 +11,10 @@ import type {
   ComplianceRequirementInput,
   ComplianceSourceChangeDetailResponse,
   ComplianceSourceChangeResponse,
+  RetrievalJobResponse,
+  ReviewQueueItem,
+  SourceRegistryCreateRequest,
+  SourceRegistryResponse,
   CurrentUserResponse,
   DashboardOverview,
   DiscrepancyDashboardResponse,
@@ -252,6 +258,47 @@ export const api = {
   reviewSourceChange: (changeId: string, payload: SourceChangeReviewRequest, token: string) =>
     request<ComplianceSourceChangeResponse>(
       `/compliance/scrape/changes/${changeId}/review`,
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  // ── Country Compliance Checker v1 ──
+  complianceCheck: (payload: ComplianceCheckRequestV1, token: string) =>
+    request<ComplianceCheckResponseV1>(
+      "/compliance/check",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  complianceCheckSession: (sessionId: string, token: string) =>
+    request<ComplianceCheckResponseV1>(`/compliance/sessions/${sessionId}`, {}, token),
+
+  retrievalJob: (jobId: string, token: string) =>
+    request<RetrievalJobResponse>(`/compliance/retrieval-jobs/${jobId}`, {}, token),
+
+  complianceReviewQueue: (token: string) =>
+    request<ReviewQueueItem[]>("/compliance/review-queue", {}, token),
+
+  approveRequirement: (requirementId: string, token: string, notes?: string) =>
+    request<{ requirement_id: string; review_status: string; status: string }>(
+      `/compliance/requirements/${requirementId}/approve`,
+      { method: "POST", body: JSON.stringify({ notes: notes ?? null }) },
+      token
+    ),
+
+  rejectRequirement: (requirementId: string, token: string, notes?: string) =>
+    request<{ requirement_id: string; review_status: string; status: string }>(
+      `/compliance/requirements/${requirementId}/reject`,
+      { method: "POST", body: JSON.stringify({ notes: notes ?? null }) },
+      token
+    ),
+
+  listComplianceSources: (token: string) =>
+    request<SourceRegistryResponse[]>("/compliance/sources", {}, token),
+
+  createComplianceSource: (payload: SourceRegistryCreateRequest, token: string) =>
+    request<SourceRegistryResponse>(
+      "/compliance/sources",
       { method: "POST", body: JSON.stringify(payload) },
       token
     ),
