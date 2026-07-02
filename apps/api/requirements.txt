@@ -20,3 +20,4 @@ types-openpyxl==3.1.5.20250602
 uvicorn[standard]==0.34.2
 groq
 pdfplumber
+boto3

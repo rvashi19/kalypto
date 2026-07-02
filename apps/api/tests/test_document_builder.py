@@ -261,16 +261,21 @@ def client(session):
     from app.db.session import get_db_session
 
     import tempfile
-    tmpdir = tempfile.mkdtemp()
+    from app.services import storage as storage_mod
 
-    with patch("app.api.routes.documents.get_settings") as mock_settings:
-        mock_settings.return_value.upload_dir = tmpdir
+    tmpdir = tempfile.mkdtemp()
+    local_backend = storage_mod.LocalStorage(tmpdir)
+
+    with patch.object(storage_mod, "_build_backend", return_value=local_backend):
+        # Also reset the lru_cache so the patch takes effect
+        storage_mod._build_backend.cache_clear()
         app.dependency_overrides[get_db_session] = lambda: session
         app.dependency_overrides[get_current_user_context] = lambda: ctx
         try:
             yield TestClient(app)
         finally:
             app.dependency_overrides.clear()
+            storage_mod._build_backend.cache_clear()
 
 
 class TestDocumentAPI:

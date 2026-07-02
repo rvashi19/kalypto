@@ -18,7 +18,6 @@ Ten endpoints:
 from __future__ import annotations
 
 import io
-import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -29,7 +28,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
-from app.core.settings import get_settings
+from app.services.storage import storage
 from app.models.documents import (
     DocumentImportSession,
     ExportDocumentPack,
@@ -80,22 +79,12 @@ def _storage_key(tenant_id: UUID, sub_path: str) -> str:
     return f"documents/{tenant_id}/{sub_path}"
 
 
-def _save_file(storage_key: str, data: bytes) -> None:
-    """Write bytes to local upload_dir. Replace with S3 put_object for cloud."""
-    settings = get_settings()
-    full_path = os.path.join(settings.upload_dir, storage_key)
-    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-    with open(full_path, "wb") as f:
-        f.write(data)
+def _save_file(key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    storage.put(key, data, content_type)
 
 
-def _load_file(storage_key: str) -> bytes:
-    settings = get_settings()
-    full_path = os.path.join(settings.upload_dir, storage_key)
-    if not os.path.exists(full_path):
-        raise FileNotFoundError(storage_key)
-    with open(full_path, "rb") as f:
-        return f.read()
+def _load_file(key: str) -> bytes:
+    return storage.get(key)
 
 
 def _assert_pack_owner(pack: ExportDocumentPack, ctx: Any) -> None:
@@ -109,7 +98,7 @@ def _logo_storage_key(tenant_id: UUID) -> str:
 
 def _load_logo(tenant_id: UUID) -> bytes | None:
     try:
-        return _load_file(_logo_storage_key(tenant_id))
+        return storage.get(_logo_storage_key(tenant_id))
     except FileNotFoundError:
         return None
 
@@ -140,7 +129,7 @@ async def upload_logo(
 @router.get("/logo")
 def get_logo(ctx: CurrentUser = ...) -> Response:
     """Return the organisation logo image, or 404 if none uploaded."""
-    raw = _load_logo(ctx.organization.id)
+    raw = storage.get(_logo_storage_key(ctx.organization.id)) if storage.exists(_logo_storage_key(ctx.organization.id)) else None
     if not raw:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No logo uploaded for this organisation.")
     # Detect content type from magic bytes
@@ -160,10 +149,7 @@ def get_logo(ctx: CurrentUser = ...) -> Response:
 @router.delete("/logo", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 def delete_logo(ctx: CurrentUser = ...) -> None:
     """Remove the organisation logo."""
-    settings = get_settings()
-    full_path = os.path.join(settings.upload_dir, _logo_storage_key(ctx.organization.id))
-    if os.path.exists(full_path):
-        os.remove(full_path)
+    storage.delete(_logo_storage_key(ctx.organization.id))
 
 
 # ── 1. Upload spreadsheet ─────────────────────────────────────────────────────
