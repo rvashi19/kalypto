@@ -66,6 +66,8 @@ class ComplianceRequirement(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantSco
         index=True,
     )
     hsn_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    # Origin country (India export side by default). Nullable for legacy rows.
+    origin_country: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     product_keywords: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     requirement_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     requirement_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -172,6 +174,97 @@ class ComplianceChatSession(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantSco
     destination_country: Mapped[str] = mapped_column(String(120), nullable=False)
     category: Mapped[str] = mapped_column(String(120), nullable=False)
     details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+
+class ComplianceSourceRegistry(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Curated official source per country/authority. Only these are fetched."""
+
+    __tablename__ = "compliance_source_registry"
+
+    country: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    authority_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    base_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    # Official domains this source is allowed to fetch from (merged into whitelist).
+    allowed_domains_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False, default="mixed")  # html/pdf/xlsx/csv/mixed
+    product_categories_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    refresh_frequency_days: Mapped[int] = mapped_column(default=30, nullable=False)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ComplianceRetrievalJob(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Async official-source retrieval job. Never blocks the user request."""
+
+    __tablename__ = "compliance_retrieval_jobs"
+
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id"), nullable=True
+    )
+    origin_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    destination_country: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    product_category: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    hsn_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    product_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # queued / running / completed / failed / needs_review
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
+    source_registry_ids_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    pages_fetched: Mapped[int] = mapped_column(default=0, nullable=False)
+    snapshots_created: Mapped[int] = mapped_column(default=0, nullable=False)
+    requirements_extracted: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ComplianceCheckSession(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Persisted result of a /compliance/check request (source-backed answer)."""
+
+    __tablename__ = "compliance_check_sessions"
+
+    user_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    origin_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    destination_country: Mapped[str] = mapped_column(String(120), nullable=False)
+    hsn_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    product_description: Mapped[str] = mapped_column(Text, nullable=False)
+    product_category: Mapped[str] = mapped_column(String(120), nullable=False)
+    input_facts_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    missing_questions_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    answer_summary_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    source_ids_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    confidence_label: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    retrieval_job_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("compliance_retrieval_jobs.id"), nullable=True
+    )
+    # answered / needs_more_info / no_verified_source / retrieval_queued / pending_review
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="answered", index=True)
+
+
+class ComplianceRequirementEvidence(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
+    """Official-source excerpt backing an extracted requirement card."""
+
+    __tablename__ = "compliance_requirement_evidence"
+
+    requirement_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("compliance_requirements.id"), nullable=False, index=True
+    )
+    source_snapshot_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("compliance_source_snapshots.id"), nullable=True
+    )
+    source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    authority_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    evidence_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    page_number: Mapped[int | None] = mapped_column(nullable=True)
+    table_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
 
 
 class ComplianceChatMessage(Base, UUIDPrimaryKeyMixin):

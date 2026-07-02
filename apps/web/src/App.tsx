@@ -4,6 +4,7 @@ import { LoginPage } from "./features/auth/login-page";
 import { SignupPage } from "./features/auth/signup-page";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { CompliancePage } from "./features/compliance/compliance-page";
+import { CountryComplianceCheckerPage } from "./features/compliance/country-compliance-checker-page";
 import { HsnFinderPage } from "./features/hsn/hsn-finder-page";
 import { IncentiveFinderPage } from "./features/incentives/incentive-finder-page";
 import { ExportQuotePage } from "./features/calculators/export-quote-page";
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/incentives" element={<ProtectedRoute><IncentiveFinderPage /></ProtectedRoute>} />
       <Route path="/calculators/export-quote" element={<ProtectedRoute><ExportQuotePage /></ProtectedRoute>} />
       <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
+      <Route path="/compliance/checker" element={<ProtectedRoute><CountryComplianceCheckerPage /></ProtectedRoute>} />
       <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
       <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />
       <Route path="/shipments/:id" element={<ProtectedRoute><ShipmentDetailPage /></ProtectedRoute>} />

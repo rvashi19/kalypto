@@ -1,0 +1,57 @@
+# ruff: noqa: E501
+"""Queue/job abstraction for compliance retrieval.
+
+Current backend: FastAPI BackgroundTasks (in-process). A retrieval job row is created
+synchronously (status="queued"); the actual crawl runs in the background so the user
+request is never blocked by a long crawl.
+
+FUTURE AWS MAPPING:
+  BackgroundTasks (in-process)  -> SQS queue + ECS/Fargate worker (or Redis + rq)
+  enqueue_retrieval_job         -> sqs.send_message with the job id
+  get_job_status                -> read the ComplianceRetrievalJob row (unchanged)
+  retry_job                     -> re-enqueue the same job id
+The interface stays stable; only the enqueue mechanism changes.
+"""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from app.db.session import session_scope
+from app.models import ComplianceRetrievalJob
+from app.services.compliance_retrieval_job import run_retrieval_job
+
+
+def _run_job_in_new_session(job_id: UUID, tenant_id: UUID, force: bool) -> None:
+    """Background entrypoint. Uses its own DB session (request session is closed)."""
+    with session_scope() as session:
+        try:
+            run_retrieval_job(session, job_id=job_id, tenant_id=tenant_id, force=force)
+        except Exception as exc:  # pragma: no cover - defensive; mark job failed
+            job = session.get(ComplianceRetrievalJob, job_id)
+            if job is not None:
+                job.status = "failed"
+                job.error_message = str(exc)[:4000]
+
+
+def enqueue_retrieval_job(background_tasks, *, job_id: UUID, tenant_id: UUID, force: bool = False) -> None:
+    """Schedule a retrieval job to run after the response is returned."""
+    background_tasks.add_task(_run_job_in_new_session, job_id, tenant_id, force)
+
+
+def get_job_status(session, *, job_id: UUID, tenant_id: UUID) -> ComplianceRetrievalJob | None:
+    job = session.get(ComplianceRetrievalJob, job_id)
+    if job is None or job.tenant_id != tenant_id:
+        return None
+    return job
+
+
+def retry_job(background_tasks, session, *, job_id: UUID, tenant_id: UUID) -> ComplianceRetrievalJob | None:
+    job = get_job_status(session, job_id=job_id, tenant_id=tenant_id)
+    if job is None:
+        return None
+    job.status = "queued"
+    job.error_message = None
+    session.flush()
+    enqueue_retrieval_job(background_tasks, job_id=job_id, tenant_id=tenant_id, force=True)
+    return job

@@ -1,0 +1,390 @@
+import type {
+  ComplianceCheckRequestV1,
+  ComplianceCheckResponseV1,
+  ReviewQueueItem,
+} from "@repo/shared";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+
+import { DashboardShell } from "../../components/layout/dashboard-shell";
+import { api, userMessageForError } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
+import { inputCls, selectCls } from "../../lib/ui";
+
+const COUNTRIES = ["Canada", "USA", "UK", "Netherlands/EU", "United Arab Emirates", "Saudi Arabia"];
+const CATEGORIES = ["food/agri", "beverages", "textiles", "spices", "dry fruits"];
+
+const GROUP_LABELS: Record<string, string> = {
+  documents: "Required Documents",
+  labels: "Labels",
+  certificates: "Certificates",
+  inspections: "Inspections",
+  licences: "Licences",
+  restrictions: "Restrictions",
+};
+
+const DEFAULT_FORM: ComplianceCheckRequestV1 = {
+  origin_country: "India",
+  destination_country: "Canada",
+  hsn_code: "200989",
+  product_description: "Mango fruit beverage in retail bottles",
+  product_category: "beverages",
+  start_retrieval: true,
+};
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block space-y-1 text-sm">
+      <span className="text-slate-300">{label}</span>
+      <input
+        className={inputCls}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block space-y-1 text-sm">
+      <span className="text-slate-300">{label}</span>
+      <select className={selectCls} value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function QuestionList({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-300">
+        {items.map((q) => (
+          <li key={q}>{q}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
+  const { token } = useAuth();
+
+  // Poll the retrieval job while it's in progress.
+  const jobQuery = useQuery({
+    queryKey: ["compliance-retrieval-job", result.retrieval_job_id],
+    queryFn: () => api.retrievalJob(result.retrieval_job_id!, token!),
+    enabled: Boolean(result.retrieval_job_id && token),
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      return s === "queued" || s === "running" ? 3000 : false;
+    },
+  });
+
+  if (result.status === "no_verified_source") {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-amber-300">
+          No verified official requirement found in the current knowledge base or official-source
+          search.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (result.status === "retrieval_queued") {
+    const job = jobQuery.data;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Official-source retrieval in progress</CardTitle>
+          <CardDescription>
+            Results will require review before becoming approved guidance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-slate-300">
+          <p>Status: {job?.status ?? "queued"}</p>
+          {job && (
+            <p className="text-xs text-slate-500">
+              Pages fetched: {job.pages_fetched} · Snapshots: {job.snapshots_created} · Extracted
+              (pending review): {job.requirements_extracted}
+            </p>
+          )}
+          {job?.message && <p className="text-xs text-slate-500">{job.message}</p>}
+          <Button variant="secondary" onClick={() => jobQuery.refetch()}>
+            Refresh status
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Result</CardTitle>
+          <CardDescription>
+            Confidence: {result.confidence_label} ({result.confidence_score}) · {result.answer_summary}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.entries(GROUP_LABELS).map(([key, label]) => {
+            const cards = result.requirements[key] ?? [];
+            if (!cards.length) return null;
+            return (
+              <div key={key}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">
+                  {label}
+                </p>
+                <ul className="mt-1 space-y-2">
+                  {cards.map((c, i) => (
+                    <li key={i} className="rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm">
+                      <p className="text-slate-100">{c.detail}</p>
+                      {c.source_url && (
+                        <a
+                          className="mt-1 inline-block text-xs text-cyan-300 underline"
+                          href={c.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {c.source_name ?? c.source_url}
+                          {c.last_checked_date ? ` · checked ${c.last_checked_date}` : ""}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+          <QuestionList title="Missing information" items={result.missing_questions} />
+          <QuestionList title="Buyer-side questions" items={result.buyer_questions} />
+          <QuestionList title="CHA / customs broker questions" items={result.cha_questions} />
+        </CardContent>
+      </Card>
+
+      {result.sources.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Official source evidence</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {result.sources.map((s) => (
+              <div key={s.source_url}>
+                <a className="text-cyan-300 underline" href={s.source_url} target="_blank" rel="noreferrer">
+                  {s.source_name}
+                </a>
+                <span className="ml-2 text-xs text-slate-500">
+                  {s.last_checked_date ? `last retrieved ${s.last_checked_date}` : "date unknown"}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent className="space-y-1 py-4 text-xs text-slate-500">
+          {result.warnings.map((w) => (
+            <p key={w}>⚠ {w}</p>
+          ))}
+          <p className="pt-1 text-slate-400">{result.disclaimer}</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminReviewQueue() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const queue = useQuery({
+    queryKey: ["compliance-review-queue"],
+    queryFn: () => api.complianceReviewQueue(token!),
+    enabled: Boolean(token),
+  });
+
+  const decide = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "approve" | "reject" }) =>
+      action === "approve"
+        ? api.approveRequirement(id, token!)
+        : api.rejectRequirement(id, token!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["compliance-review-queue"] }),
+  });
+
+  const items: ReviewQueueItem[] = queue.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pending requirement review</CardTitle>
+        <CardDescription>
+          AI-extracted requirements stay pending until an admin approves the source evidence.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.length === 0 && (
+          <p className="text-sm text-slate-500">No pending requirements to review.</p>
+        )}
+        {items.map((item) => (
+          <div key={item.requirement_id} className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-sm text-slate-100">{item.detail}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {item.country} · {item.category} · {item.requirement_type} · confidence{" "}
+              {item.confidence_score}
+            </p>
+            <a className="text-xs text-cyan-300 underline" href={item.source_url} target="_blank" rel="noreferrer">
+              {item.source_name}
+            </a>
+            {item.evidence_excerpts.map((ex, i) => (
+              <p key={i} className="mt-1 border-l-2 border-slate-700 pl-2 text-xs italic text-slate-400">
+                {ex}
+              </p>
+            ))}
+            <div className="mt-2 flex gap-2">
+              <Button
+                onClick={() => decide.mutate({ id: item.requirement_id, action: "approve" })}
+                disabled={decide.isPending}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => decide.mutate({ id: item.requirement_id, action: "reject" })}
+                disabled={decide.isPending}
+              >
+                Reject
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function CountryComplianceCheckerPage() {
+  const { session, token, setSession } = useAuth();
+  const [form, setForm] = useState<ComplianceCheckRequestV1>(DEFAULT_FORM);
+  const isAdmin = session?.membership.role === "owner";
+
+  const mutation = useMutation({
+    mutationFn: () => api.complianceCheck(form, token!),
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      if (token) await api.logout(token);
+    },
+    onSettled: () => setSession(null),
+  });
+
+  return (
+    <DashboardShell
+      organizationName={session?.organization.name ?? "Workspace"}
+      role={session?.membership.role ?? "owner"}
+      onLogout={() => logoutMutation.mutate()}
+    >
+      <div className="mb-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200">
+          Source-backed assistant
+        </p>
+        <h2 className="mt-1 text-xl font-semibold text-slate-50">Country Compliance Checker</h2>
+        <p className="mt-1 max-w-2xl text-sm text-slate-500">
+          Enter your shipment details to see destination-country documents, certificates, labels,
+          inspections, licences, restrictions, and buyer/CHA questions — backed by official-source
+          evidence only.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Check requirements</CardTitle>
+            <CardDescription>Official evidence is the source of truth.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <SelectField
+              label="Origin country"
+              value={form.origin_country}
+              options={["India"]}
+              onChange={(v) => setForm((c) => ({ ...c, origin_country: v }))}
+            />
+            <SelectField
+              label="Destination country"
+              value={form.destination_country}
+              options={COUNTRIES}
+              onChange={(v) => setForm((c) => ({ ...c, destination_country: v }))}
+            />
+            <Field
+              label="HSN code"
+              value={form.hsn_code ?? ""}
+              onChange={(v) => setForm((c) => ({ ...c, hsn_code: v }))}
+            />
+            <Field
+              label="Product description"
+              value={form.product_description}
+              onChange={(v) => setForm((c) => ({ ...c, product_description: v }))}
+            />
+            <SelectField
+              label="Product category"
+              value={form.product_category}
+              options={CATEGORIES}
+              onChange={(v) => setForm((c) => ({ ...c, product_category: v }))}
+            />
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !token}>
+              {mutation.isPending ? "Checking…" : "Check compliance"}
+            </Button>
+            {mutation.isError && (
+              <p className="text-sm text-red-400">{userMessageForError(mutation.error)}</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          {mutation.data ? (
+            <ResultView result={mutation.data} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-slate-500">
+                No approved compliance requirement found yet. Run a check — official-source
+                retrieval can be started automatically.
+              </CardContent>
+            </Card>
+          )}
+          {isAdmin && <AdminReviewQueue />}
+        </div>
+      </div>
+    </DashboardShell>
+  );
+}
