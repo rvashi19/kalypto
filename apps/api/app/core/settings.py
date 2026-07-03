@@ -16,7 +16,10 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
-    jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(
+        default="change-me-in-production",
+        validation_alias=AliasChoices("JWT_SECRET_KEY", "JWT_SECRET"),
+    )
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
@@ -89,8 +92,16 @@ class Settings(BaseSettings):
     tavily_api_key: str | None = Field(default=None, alias="TAVILY_API_KEY")
     bright_data_api_key: str | None = Field(default=None, alias="BRIGHT_DATA_API_KEY")
     jwt_algorithm: str = "HS256"
-    access_token_ttl_minutes: int = 60
+    access_token_ttl_minutes: int = Field(
+        default=30,
+        validation_alias=AliasChoices("JWT_ACCESS_EXPIRES_MINUTES", "ACCESS_TOKEN_TTL_MINUTES"),
+    )
+    refresh_token_ttl_days: int = Field(default=30, alias="JWT_REFRESH_EXPIRES_DAYS")
     auth_cookie_name: str = Field(default="exportpilotai_session", alias="AUTH_COOKIE_NAME")
+    refresh_cookie_name: str = Field(
+        default="exportpilotai_refresh",
+        alias="AUTH_REFRESH_COOKIE_NAME",
+    )
     auth_cookie_domain: str | None = Field(default=None, alias="AUTH_COOKIE_DOMAIN")
     auth_cookie_samesite: str = Field(default="lax", alias="AUTH_COOKIE_SAMESITE")
     rate_limit_auth_window_seconds: int = Field(default=900, alias="RATE_LIMIT_AUTH_WINDOW_SECONDS")
@@ -103,6 +114,16 @@ class Settings(BaseSettings):
         default=False,
         alias="PASSWORD_BREACH_CHECK_ENABLED",
     )
+    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str | None = Field(default=None, alias="SMTP_FROM_EMAIL")
+    smtp_from_name: str = Field(default="KALYPTO", alias="SMTP_FROM_NAME")
+    google_client_id: str | None = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = Field(default=None, alias="GOOGLE_CLIENT_SECRET")
+    google_redirect_uri: str | None = Field(default=None, alias="GOOGLE_REDIRECT_URI")
+    enable_google_login: bool = Field(default=False, alias="ENABLE_GOOGLE_LOGIN")
     audit_logging_enabled: bool = True
     rate_limit_auth_per_minute: int = 20
     rate_limit_uploads_per_minute: int = 10
@@ -136,7 +157,7 @@ class Settings(BaseSettings):
         if self.environment.lower() == "production":
             if self.jwt_secret_key == "change-me-in-production" or len(self.jwt_secret_key) < 32:
                 raise ValueError(
-                    "Production JWT_SECRET_KEY must be a unique value of 32+ characters."
+                    "Production JWT_SECRET must be a unique value of 32+ characters."
                 )
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production FRONTEND_URL must use HTTPS.")

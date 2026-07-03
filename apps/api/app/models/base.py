@@ -29,6 +29,33 @@ class MembershipRole(StrEnum):
     READ_ONLY = "read_only"
 
 
+class UserRole(StrEnum):
+    USER = "user"
+    ADMIN = "admin"
+
+
+class UserStatus(StrEnum):
+    PENDING_VERIFICATION = "pending_verification"
+    ACTIVE = "active"
+    DISABLED = "disabled"
+
+
+class AuthProviderPrimary(StrEnum):
+    PASSWORD = "password"
+    GOOGLE = "google"
+    MIXED = "mixed"
+
+
+class AuthOtpPurpose(StrEnum):
+    EMAIL_VERIFICATION = "email_verification"
+    PASSWORD_RESET = "password_reset"
+    LOGIN_OTP = "login_otp"
+
+
+class OAuthProvider(StrEnum):
+    GOOGLE = "google"
+
+
 class InvoiceType(StrEnum):
     PROFORMA = "proforma"
     COMMERCIAL = "commercial"
@@ -124,12 +151,90 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "users"
 
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(512), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     two_factor_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole), nullable=False, default=UserRole.USER)
+    status: Mapped[UserStatus] = mapped_column(
+        SqlEnum(UserStatus),
+        nullable=False,
+        default=UserStatus.ACTIVE,
+    )
+    auth_provider_primary: Mapped[AuthProviderPrimary] = mapped_column(
+        SqlEnum(AuthProviderPrimary),
+        nullable=False,
+        default=AuthProviderPrimary.PASSWORD,
+    )
+
+
+class AuthOtp(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "auth_otps"
+
+    user_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    purpose: Mapped[AuthOtpPurpose] = mapped_column(SqlEnum(AuthOtpPurpose), nullable=False)
+    otp_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempts: Mapped[int] = mapped_column(nullable=False, default=0)
+    max_attempts: Mapped[int] = mapped_column(nullable=False, default=5)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class RefreshToken(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "refresh_tokens"
+
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False, index=True)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("organizations.id"),
+        nullable=True,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class OAuthAccount(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "oauth_accounts"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_user_id", name="uq_oauth_provider_user"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False, index=True)
+    provider: Mapped[OAuthProvider] = mapped_column(SqlEnum(OAuthProvider), nullable=False)
+    provider_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    raw_profile_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    linked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Membership(Base, UUIDPrimaryKeyMixin, TimestampMixin):

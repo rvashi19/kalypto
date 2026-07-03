@@ -1,4 +1,6 @@
 import type {
+  AuthMessageResponse,
+  AuthOtpPurpose,
   AuthResponse,
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
@@ -56,6 +58,7 @@ import type {
   ReconciliationResponse,
   RateImportResponse,
   RateRecordResponse,
+  RegisterResponse,
   ShipmentResponse,
   SourceChangeReviewRequest,
   VerificationReport,
@@ -153,9 +156,11 @@ export function userMessageForError(error: unknown) {
 export interface RegisterPayload {
   email: string;
   password: string;
-  organization_name: string;
+  full_name: string;
+  organization_name?: string;
   organization_slug?: string;
-  full_name?: string;
+  company_name?: string;
+  country?: string;
 }
 
 export interface LoginPayload {
@@ -165,22 +170,78 @@ export interface LoginPayload {
   otp_code?: string;
 }
 
-async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(token),
-        ...options.headers
-      },
-      credentials: "include"
-    });
-  } catch {
-    throw new Error(
-      "Could not reach the KALYPTO API. If this is the live site, wait for the Render deploy to finish or recheck the API URL."
-    );
+export interface VerifyOtpPayload {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
+  purpose: AuthOtpPurpose;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+
+let refreshPromise: Promise<AuthResponse> | null = null;
+
+function canRefreshAfterUnauthorized(path: string) {
+  const authPathsWithoutRefresh = [
+    "/auth/register",
+    "/auth/verify-email-otp",
+    "/auth/resend-otp",
+    "/auth/login",
+    "/auth/oauth/google",
+    "/auth/refresh",
+    "/auth/logout",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ];
+  return !authPathsWithoutRefresh.includes(path);
+}
+
+async function refreshSessionCookie() {
+  if (!refreshPromise) {
+    refreshPromise = request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string,
+  retryOnUnauthorized = true
+): Promise<T> {
+  const doFetch = async () => {
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(token),
+          ...options.headers
+        },
+        credentials: "include"
+      });
+    } catch {
+      throw new Error(
+        "Could not reach the KALYPTO API. If this is the live site, wait for the Render deploy to finish or recheck the API URL."
+      );
+    }
+  };
+
+  let response = await doFetch();
+
+  if (response.status === 401 && retryOnUnauthorized && canRefreshAfterUnauthorized(path)) {
+    await refreshSessionCookie().catch(() => null);
+    response = await doFetch();
   }
 
   if (!response.ok) {
@@ -195,13 +256,37 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
 export const api = {
   register: (payload: RegisterPayload) =>
-    request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+    request<RegisterResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+
+  verifyEmailOtp: (payload: VerifyOtpPayload) =>
+    request<AuthResponse>("/auth/verify-email-otp", { method: "POST", body: JSON.stringify(payload) }),
+
+  resendOtp: (payload: ResendOtpPayload) =>
+    request<AuthMessageResponse>("/auth/resend-otp", { method: "POST", body: JSON.stringify(payload) }),
 
   login: (payload: LoginPayload) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
+  loginWithGoogle: (id_token: string) =>
+    request<AuthResponse>("/auth/oauth/google", { method: "POST", body: JSON.stringify({ id_token }) }),
+
+  refresh: () =>
+    request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false),
+
   logout: (token?: string) =>
     request<{ success: boolean }>("/auth/logout", { method: "POST" }, token),
+
+  forgotPassword: (email: string) =>
+    request<AuthMessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (payload: ResetPasswordPayload) =>
+    request<AuthMessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   me: (token?: string) =>
     request<CurrentUserResponse>("/auth/me", {}, token),

@@ -2,24 +2,36 @@ from fastapi.testclient import TestClient
 
 from app.core.settings import get_settings
 from app.main import app
+from app.services import auth_provider as auth_provider_module
 
 
-def test_login_sets_http_only_cookie_and_cookie_auth_works() -> None:
+def test_verification_sets_http_only_cookie_and_cookie_auth_works(monkeypatch) -> None:
     client = TestClient(app)
     settings = get_settings()
+    sent_codes: list[str] = []
+
+    def fake_send_auth_otp_email(*, email: str, otp_code: str, purpose) -> None:
+        sent_codes.append(otp_code)
+
+    monkeypatch.setattr(auth_provider_module, "send_auth_otp_email", fake_send_auth_otp_email)
 
     registered = client.post(
         "/api/v1/auth/register",
         json={
             "email": "cookie-session@example.com",
             "password": "StrongPassword123!",
-            "organization_name": "Cookie Session Exports",
             "full_name": "Cookie Owner",
+            "company_name": "Cookie Session Exports",
         },
     )
 
     assert registered.status_code == 201
-    set_cookie = registered.headers["set-cookie"]
+    verified = client.post(
+        "/api/v1/auth/verify-email-otp",
+        json={"email": "cookie-session@example.com", "otp": sent_codes[0]},
+    )
+    assert verified.status_code == 200
+    set_cookie = verified.headers["set-cookie"]
     assert f"{settings.auth_cookie_name}=" in set_cookie
     assert "HttpOnly" in set_cookie
     assert "SameSite=lax" in set_cookie

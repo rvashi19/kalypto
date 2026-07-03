@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
 
@@ -19,20 +19,29 @@ function passwordPolicyError(password: string) {
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { setSession } = useAuth();
+  const { session } = useAuth();
   const [clientError, setClientError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session) {
+      navigate("/tools", { replace: true });
+    }
+  }, [navigate, session]);
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) =>
       api.register({
         full_name: String(formData.get("full_name") ?? ""),
-        organization_name: String(formData.get("organization_name") ?? ""),
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
+        company_name: String(formData.get("company_name") ?? "") || undefined,
+        country: String(formData.get("country") ?? "") || undefined,
       }),
-    onSuccess: (session) => {
-      setSession(session);
-      navigate("/", { replace: true });
+    onSuccess: (response) => {
+      navigate(`/verify-email?email=${encodeURIComponent(response.email)}`, {
+        replace: true,
+        state: { message: response.message },
+      });
     },
   });
 
@@ -41,13 +50,13 @@ export function SignupPage() {
   return (
     <AuthShell
       eyebrow="Secure exporter onboarding"
-      title="Create a protected workspace for every shipment, document, and claim."
-      description="Start with one organization account. KALYPTO provisions tenant isolation, owner access, and an audited workspace immediately."
+      title="Create a verified account before any export data enters the workspace."
+      description="KALYPTO verifies every owner email first, then opens the protected organization workspace after the OTP check passes."
     >
       <Card>
         <CardHeader>
           <CardTitle>Create your workspace</CardTitle>
-          <CardDescription>Set up the owner account for your export organization.</CardDescription>
+          <CardDescription>We will email a 6-digit code before activating the account.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -69,13 +78,16 @@ export function SignupPage() {
               <Input id="full_name" name="full_name" placeholder="Priya Shah" required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="organization_name">Organization name</Label>
+              <Label htmlFor="company_name">Company name</Label>
               <Input
-                id="organization_name"
-                name="organization_name"
+                id="company_name"
+                name="company_name"
                 placeholder="Shah Exports LLP"
-                required
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country</Label>
+              <Input id="country" name="country" placeholder="India" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
@@ -104,7 +116,7 @@ export function SignupPage() {
             ) : null}
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Creating workspace..." : "Create workspace"}
+              {mutation.isPending ? "Sending code..." : "Create account"}
             </Button>
             <p className="text-center text-sm text-slate-500">
               Already have an account?{" "}

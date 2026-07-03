@@ -9,6 +9,8 @@ pymongo==4.11.3
 pydantic==2.11.5
 pydantic-settings==2.9.1
 PyJWT==2.9.0
+argon2-cffi==23.1.0
+cryptography==45.0.3
 pytest==8.3.5
 python-multipart==0.0.20
 redis==6.2.0

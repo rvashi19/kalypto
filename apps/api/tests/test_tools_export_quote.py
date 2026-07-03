@@ -1,26 +1,22 @@
+from auth_helpers import authenticated_client
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def _authenticated_client(email: str = "quote@example.com") -> tuple[TestClient, dict[str, str]]:
-    client = TestClient(app)
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "password": "StrongPassword123!",
-            "organization_name": "Quote Exports",
-            "full_name": "Quote Owner",
-        },
+def _authenticated_client(
+    session,
+    email: str = "quote@example.com",
+) -> tuple[TestClient, dict[str, str]]:
+    client, headers, _ = authenticated_client(
+        session,
+        email=email,
+        organization_name="Quote Exports",
+        full_name="Quote Owner",
     )
-    assert response.status_code == 201
-    token = response.json()["access_token"]
-    return client, {"Authorization": f"Bearer {token}"}
+    return client, headers
 
 
-def test_export_quote_uses_tenant_verified_rates() -> None:
-    client, headers = _authenticated_client()
+def test_export_quote_uses_tenant_verified_rates(session) -> None:
+    client, headers = _authenticated_client(session)
     csv_content = (
         "scheme,hsn,rate,source,effective_date,version_stamp,confidence,review_status\n"
         "RoDTEP,0904,1.40,Operator notification,2026-01-01T00:00:00Z,v1,verified,approved\n"
@@ -66,8 +62,8 @@ def test_export_quote_uses_tenant_verified_rates() -> None:
     assert "Decision-support only" in body["disclaimer"]
 
 
-def test_export_quote_requires_exchange_rate_for_incentive_amounts() -> None:
-    client, headers = _authenticated_client("quote-no-fx@example.com")
+def test_export_quote_requires_exchange_rate_for_incentive_amounts(session) -> None:
+    client, headers = _authenticated_client(session, "quote-no-fx@example.com")
     csv_content = (
         "scheme,hsn,rate,source,effective_date,version_stamp,confidence\n"
         "RoDTEP,6109,1.10,Operator notification,2026-01-01T00:00:00Z,v1,verified\n"

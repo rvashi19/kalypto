@@ -2,6 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/protected-route";
 import { LoginPage } from "./features/auth/login-page";
 import { SignupPage } from "./features/auth/signup-page";
+import { VerifyEmailPage } from "./features/auth/verify-email-page";
+import { ForgotPasswordPage } from "./features/auth/forgot-password-page";
+import { ResetPasswordPage } from "./features/auth/reset-password-page";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { CompliancePage } from "./features/compliance/compliance-page";
 import { CountryComplianceCheckerPage } from "./features/compliance/country-compliance-checker-page";
@@ -18,7 +21,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<SignupPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />
       <Route path="/hsn" element={<ProtectedRoute><HsnFinderPage /></ProtectedRoute>} />

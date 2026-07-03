@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.security import TokenPayload, decode_access_token
 from app.core.settings import get_settings
 from app.db.session import get_db_session
-from app.models import Membership, Organization, RevokedToken, User
+from app.models import Membership, Organization, RevokedToken, User, UserStatus
 from app.services.auth_provider import AuthProvider, LocalAuthProvider
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -71,6 +71,11 @@ def get_current_user_context(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="The authenticated membership is no longer valid.",
+        )
+    if not user.is_active or user.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not active.",
         )
 
     return CurrentUserContext(

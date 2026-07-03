@@ -13,8 +13,12 @@ from urllib.request import Request, urlopen
 from uuid import UUID, uuid4
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerificationError, VerifyMismatchError
 
 from app.core.settings import get_settings
+
+ARGON2_HASHER = PasswordHasher()
 
 
 @dataclass(slots=True)
@@ -81,17 +85,41 @@ def _password_seen_in_breach_corpus(password: str) -> bool:
 
 
 def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
-    return f"{base64.b64encode(salt).decode()}${base64.b64encode(digest).decode()}"
+    return ARGON2_HASHER.hash(password)
 
 
-def verify_password(password: str, password_hash: str) -> bool:
-    encoded_salt, encoded_digest = password_hash.split("$", maxsplit=1)
-    salt = base64.b64decode(encoded_salt.encode())
-    expected_digest = base64.b64decode(encoded_digest.encode())
+def _verify_legacy_scrypt_password(password: str, password_hash: str) -> bool:
+    try:
+        encoded_salt, encoded_digest = password_hash.split("$", maxsplit=1)
+        salt = base64.b64decode(encoded_salt.encode())
+        expected_digest = base64.b64decode(encoded_digest.encode())
+    except (ValueError, TypeError):
+        return False
     actual_digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
     return hmac.compare_digest(actual_digest, expected_digest)
+
+
+def verify_password(password: str, password_hash: str | None) -> bool:
+    if not password_hash:
+        return False
+    if password_hash.startswith("$argon2"):
+        try:
+            return ARGON2_HASHER.verify(password_hash, password)
+        except (VerificationError, VerifyMismatchError):
+            return False
+    return _verify_legacy_scrypt_password(password, password_hash)
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token() -> str:
+    return secrets.token_urlsafe(64)
+
+
+def generate_otp_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def create_access_token(*, user_id: UUID, tenant_id: UUID, role: str) -> tuple[str, datetime, str]:
