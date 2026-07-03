@@ -42,7 +42,9 @@ services:
       - key: COMPLIANCE_REFRESH_INTERVAL_DAYS
         value: 3
       - key: COMPLIANCE_SCRAPER_PROVIDER
-        value: http
+        value: http  # set to "scrapling" after building with --build-arg INSTALL_SCRAPLING=true
+      - key: COMPLIANCE_SCRAPLING_RENDER_JS
+        value: "false"  # "true" needs a browser (INSTALL_SCRAPLING_BROWSERS=true); not for free tier
       - key: COMPLIANCE_ALLOW_PRIVATE_SCRAPE
         value: "false"
       # Country Compliance Checker v1 (official-source retrieval + AI extraction)
