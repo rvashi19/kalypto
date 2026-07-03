@@ -336,10 +336,80 @@ class FirecrawlComplianceScraper:
         )
 
 
+class ScraplingComplianceScraper:
+    """Optional provider backed by Scrapling (https://github.com/D4Vinci/Scrapling).
+
+    Use only for whitelisted official sources whose content our plain HTTP scraper
+    cannot read (e.g. JavaScript-rendered pages). Intentionally **stealth-disabled**:
+    we never use StealthyFetcher, CAPTCHA solving, or fingerprint spoofing — CCR
+    fetches official government sources politely, never evades bot detection.
+
+    Scrapling is an optional dependency (not in requirements.txt). Install with
+    `pip install "scrapling[fetchers]"` (adds browsers) when a source needs it.
+    PDFs are delegated to the HTTP + pdfplumber path.
+    """
+
+    def __init__(self) -> None:
+        self.settings = get_settings()
+
+    def scrape(
+        self, source_url: str, *, allowed_domains: list[str] | None = None
+    ) -> ScrapedSourceDocument:
+        # Enforce SSRF + whitelist on the requested URL BEFORE importing/fetching.
+        _assert_hop_allowed(
+            source_url,
+            allow_private=self.settings.compliance_allow_private_scrape,
+            allowed_domains=allowed_domains,
+        )
+        # PDFs: reuse the SSRF/whitelist/redirect-safe HTTP + pdfplumber path.
+        if urlparse(source_url).path.lower().endswith(".pdf"):
+            return HttpComplianceScraper().scrape(source_url, allowed_domains=allowed_domains)
+
+        try:
+            # Non-stealth fetchers only. Fetcher = HTTP; DynamicFetcher = Playwright (JS).
+            if self.settings.compliance_scrapling_render_js:
+                from scrapling.fetchers import DynamicFetcher as _Fetcher  # noqa: PLC0415
+            else:
+                from scrapling.fetchers import Fetcher as _Fetcher  # noqa: PLC0415
+        except ImportError as error:
+            raise ComplianceScraperError(
+                "Scrapling is not installed. Run `pip install \"scrapling[fetchers]\"` "
+                "to enable COMPLIANCE_SCRAPER_PROVIDER=scrapling."
+            ) from error
+
+        try:
+            page = _Fetcher.get(source_url, timeout=30)
+        except Exception as error:  # scrapling raises varied fetch errors
+            raise ComplianceScraperError(f"Scrapling fetch failed: {error}") from error
+
+        # Re-validate the final URL after any internal redirects Scrapling followed.
+        final_url = getattr(page, "url", source_url) or source_url
+        _assert_hop_allowed(
+            final_url,
+            allow_private=self.settings.compliance_allow_private_scrape,
+            allowed_domains=allowed_domains,
+        )
+
+        status = getattr(page, "status", 200)
+        if isinstance(status, int) and status >= 400:
+            raise ComplianceScraperError(f"Source returned HTTP {status}.")
+
+        html_body = getattr(page, "html_content", None) or getattr(page, "body", None) or str(page)
+        document = html_to_readable_document(source_url=final_url, raw_html=html_body)
+        title = getattr(page, "title", None)
+        if isinstance(title, str) and title.strip():
+            document = ScrapedSourceDocument(
+                source_url=final_url, title=title.strip(), markdown=document.markdown
+            )
+        return document
+
+
 def get_compliance_scraper() -> ComplianceScraper:
     provider = get_settings().compliance_scraper_provider.lower()
     if provider == "firecrawl":
         return FirecrawlComplianceScraper()
+    if provider == "scrapling":
+        return ScraplingComplianceScraper()
     if provider == "http":
         return HttpComplianceScraper()
     return ManualReviewScraper()
