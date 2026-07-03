@@ -74,7 +74,6 @@ export function LoginPage() {
       api.login({
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
-        otp_code: String(formData.get("otp_code") ?? "").trim() || undefined,
       }),
     onSuccess: (session) => {
       setSession(session);
@@ -162,17 +161,6 @@ export function LoginPage() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="otp_code">Authenticator code</Label>
-              <Input
-                id="otp_code"
-                name="otp_code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="6-digit code if enabled"
-              />
-            </div>
-
             <Button
               className="w-full"
               variant="secondary"
