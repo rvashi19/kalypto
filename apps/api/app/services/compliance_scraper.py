@@ -11,13 +11,24 @@ from html.parser import HTMLParser
 from io import BytesIO
 from typing import Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.parse import urljoin, urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from app.core.settings import get_settings
+from app.services.compliance_whitelist import is_domain_allowed
 
 MAX_SOURCE_BYTES = 2_000_000
 MIN_EXTRACTED_CHARS = 120
+MAX_REDIRECTS = 5
+
+
+class _NoFollowRedirectHandler(HTTPRedirectHandler):
+    """Blocks urllib's automatic redirect following so each hop can be re-validated
+    (SSRF + official-domain whitelist) before it is fetched. Returning None here makes
+    urllib raise HTTPError for the 3xx instead of silently following it."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        return None
 
 
 class ComplianceScraperError(RuntimeError):
@@ -32,7 +43,12 @@ class ScrapedSourceDocument:
 
 
 class ComplianceScraper(Protocol):
-    def scrape(self, source_url: str) -> ScrapedSourceDocument: ...
+    def scrape(
+        self, source_url: str, *, allowed_domains: list[str] | None = None
+    ) -> ScrapedSourceDocument:
+        """Fetch a source. When allowed_domains is not None, the official-domain
+        whitelist is enforced on the initial URL and every redirect hop."""
+        ...
 
 
 class _ReadableHTMLParser(HTMLParser):
@@ -171,7 +187,9 @@ def validate_public_source_url(source_url: str, *, allow_private: bool) -> None:
 
 
 class ManualReviewScraper:
-    def scrape(self, source_url: str) -> ScrapedSourceDocument:
+    def scrape(
+        self, source_url: str, *, allowed_domains: list[str] | None = None
+    ) -> ScrapedSourceDocument:
         return ScrapedSourceDocument(
             source_url=source_url,
             title="Manual review required",
@@ -182,37 +200,73 @@ class ManualReviewScraper:
         )
 
 
+def _assert_hop_allowed(url: str, *, allow_private: bool, allowed_domains: list[str] | None) -> None:
+    """Re-validate SSRF + (optional) official-domain whitelist for a URL before fetching it."""
+    validate_public_source_url(url, allow_private=allow_private)
+    if allowed_domains is not None and not is_domain_allowed(url, allowed_domains):
+        raise ComplianceScraperError(
+            f"Refused redirect to non-whitelisted domain: {urlparse(url).hostname!r}. "
+            "Only official government/regulatory sources are allowed."
+        )
+
+
 class HttpComplianceScraper:
     def __init__(self) -> None:
         self.settings = get_settings()
+        # Opener that does NOT auto-follow redirects; we follow them manually so
+        # each hop is re-checked against the SSRF guard and the domain whitelist.
+        self._opener = build_opener(_NoFollowRedirectHandler)
 
-    def scrape(self, source_url: str) -> ScrapedSourceDocument:
-        validate_public_source_url(
-            source_url,
-            allow_private=self.settings.compliance_allow_private_scrape,
-        )
-        request = Request(
-            source_url,
-            method="GET",
-            headers={
-                "User-Agent": self.settings.compliance_scraper_user_agent,
-                "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
-            },
-        )
-        try:
-            with urlopen(request, timeout=30) as response:  # noqa: S310
-                content_type = response.headers.get("Content-Type", "")
-                raw = response.read(MAX_SOURCE_BYTES + 1)
-        except HTTPError as error:
-            raise ComplianceScraperError(f"Source returned HTTP {error.code}.") from error
-        except URLError as error:
-            raise ComplianceScraperError(f"Source request failed: {error}") from error
+    def scrape(
+        self, source_url: str, *, allowed_domains: list[str] | None = None
+    ) -> ScrapedSourceDocument:
+        current = source_url
+        raw = b""
+        content_type = ""
+        final_url = source_url
+        for _hop in range(MAX_REDIRECTS + 1):
+            # Validate BEFORE every fetch — covers the initial URL and each redirect target.
+            _assert_hop_allowed(
+                current,
+                allow_private=self.settings.compliance_allow_private_scrape,
+                allowed_domains=allowed_domains,
+            )
+            request = Request(
+                current,
+                method="GET",
+                headers={
+                    "User-Agent": self.settings.compliance_scraper_user_agent,
+                    "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
+                },
+            )
+            try:
+                with self._opener.open(request, timeout=30) as response:  # noqa: S310
+                    content_type = response.headers.get("Content-Type", "")
+                    raw = response.read(MAX_SOURCE_BYTES + 1)
+                    final_url = current
+                break
+            except HTTPError as error:
+                if error.code in (301, 302, 303, 307, 308):
+                    location = error.headers.get("Location") if error.headers else None
+                    if not location:
+                        raise ComplianceScraperError(
+                            "Source returned a redirect without a Location header."
+                        ) from error
+                    current = urljoin(current, location)
+                    continue
+                raise ComplianceScraperError(f"Source returned HTTP {error.code}.") from error
+            except URLError as error:
+                raise ComplianceScraperError(f"Source request failed: {error}") from error
+        else:
+            raise ComplianceScraperError(
+                f"Source exceeded the redirect limit ({MAX_REDIRECTS} hops)."
+            )
 
         if len(raw) > MAX_SOURCE_BYTES:
             raise ComplianceScraperError("Source response is too large to scrape safely.")
-        parsed = urlparse(source_url)
+        parsed = urlparse(final_url)
         if "pdf" in content_type.lower() or parsed.path.lower().endswith(".pdf"):
-            return pdf_to_readable_document(source_url=source_url, raw_pdf=raw)
+            return pdf_to_readable_document(source_url=final_url, raw_pdf=raw)
 
         encoding = "utf-8"
         match = re.search(r"charset=([\w.-]+)", content_type, flags=re.IGNORECASE)
@@ -220,7 +274,7 @@ class HttpComplianceScraper:
             encoding = match.group(1)
         text = raw.decode(encoding, errors="replace")
         if "html" in content_type.lower() or "<html" in text[:500].lower():
-            return html_to_readable_document(source_url=source_url, raw_html=text)
+            return html_to_readable_document(source_url=final_url, raw_html=text)
 
         cleaned = "\n".join(
             line for line in (normalize_scraped_text(line) for line in text.splitlines()) if line
@@ -230,8 +284,8 @@ class HttpComplianceScraper:
                 "The source was fetched but did not contain enough readable text for review.",
             )
         return ScrapedSourceDocument(
-            source_url=source_url,
-            title=urlparse(source_url).hostname or "Text source",
+            source_url=final_url,
+            title=urlparse(final_url).hostname or "Text source",
             markdown=cleaned[:100_000],
         )
 
@@ -242,10 +296,13 @@ class FirecrawlComplianceScraper:
     def __init__(self) -> None:
         self.settings = get_settings()
 
-    def scrape(self, source_url: str) -> ScrapedSourceDocument:
-        validate_public_source_url(
+    def scrape(
+        self, source_url: str, *, allowed_domains: list[str] | None = None
+    ) -> ScrapedSourceDocument:
+        _assert_hop_allowed(
             source_url,
             allow_private=self.settings.compliance_allow_private_scrape,
+            allowed_domains=allowed_domains,
         )
         if not self.settings.firecrawl_api_key:
             raise ComplianceScraperError("FIRECRAWL_API_KEY is required for the Firecrawl scraper.")

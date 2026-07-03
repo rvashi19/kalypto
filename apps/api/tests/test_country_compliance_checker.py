@@ -207,7 +207,7 @@ def test_retrieval_creates_snapshot_and_pending_requirements(session, monkeypatc
     monkeypatch.setattr(
         job_module,
         "get_compliance_scraper",
-        lambda: type("S", (), {"scrape": lambda self, url: ScrapedSourceDocument(
+        lambda: type("S", (), {"scrape": lambda self, url, allowed_domains=None: ScrapedSourceDocument(
             source_url=url, title="CBSA", markdown="Importers must file a declaration. " * 20
         )})(),
     )
@@ -249,7 +249,7 @@ def test_checksum_dedup_skips_repeated_ai_extraction(session, monkeypatch, tmp_p
     monkeypatch.setattr(
         job_module,
         "get_compliance_scraper",
-        lambda: type("S", (), {"scrape": lambda self, url: ScrapedSourceDocument(
+        lambda: type("S", (), {"scrape": lambda self, url, allowed_domains=None: ScrapedSourceDocument(
             source_url=url, title="CBSA", markdown="Static official content that never changes. " * 20
         )})(),
     )
@@ -288,7 +288,7 @@ def test_approved_requirement_appears_in_answer_after_review(session, monkeypatc
     monkeypatch.setattr(
         job_module,
         "get_compliance_scraper",
-        lambda: type("S", (), {"scrape": lambda self, url: ScrapedSourceDocument(
+        lambda: type("S", (), {"scrape": lambda self, url, allowed_domains=None: ScrapedSourceDocument(
             source_url=url, title="CBSA", markdown="Importers must file a declaration. " * 20
         )})(),
     )
@@ -436,7 +436,7 @@ def test_refresh_due_runs_jobs_for_due_sources(session, monkeypatch, tmp_path) -
     monkeypatch.setattr(
         job_module,
         "get_compliance_scraper",
-        lambda: type("S", (), {"scrape": lambda self, url: ScrapedSourceDocument(
+        lambda: type("S", (), {"scrape": lambda self, url, allowed_domains=None: ScrapedSourceDocument(
             source_url=url, title="CBSA", markdown="Importers must file a declaration. " * 20
         )})(),
     )

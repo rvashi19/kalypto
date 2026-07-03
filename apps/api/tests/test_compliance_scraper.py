@@ -70,13 +70,76 @@ def test_http_scraper_fetches_and_normalizes_html(monkeypatch: pytest.MonkeyPatc
         "validate_public_source_url",
         lambda source_url, *, allow_private: None,
     )
-    monkeypatch.setattr(compliance_scraper, "urlopen", lambda request, timeout: FakeResponse())
+    scraper = HttpComplianceScraper()
+    # The scraper now fetches via a no-auto-redirect opener; patch that.
+    monkeypatch.setattr(scraper._opener, "open", lambda request, timeout: FakeResponse())
 
-    document = HttpComplianceScraper().scrape("https://example.gov/import-rules")
+    document = scraper.scrape("https://example.gov/import-rules")
 
     assert document.source_url == "https://example.gov/import-rules"
     assert document.title == "Food import rules"
     assert "Commercial food imports require importer-side review" in document.markdown
+
+
+def _redirect_error(location: str) -> Any:
+    from email.message import Message
+
+    headers = Message()
+    headers["Location"] = location
+    return compliance_scraper.HTTPError(
+        "https://www.cbsa-asfc.gc.ca/import", 302, "Found", headers, None  # type: ignore[arg-type]
+    )
+
+
+def test_assert_hop_allowed_blocks_offwhitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        compliance_scraper, "validate_public_source_url", lambda u, *, allow_private: None
+    )
+    with pytest.raises(ComplianceScraperError, match="non-whitelisted"):
+        compliance_scraper._assert_hop_allowed(
+            "https://random-blog.com/x", allow_private=False, allowed_domains=[]
+        )
+
+
+def test_assert_hop_allowed_blocks_private_ip_on_redirect() -> None:
+    # SSRF guard runs on every hop regardless of whitelist (allowed_domains=None).
+    with pytest.raises(ComplianceScraperError):
+        compliance_scraper._assert_hop_allowed(
+            "http://169.254.169.254/latest/meta-data", allow_private=False, allowed_domains=None
+        )
+
+
+def test_scraper_refuses_redirect_off_whitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        compliance_scraper, "validate_public_source_url", lambda u, *, allow_private: None
+    )
+    scraper = HttpComplianceScraper()
+
+    def fake_open(request: Any, timeout: int) -> Any:
+        raise _redirect_error("https://evil.example.com/pwn")
+
+    monkeypatch.setattr(scraper._opener, "open", fake_open)
+    with pytest.raises(ComplianceScraperError, match="non-whitelisted"):
+        scraper.scrape("https://www.cbsa-asfc.gc.ca/import", allowed_domains=[])
+
+
+def test_scraper_follows_whitelisted_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        compliance_scraper, "validate_public_source_url", lambda u, *, allow_private: None
+    )
+    scraper = HttpComplianceScraper()
+    calls = {"n": 0}
+
+    def fake_open(request: Any, timeout: int) -> Any:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise _redirect_error("https://www.cbsa-asfc.gc.ca/import/final")
+        return FakeResponse()
+
+    monkeypatch.setattr(scraper._opener, "open", fake_open)
+    document = scraper.scrape("https://www.cbsa-asfc.gc.ca/import", allowed_domains=[])
+    assert calls["n"] == 2  # followed one redirect, then fetched
+    assert document.source_url == "https://www.cbsa-asfc.gc.ca/import/final"
 
 
 def test_pdf_to_readable_document_extracts_official_source_text() -> None:
