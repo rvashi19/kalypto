@@ -1,0 +1,9 @@
+# Optional dependency — enables COMPLIANCE_SCRAPER_PROVIDER=scrapling for JS-capable
+# fetching of whitelisted official sources. NOT installed by default so the base
+# image stays lean on the free tier.
+#
+# Install with:  scripts/enable-scrapling.ps1  (Windows)  or  scripts/enable-scrapling.sh
+# Or in Docker:  --build-arg INSTALL_SCRAPLING=true
+#
+# Pin to a specific version once validated against a real source.
+scrapling[fetchers]
