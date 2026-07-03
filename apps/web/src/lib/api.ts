@@ -138,8 +138,14 @@ export function isUnauthorizedError(error: unknown) {
   return error instanceof ApiError && error.status === 401;
 }
 
-export function userMessageForError(error: unknown) {
+export function userMessageForError(
+  error: unknown,
+  options: { preserveUnauthorizedMessage?: boolean } = {}
+) {
   if (isUnauthorizedError(error)) {
+    if (options.preserveUnauthorizedMessage && error instanceof Error) {
+      return error.message;
+    }
     return "Your session has expired. Please sign in again.";
   }
 

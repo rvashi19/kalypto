@@ -115,8 +115,10 @@ export function LoginPage() {
 
   const errorMessage =
     clientError ??
-    (mutation.isError ? userMessageForError(mutation.error) : null) ??
-    (googleMutation.isError ? userMessageForError(googleMutation.error) : null);
+    (mutation.isError ? userMessageForError(mutation.error, { preserveUnauthorizedMessage: true }) : null) ??
+    (googleMutation.isError
+      ? userMessageForError(googleMutation.error, { preserveUnauthorizedMessage: true })
+      : null);
   const sessionMessage =
     successMessage ??
     (reason === "session-expired" ? "Your session expired for security. Please sign in again." : null);
