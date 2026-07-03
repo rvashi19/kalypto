@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     xai_base_url: str = Field(default="https://api.x.ai/v1", alias="XAI_BASE_URL")
     upload_dir: str = Field(default="/tmp/kalypto_uploads", alias="UPLOAD_DIR")
     compliance_scraper_provider: str = Field(default="http", alias="COMPLIANCE_SCRAPER_PROVIDER")
+    # When COMPLIANCE_SCRAPER_PROVIDER=scrapling, render JavaScript via Scrapling's
+    # DynamicFetcher (Playwright/Chromium). Off by default — requires a browser and
+    # is too heavy for the free tier. Stealth/anti-bot features are never used.
+    compliance_scrapling_render_js: bool = Field(
+        default=False, alias="COMPLIANCE_SCRAPLING_RENDER_JS"
+    )
     compliance_allow_private_scrape: bool = Field(
         default=False,
         alias="COMPLIANCE_ALLOW_PRIVATE_SCRAPE",

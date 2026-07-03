@@ -158,3 +158,33 @@ def test_pdf_to_readable_document_extracts_official_source_text() -> None:
     assert document.title == "import-notice.pdf"
     assert "Official import notice" in document.markdown
     assert "labeling requirements" in document.markdown
+
+
+# ── Scrapling optional provider (stealth-disabled) ───────────────────────────
+
+def test_get_compliance_scraper_selects_scrapling(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "compliance_scraper_provider", "scrapling")
+    scraper = compliance_scraper.get_compliance_scraper()
+    assert isinstance(scraper, compliance_scraper.ScraplingComplianceScraper)
+
+
+def test_scrapling_rejects_offwhitelist_before_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Whitelist is enforced before Scrapling is even imported.
+    monkeypatch.setattr(
+        compliance_scraper, "validate_public_source_url", lambda u, *, allow_private: None
+    )
+    scraper = compliance_scraper.ScraplingComplianceScraper()
+    with pytest.raises(ComplianceScraperError, match="non-whitelisted"):
+        scraper.scrape("https://random-blog.com/x", allowed_domains=[])
+
+
+def test_scrapling_reports_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    # With a whitelisted URL but Scrapling not installed, a clear install hint is raised.
+    monkeypatch.setattr(
+        compliance_scraper, "validate_public_source_url", lambda u, *, allow_private: None
+    )
+    scraper = compliance_scraper.ScraplingComplianceScraper()
+    with pytest.raises(ComplianceScraperError, match="not installed"):
+        scraper.scrape("https://www.cbsa-asfc.gc.ca/import", allowed_domains=[])
