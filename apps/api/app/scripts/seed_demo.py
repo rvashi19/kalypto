@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
-from app.models import Buyer, Membership, MembershipRole, Organization, Product, User
+from app.models import Buyer, Membership, MembershipRole, Organization, Product, User, UserStatus
 from app.schemas.compliance import ComplianceRequirementInput
 from app.services.compliance_store import get_compliance_knowledge_store
 
@@ -306,6 +306,8 @@ def main() -> None:
             email="demo@example.com",
             password_hash=hash_password("DemoPassword123!"),
             full_name="Demo Owner",
+            email_verified_at=datetime.now(UTC),
+            status=UserStatus.ACTIVE,
         )
         session.add_all([organization, user])
         session.flush()

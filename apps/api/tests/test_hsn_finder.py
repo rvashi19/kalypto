@@ -4,10 +4,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from auth_helpers import authenticated_client
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from app.main import app
 from app.models import HsnClassificationQuery, HsnCode, Membership, MembershipRole
 from app.services.hsn_import import import_hsn_snapshot
 from app.services.hsn_normalization import (
@@ -246,24 +246,17 @@ def test_search_does_not_depend_on_rate_table(session):
 # ── endpoint / auth tests ──────────────────────────────────────────────────────
 
 
-def _admin_client() -> tuple[TestClient, dict[str, str], str]:
-    client = TestClient(app)
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "hsnadmin@example.com",
-            "password": "StrongPassword123!",
-            "organization_name": "HSN Admin Org",
-            "full_name": "HSN Admin",
-        },
+def _admin_client(session) -> tuple[TestClient, dict[str, str], str]:
+    return authenticated_client(
+        session,
+        email="hsnadmin@example.com",
+        organization_name="HSN Admin Org",
+        full_name="HSN Admin",
     )
-    assert response.status_code == 201
-    token = response.json()["access_token"]
-    return client, {"Authorization": f"Bearer {token}"}, token
 
 
 def test_admin_only_import_endpoint(session):
-    client, headers, _ = _admin_client()
+    client, headers, _ = _admin_client(session)
     files = {"file": ("hsn_sample.csv", SAMPLE_CSV.read_bytes(), "text/csv")}
     data = {"source_name": "DGFT ITC(HS) sample", "source_version": "itchs-2022", "import_type": "csv"}
 
@@ -286,7 +279,7 @@ def test_admin_only_import_endpoint(session):
 
 
 def test_search_endpoint_and_query_logged(session):
-    client, headers, _ = _admin_client()
+    client, headers, _ = _admin_client(session)
     files = {"file": ("hsn_sample.csv", SAMPLE_CSV.read_bytes(), "text/csv")}
     data = {"source_name": "DGFT ITC(HS) sample", "source_version": "itchs-2022", "import_type": "csv"}
     client.post("/api/v1/hsn/import", headers=headers, files=files, data=data)
@@ -300,7 +293,7 @@ def test_search_endpoint_and_query_logged(session):
 
 
 def test_detail_endpoint_incentive_decoupled(session):
-    client, headers, _ = _admin_client()
+    client, headers, _ = _admin_client(session)
     files = {"file": ("hsn_sample.csv", SAMPLE_CSV.read_bytes(), "text/csv")}
     data = {"source_name": "DGFT ITC(HS) sample", "source_version": "itchs-2022", "import_type": "csv"}
     client.post("/api/v1/hsn/import", headers=headers, files=files, data=data)
@@ -317,8 +310,8 @@ def test_detail_endpoint_incentive_decoupled(session):
     assert "does not mean the HSN does not exist" in missing.json()["detail"]
 
 
-def test_verification_request_creation():
-    client, headers, _ = _admin_client()
+def test_verification_request_creation(session):
+    client, headers, _ = _admin_client(session)
     response = client.post(
         "/api/v1/hsn/verify",
         headers=headers,

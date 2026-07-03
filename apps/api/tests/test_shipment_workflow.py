@@ -1,26 +1,19 @@
+from auth_helpers import authenticated_client
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def _authenticated_client() -> tuple[TestClient, dict[str, str]]:
-    client = TestClient(app)
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "workflow@example.com",
-            "password": "StrongPassword123!",
-            "organization_name": "Workflow Exports",
-            "full_name": "Workflow Owner",
-        },
+def _authenticated_client(session) -> tuple[TestClient, dict[str, str]]:
+    client, headers, _ = authenticated_client(
+        session,
+        email="workflow@example.com",
+        organization_name="Workflow Exports",
+        full_name="Workflow Owner",
     )
-    assert response.status_code == 201
-    token = response.json()["access_token"]
-    return client, {"Authorization": f"Bearer {token}"}
+    return client, headers
 
 
-def test_shipment_create_generate_and_download_workflow() -> None:
-    client, headers = _authenticated_client()
+def test_shipment_create_generate_and_download_workflow(session) -> None:
+    client, headers = _authenticated_client(session)
     created = client.post(
         "/api/v1/shipments",
         headers=headers,
@@ -68,8 +61,8 @@ def test_shipment_create_generate_and_download_workflow() -> None:
     assert dashboard.json()["total"] == len(reconciled.json()["discrepancies"])
 
 
-def test_csv_import_reports_invalid_rows_without_losing_valid_rows() -> None:
-    client, headers = _authenticated_client()
+def test_csv_import_reports_invalid_rows_without_losing_valid_rows(session) -> None:
+    client, headers = _authenticated_client(session)
     csv_content = (
         "exporter_name,product_name,hsn_code,destination_country,buyer_country,"
         "incoterm,payment_term,shipment_mode,shipment_stage,invoice_currency\n"
@@ -88,8 +81,8 @@ def test_csv_import_reports_invalid_rows_without_losing_valid_rows() -> None:
     assert response.json()["failed"] == 1
 
 
-def test_operator_rate_import_drives_hsn_lookup() -> None:
-    client, headers = _authenticated_client()
+def test_operator_rate_import_drives_hsn_lookup(session) -> None:
+    client, headers = _authenticated_client(session)
     csv_content = (
         "scheme,hsn,rate,source,effective_date,version_stamp,confidence,review_status\n"
         "RoDTEP,0902,1.25,Operator notification,2026-01-01T00:00:00Z,v1,verified,approved\n"

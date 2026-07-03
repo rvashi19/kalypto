@@ -1,9 +1,21 @@
 export type MembershipRole = "owner" | "staff" | "read_only";
+export type UserRole = "user" | "admin";
+export type UserStatus = "pending_verification" | "active" | "disabled";
+export type AuthProviderPrimary = "password" | "google" | "mixed";
+export type AuthOtpPurpose = "email_verification" | "password_reset" | "login_otp";
 
 export interface UserSummary {
   id: string;
   email: string;
   full_name: string | null;
+  company_name?: string | null;
+  country?: string | null;
+  avatar_url?: string | null;
+  role?: UserRole;
+  status?: UserStatus;
+  auth_provider_primary?: AuthProviderPrimary;
+  email_verified_at?: string | null;
+  two_factor_enabled?: boolean;
 }
 
 export interface OrganizationSummary {
@@ -21,9 +33,27 @@ export interface AuthResponse {
   access_token: string;
   token_type: "bearer";
   expires_at: string;
+  refresh_expires_at?: string | null;
   user: UserSummary;
   organization: OrganizationSummary;
   membership: MembershipSummary;
+}
+
+export interface RegisterResponse {
+  message: string;
+  email: string;
+  verification_required: boolean;
+  access_token?: string | null;
+  token_type?: "bearer";
+  expires_at?: string | null;
+  refresh_expires_at?: string | null;
+  user?: UserSummary | null;
+  organization?: OrganizationSummary | null;
+  membership?: MembershipSummary | null;
+}
+
+export interface AuthMessageResponse {
+  message: string;
 }
 
 export interface CurrentUserResponse {

@@ -4,9 +4,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from auth_helpers import authenticated_client
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.models import IncentiveRate, Organization
 from app.services.export_quote_calc import QuoteInputs, ResolvedIncentive, calculate_quote
 
@@ -103,14 +103,14 @@ def test_incoterm_invoice_basis():
 # ── endpoints ──────────────────────────────────────────────────────────────────
 
 
-def _client() -> tuple[TestClient, dict[str, str]]:
-    client = TestClient(app)
-    r = client.post(
-        "/api/v1/auth/register",
-        json={"email": "eq@example.com", "password": "StrongPassword123!", "organization_name": "EQ Org", "full_name": "EQ"},
+def _client(session, email: str = "eq@example.com") -> tuple[TestClient, dict[str, str]]:
+    client, headers, _ = authenticated_client(
+        session,
+        email=email,
+        organization_name="EQ Org",
+        full_name="EQ",
     )
-    assert r.status_code == 201
-    return client, {"Authorization": f"Bearer {r.json()['access_token']}"}
+    return client, headers
 
 
 def _payload(**overrides):
@@ -121,8 +121,8 @@ def _payload(**overrides):
     }
 
 
-def test_calculate_endpoint_normalizes_hsn_and_computes():
-    client, headers = _client()
+def test_calculate_endpoint_normalizes_hsn_and_computes(session):
+    client, headers = _client(session)
     r = client.post("/api/v1/calculators/export-quote/calculate", headers=headers, json=_payload())
     assert r.status_code == 200, r.text
     body = r.json()
@@ -133,7 +133,7 @@ def test_calculate_endpoint_normalizes_hsn_and_computes():
 
 
 def test_calculate_uses_approved_incentives(session):
-    client, headers = _client()
+    client, headers = _client(session)
     org = session.scalars(select_org()).first()
     session.add(
         IncentiveRate(
@@ -149,8 +149,8 @@ def test_calculate_uses_approved_incentives(session):
     assert body["incentive_breakdown"][0]["source"] == "approved_source_backed"
 
 
-def test_save_get_list_duplicate_flow():
-    client, headers = _client()
+def test_save_get_list_duplicate_flow(session):
+    client, headers = _client(session)
     saved = client.post("/api/v1/calculators/export-quote/save", headers=headers, json=_payload(buyer_name="Al Maya"))
     assert saved.status_code == 201, saved.text
     quote_id = saved.json()["id"]
@@ -169,23 +169,18 @@ def test_save_get_list_duplicate_flow():
     assert dup.json()["status"] == "draft"
 
 
-def test_tenant_scoping_hides_other_quotes():
-    client_a, headers_a = _client()
+def test_tenant_scoping_hides_other_quotes(session):
+    client_a, headers_a = _client(session, "eqa@example.com")
     saved = client_a.post("/api/v1/calculators/export-quote/save", headers=headers_a, json=_payload())
     quote_id = saved.json()["id"]
 
-    client_b = TestClient(app)
-    rb = client_b.post(
-        "/api/v1/auth/register",
-        json={"email": "eqb@example.com", "password": "StrongPassword123!", "organization_name": "EQ Org B", "full_name": "B"},
-    )
-    headers_b = {"Authorization": f"Bearer {rb.json()['access_token']}"}
+    client_b, headers_b = _client(session, "eqb@example.com")
     blocked = client_b.get(f"/api/v1/calculators/export-quote/{quote_id}", headers=headers_b)
     assert blocked.status_code == 404
 
 
-def test_invalid_quantity_endpoint():
-    client, headers = _client()
+def test_invalid_quantity_endpoint(session):
+    client, headers = _client(session)
     r = client.post("/api/v1/calculators/export-quote/calculate", headers=headers, json=_payload(quantity=0))
     assert r.status_code == 422
 

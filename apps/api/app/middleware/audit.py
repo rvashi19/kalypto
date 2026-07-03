@@ -27,9 +27,11 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 
         actor_user_id = None
         tenant_id = None
+        token = request.cookies.get(settings.auth_cookie_name)
         authorization = request.headers.get("Authorization")
-        if authorization and authorization.lower().startswith("bearer "):
+        if token is None and authorization and authorization.lower().startswith("bearer "):
             token = authorization.removeprefix("Bearer ").removeprefix("bearer ").strip()
+        if token:
             try:
                 payload = decode_access_token(token)
                 actor_user_id = payload.sub

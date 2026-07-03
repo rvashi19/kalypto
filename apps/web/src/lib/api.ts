@@ -1,4 +1,6 @@
 import type {
+  AuthMessageResponse,
+  AuthOtpPurpose,
   AuthResponse,
   ComplianceCheckerRequest,
   ComplianceCheckerResponse,
@@ -56,10 +58,12 @@ import type {
   ReconciliationResponse,
   RateImportResponse,
   RateRecordResponse,
+  RegisterResponse,
   ShipmentResponse,
   SourceChangeReviewRequest,
   VerificationReport,
 } from "@repo/shared";
+import { COOKIE_SESSION_TOKEN } from "./auth-context";
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
@@ -97,6 +101,14 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+
+function authHeaders(token?: string): HeadersInit {
+  if (!token || token === COOKIE_SESSION_TOKEN) {
+    return {};
+  }
+
+  return { Authorization: `Bearer ${token}` };
+}
 
 export class ApiError extends Error {
   status: number;
@@ -144,32 +156,92 @@ export function userMessageForError(error: unknown) {
 export interface RegisterPayload {
   email: string;
   password: string;
-  organization_name: string;
+  full_name: string;
+  organization_name?: string;
   organization_slug?: string;
-  full_name?: string;
+  company_name?: string;
+  country?: string;
 }
 
 export interface LoginPayload {
   email: string;
   password: string;
   organization_id?: string;
+  otp_code?: string;
 }
 
-async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers
-      }
-    });
-  } catch {
-    throw new Error(
-      "Could not reach the KALYPTO API. If this is the live site, wait for the Render deploy to finish or recheck the API URL."
-    );
+export interface VerifyOtpPayload {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
+  purpose: AuthOtpPurpose;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+
+let refreshPromise: Promise<AuthResponse> | null = null;
+
+function canRefreshAfterUnauthorized(path: string) {
+  const authPathsWithoutRefresh = [
+    "/auth/register",
+    "/auth/verify-email-otp",
+    "/auth/resend-otp",
+    "/auth/login",
+    "/auth/oauth/google",
+    "/auth/refresh",
+    "/auth/logout",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ];
+  return !authPathsWithoutRefresh.includes(path);
+}
+
+async function refreshSessionCookie() {
+  if (!refreshPromise) {
+    refreshPromise = request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string,
+  retryOnUnauthorized = true
+): Promise<T> {
+  const doFetch = async () => {
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(token),
+          ...options.headers
+        },
+        credentials: "include"
+      });
+    } catch {
+      throw new Error(
+        "Could not reach the KALYPTO API. If this is the live site, wait for the Render deploy to finish or recheck the API URL."
+      );
+    }
+  };
+
+  let response = await doFetch();
+
+  if (response.status === 401 && retryOnUnauthorized && canRefreshAfterUnauthorized(path)) {
+    await refreshSessionCookie().catch(() => null);
+    response = await doFetch();
   }
 
   if (!response.ok) {
@@ -184,16 +256,57 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
 export const api = {
   register: (payload: RegisterPayload) =>
-    request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+    request<RegisterResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+
+  verifyEmailOtp: (payload: VerifyOtpPayload) =>
+    request<AuthResponse>("/auth/verify-email-otp", { method: "POST", body: JSON.stringify(payload) }),
+
+  resendOtp: (payload: ResendOtpPayload) =>
+    request<AuthMessageResponse>("/auth/resend-otp", { method: "POST", body: JSON.stringify(payload) }),
 
   login: (payload: LoginPayload) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
-  logout: (token: string) =>
+  loginWithGoogle: (id_token: string) =>
+    request<AuthResponse>("/auth/oauth/google", { method: "POST", body: JSON.stringify({ id_token }) }),
+
+  refresh: () =>
+    request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false),
+
+  logout: (token?: string) =>
     request<{ success: boolean }>("/auth/logout", { method: "POST" }, token),
 
-  me: (token: string) =>
+  forgotPassword: (email: string) =>
+    request<AuthMessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (payload: ResetPasswordPayload) =>
+    request<AuthMessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  me: (token?: string) =>
     request<CurrentUserResponse>("/auth/me", {}, token),
+
+  setupTwoFactor: (token?: string) =>
+    request<{ secret: string; otpauth_uri: string }>("/auth/2fa/setup", {}, token),
+
+  enableTwoFactor: (otp_code: string, token?: string) =>
+    request<CurrentUserResponse>(
+      "/auth/2fa/enable",
+      { method: "POST", body: JSON.stringify({ otp_code }) },
+      token
+    ),
+
+  disableTwoFactor: (otp_code: string, token?: string) =>
+    request<CurrentUserResponse>(
+      "/auth/2fa/disable",
+      { method: "POST", body: JSON.stringify({ otp_code }) },
+      token
+    ),
 
   dashboardOverview: (token: string) =>
     request<DashboardOverview>("/dashboard/overview", {}, token),
@@ -327,8 +440,9 @@ export const api = {
     form.append("file", file);
     const response = await fetch(`${API_BASE_URL}/rates/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
+      headers: authHeaders(token),
+      body: form,
+      credentials: "include"
     });
     const body = await response.json().catch(() => ({ detail: "Rate import failed." }));
     if (!response.ok) {
@@ -350,8 +464,9 @@ export const api = {
     form.append("file", file);
     const response = await fetch(`${API_BASE_URL}/shipments/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form
+      headers: authHeaders(token),
+      body: form,
+      credentials: "include"
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) {
@@ -366,7 +481,8 @@ export const api = {
   deleteShipment: async (id: string, token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/shipments/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -381,7 +497,7 @@ export const api = {
     form.append("file", file);
     const response = await fetch(
       `${API_BASE_URL}/shipments/${shipmentId}/documents?document_type=${documentType}`,
-      { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
+      { method: "POST", headers: authHeaders(token), body: form, credentials: "include" }
     );
     if (!response.ok) {
       const body = await response.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
@@ -405,7 +521,7 @@ export const api = {
   ): Promise<void> => {
     const response = await fetch(
       `${API_BASE_URL}/shipments/${shipmentId}/documents/${documentId}/download`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: authHeaders(token), credentials: "include" }
     );
     if (!response.ok) {
       throw new Error("Document download failed.");
@@ -562,8 +678,9 @@ export const api = {
     });
     const response = await fetch(`${API_BASE_URL}/incentives/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
@@ -582,8 +699,9 @@ export const api = {
     });
     const response = await fetch(`${API_BASE_URL}/incentives/import`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Import failed.");
@@ -614,8 +732,9 @@ export const api = {
   ): Promise<{ blob: Blob; packId: string | null; filename: string }> => {
     const response = await fetch(`${API_BASE_URL}/documents/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify({ data, document_types: documentTypes, save_pack: savePack }),
+      credentials: "include",
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ detail: "Generation failed." })) as { detail?: unknown };
@@ -651,7 +770,8 @@ export const api = {
 
   downloadDocumentPack: async (packId: string, token: string): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/documents/packs/${packId}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
     if (!response.ok) throw new Error("Download failed.");
     const blob = await response.blob();
@@ -669,7 +789,8 @@ export const api = {
   archiveDocumentPack: async (packId: string, token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/documents/packs/${packId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -680,8 +801,9 @@ export const api = {
     form.append("file", file);
     const resp = await fetch(`${API_BASE_URL}/documents/logo`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
@@ -694,7 +816,8 @@ export const api = {
   deleteLogo: async (token: string): Promise<void> => {
     await fetch(`${API_BASE_URL}/documents/logo`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
+      credentials: "include",
     });
   },
 
@@ -714,8 +837,9 @@ export const api = {
     if (sheetName) form.append("sheet_name", sheetName);
     const response = await fetch(`${API_BASE_URL}/documents/import/upload`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: form,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Upload failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Upload failed.");
@@ -740,8 +864,9 @@ export const api = {
     if (sheetName) fd.append("sheet_name", sheetName);
     const response = await fetch(`${API_BASE_URL}/documents/import/extract`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
       body: fd,
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Extraction failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Extraction failed.");

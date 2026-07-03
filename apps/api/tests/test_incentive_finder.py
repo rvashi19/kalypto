@@ -5,10 +5,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from auth_helpers import authenticated_client
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from app.main import app
 from app.models import (
     HsnCode,
     IncentiveRate,
@@ -157,23 +157,18 @@ def test_reimport_identical_keeps_approved(session):
 # ── endpoint tests ─────────────────────────────────────────────────────────────
 
 
-def _admin_client() -> tuple[TestClient, dict[str, str]]:
-    client = TestClient(app)
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "incadmin@example.com",
-            "password": "StrongPassword123!",
-            "organization_name": "Incentive Admin Org",
-            "full_name": "Inc Admin",
-        },
+def _admin_client(session) -> tuple[TestClient, dict[str, str]]:
+    client, headers, _ = authenticated_client(
+        session,
+        email="incadmin@example.com",
+        organization_name="Incentive Admin Org",
+        full_name="Inc Admin",
     )
-    assert response.status_code == 201
-    return client, {"Authorization": f"Bearer {response.json()['access_token']}"}
+    return client, headers
 
 
 def test_search_endpoint_hsn_exists_no_rate_message(session):
-    client, headers = _admin_client()
+    client, headers = _admin_client(session)
     session.add(
         HsnCode(
             code="09103030",
@@ -196,7 +191,7 @@ def test_search_endpoint_hsn_exists_no_rate_message(session):
 
 
 def test_admin_only_import_endpoint(session):
-    client, headers = _admin_client()
+    client, headers = _admin_client(session)
     files = {"file": ("incentive_sample.csv", SAMPLE.read_bytes(), "text/csv")}
     data = {"source_name": "sample", "import_type": "csv"}
     ok = client.post("/api/v1/incentives/import", headers=headers, files=files, data=data)
@@ -216,7 +211,7 @@ def test_admin_only_import_endpoint(session):
 
 
 def test_detail_and_approve_flow(session):
-    client, headers = _admin_client()
+    client, headers = _admin_client(session)
     files = {"file": ("incentive_sample.csv", SAMPLE.read_bytes(), "text/csv")}
     client.post(
         "/api/v1/incentives/import",
@@ -239,8 +234,8 @@ def test_detail_and_approve_flow(session):
     assert approved.json()["approval_status"] == "approved"
 
 
-def test_legacy_shipments_hsn_rates_still_works():
-    client, headers = _admin_client()
+def test_legacy_shipments_hsn_rates_still_works(session):
+    client, headers = _admin_client(session)
     response = client.get("/api/v1/shipments/hsn-rates", headers=headers, params={"hsn": "12119030"})
     assert response.status_code == 200
     assert "found" in response.json()
