@@ -35,6 +35,7 @@ def _purpose_body(*, otp_code: str, purpose: AuthOtpPurpose) -> str:
 def send_auth_otp_email(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -> None:
     settings = get_settings()
     has_smtp = bool(settings.smtp_host and settings.smtp_from_email)
+    recipient_domain = email.rsplit("@", 1)[-1] if "@" in email else "unknown"
 
     if not has_smtp:
         if settings.environment.lower() == "production":
@@ -59,5 +60,15 @@ def send_auth_otp_email(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -
             if settings.smtp_username and settings.smtp_password:
                 smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.send_message(message)
-    except OSError as error:
+    except (OSError, smtplib.SMTPException) as error:
+        logger.exception(
+            "SMTP auth email delivery failed: host=%s port=%s from=%s recipient_domain=%s purpose=%s error_type=%s error=%s",
+            settings.smtp_host,
+            settings.smtp_port,
+            settings.smtp_from_email,
+            recipient_domain,
+            purpose.value,
+            type(error).__name__,
+            error,
+        )
         raise EmailDeliveryError("Email delivery failed.") from error
