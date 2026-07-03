@@ -91,19 +91,24 @@ function deriveVercelApiBaseUrl() {
     return null;
   }
 
-  const { hostname } = window.location;
+  const { hostname, origin } = window.location;
   if (!hostname.endsWith(".vercel.app")) {
     return null;
   }
 
   if (hostname === "exportpilotai.vercel.app" || hostname.startsWith("exportpilotai-")) {
-    return "https://exportpilotai-api.onrender.com/api/v1";
+    return `${origin}/api/v1`;
   }
 
   return null;
 }
 
 function resolveApiBaseUrl() {
+  const vercelDerived = deriveVercelApiBaseUrl();
+  if (vercelDerived) {
+    return normalizeBaseUrl(vercelDerived);
+  }
+
   const configured = import.meta.env.VITE_API_BASE_URL;
   if (configured && !configured.includes("example.com")) {
     return normalizeBaseUrl(configured);
@@ -112,11 +117,6 @@ function resolveApiBaseUrl() {
   const derived = deriveRenderApiBaseUrl();
   if (derived) {
     return normalizeBaseUrl(derived);
-  }
-
-  const vercelDerived = deriveVercelApiBaseUrl();
-  if (vercelDerived) {
-    return normalizeBaseUrl(vercelDerived);
   }
 
   return "http://localhost:8000/api/v1";
