@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "0016_full_auth_system"
 down_revision = "0015_auth_hardening"
@@ -17,16 +18,29 @@ branch_labels = None
 depends_on = None
 
 
-USER_ROLE = sa.Enum("USER", "ADMIN", name="userrole")
-USER_STATUS = sa.Enum("PENDING_VERIFICATION", "ACTIVE", "DISABLED", name="userstatus")
-AUTH_PROVIDER_PRIMARY = sa.Enum("PASSWORD", "GOOGLE", "MIXED", name="authproviderprimary")
-AUTH_OTP_PURPOSE = sa.Enum(
+USER_ROLE = postgresql.ENUM("USER", "ADMIN", name="userrole", create_type=False)
+USER_STATUS = postgresql.ENUM(
+    "PENDING_VERIFICATION",
+    "ACTIVE",
+    "DISABLED",
+    name="userstatus",
+    create_type=False,
+)
+AUTH_PROVIDER_PRIMARY = postgresql.ENUM(
+    "PASSWORD",
+    "GOOGLE",
+    "MIXED",
+    name="authproviderprimary",
+    create_type=False,
+)
+AUTH_OTP_PURPOSE = postgresql.ENUM(
     "EMAIL_VERIFICATION",
     "PASSWORD_RESET",
     "LOGIN_OTP",
     name="authotppurpose",
+    create_type=False,
 )
-OAUTH_PROVIDER = sa.Enum("GOOGLE", name="oauthprovider")
+OAUTH_PROVIDER = postgresql.ENUM("GOOGLE", name="oauthprovider", create_type=False)
 
 
 def _create_enums(bind: sa.Connection) -> None:
