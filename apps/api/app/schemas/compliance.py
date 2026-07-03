@@ -346,6 +346,8 @@ class RetrievalJobResponse(BaseModel):
     pages_fetched: int
     snapshots_created: int
     requirements_extracted: int
+    retry_count: int
+    max_retries: int
     source_registry_ids: list[str]
     error_message: str | None
     started_at: datetime | None

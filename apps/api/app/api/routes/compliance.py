@@ -1,13 +1,14 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, OptionalCurrentUser
 from app.core.settings import get_settings
 from app.models import (
     ComplianceCheckSession,
@@ -74,6 +75,31 @@ def require_admin(current_user: CurrentUser) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only organisation owners can review compliance requirements or sources.",
         )
+
+
+def require_admin_or_cron(
+    current_user: CurrentUser | None,
+    cron_token: str | None,
+    tenant_id: UUID | None,
+) -> UUID:
+    settings = get_settings()
+    expected = settings.admin_cron_token
+    if expected and cron_token and secrets.compare_digest(cron_token, expected):
+        if current_user is None:
+            if tenant_id is not None:
+                return tenant_id
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="tenant_id is required when using ADMIN_CRON_TOKEN.",
+            )
+        return current_user.organization.id
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin authentication or ADMIN_CRON_TOKEN is required.",
+        )
+    require_admin(current_user)
+    return current_user.organization.id
 
 
 @router.get("/options", response_model=ComplianceOptionsResponse)
@@ -378,6 +404,8 @@ def _retrieval_job_response(job: ComplianceRetrievalJob) -> RetrievalJobResponse
         pages_fetched=job.pages_fetched,
         snapshots_created=job.snapshots_created,
         requirements_extracted=job.requirements_extracted,
+        retry_count=job.retry_count,
+        max_retries=job.max_retries,
         source_registry_ids=list(job.source_registry_ids_json or []),
         error_message=job.error_message,
         started_at=job.started_at,
@@ -487,6 +515,7 @@ def create_retrieval_job(
         hsn_code=payload.hsn_code,
         product_description=payload.product_description,
         status="queued",
+        max_retries=max(0, get_settings().compliance_max_retries),
     )
     session.add(job)
     session.commit()
@@ -705,15 +734,17 @@ def seed_sources(
 @router.post("/refresh-due")
 def refresh_due(
     session: DbSession,
-    current_user: CurrentUser,
+    current_user: OptionalCurrentUser,
+    x_admin_cron_token: str | None = Header(default=None, alias="X-Admin-Cron-Token"),
+    tenant_id: UUID | None = None,
     limit: int = 25,
 ) -> dict:
     """Re-crawl all due official sources for this org (admin / scheduler entrypoint)."""
-    require_admin(current_user)
+    tenant_id = require_admin_or_cron(current_user, x_admin_cron_token, tenant_id)
     from app.services.compliance_refresh import refresh_due_sources
 
     result = refresh_due_sources(
-        session, tenant_id=current_user.organization.id, limit=max(1, min(limit, 100))
+        session, tenant_id=tenant_id, limit=max(1, min(limit, 100))
     )
     session.commit()
     return result
@@ -738,6 +769,7 @@ def refresh_source(
         product_category=category,
         status="queued",
         source_registry_ids_json=[str(source.id)],
+        max_retries=max(0, get_settings().compliance_max_retries),
     )
     session.add(job)
     session.commit()

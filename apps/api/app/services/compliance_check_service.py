@@ -14,6 +14,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.settings import get_settings
 from app.models import ComplianceCheckSession, ComplianceRetrievalJob
 from app.schemas.compliance import (
     ComplianceCheckRequest,
@@ -144,6 +145,7 @@ class ComplianceCheckService:
                     hsn_code=payload.hsn_code,
                     product_description=payload.product_description,
                     status="queued",
+                    max_retries=max(0, get_settings().compliance_max_retries),
                 )
                 self.session.add(job)
                 self.session.flush()

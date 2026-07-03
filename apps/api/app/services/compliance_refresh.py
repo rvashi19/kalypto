@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.settings import get_settings
 from app.models import ComplianceRetrievalJob, ComplianceSourceRegistry
 from app.services.compliance_retrieval_job import run_retrieval_job
 
@@ -62,6 +63,7 @@ def refresh_due_sources(session: Session, *, tenant_id: UUID, limit: int = 25) -
             destination_country=country,
             product_category=category,
             status="queued",
+            max_retries=max(0, get_settings().compliance_max_retries),
         )
         session.add(job)
         session.flush()

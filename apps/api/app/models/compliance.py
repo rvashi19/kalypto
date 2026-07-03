@@ -213,6 +213,8 @@ class ComplianceRetrievalJob(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantSc
     pages_fetched: Mapped[int] = mapped_column(default=0, nullable=False)
     snapshots_created: Mapped[int] = mapped_column(default=0, nullable=False)
     requirements_extracted: Mapped[int] = mapped_column(default=0, nullable=False)
+    retry_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    max_retries: Mapped[int] = mapped_column(default=3, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -240,7 +240,10 @@ class HttpComplianceScraper:
                 },
             )
             try:
-                with self._opener.open(request, timeout=30) as response:  # noqa: S310
+                with self._opener.open(
+                    request,
+                    timeout=max(1, self.settings.compliance_fetch_timeout_seconds),
+                ) as response:  # noqa: S310
                     content_type = response.headers.get("Content-Type", "")
                     raw = response.read(MAX_SOURCE_BYTES + 1)
                     final_url = current
@@ -318,7 +321,10 @@ class FirecrawlComplianceScraper:
             },
         )
         try:
-            with urlopen(request, timeout=90) as response:  # noqa: S310
+            with urlopen(
+                request,
+                timeout=max(1, self.settings.compliance_fetch_timeout_seconds),
+            ) as response:  # noqa: S310
                 raw = response.read().decode("utf-8")
         except (HTTPError, URLError) as error:
             raise ComplianceScraperError(f"Firecrawl request failed: {error}") from error
@@ -378,7 +384,10 @@ class ScraplingComplianceScraper:
             ) from error
 
         try:
-            page = _Fetcher.get(source_url, timeout=30)
+            page = _Fetcher.get(
+                source_url,
+                timeout=max(1, self.settings.compliance_fetch_timeout_seconds),
+            )
         except Exception as error:  # scrapling raises varied fetch errors
             raise ComplianceScraperError(f"Scrapling fetch failed: {error}") from error
 

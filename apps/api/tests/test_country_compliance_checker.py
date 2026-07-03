@@ -149,7 +149,10 @@ def test_approved_local_requirement_matches(session) -> None:
     assert resp.retrieval_job_id is None
 
 
-def test_no_local_match_creates_retrieval_job(session) -> None:
+def test_no_local_match_creates_retrieval_job(session, monkeypatch) -> None:
+    from app.core.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "compliance_max_retries", 2)
     org, user, _ = _tenant(session)
     resp = ComplianceCheckService(session).check(
         payload=_check_payload(), tenant_id=org.id, user_id=user.id
@@ -158,6 +161,8 @@ def test_no_local_match_creates_retrieval_job(session) -> None:
     assert resp.retrieval_job_id is not None
     job = session.get(ComplianceRetrievalJob, uuid.UUID(resp.retrieval_job_id))
     assert job is not None and job.status == "queued"
+    assert job.retry_count == 0
+    assert job.max_retries == 2
 
 
 def test_no_source_found_response(session) -> None:
@@ -319,7 +324,11 @@ def test_approved_requirement_appears_in_answer_after_review(session, monkeypatc
 
 @pytest.fixture()
 def client_factory(session, monkeypatch):
-    from app.api.deps import CurrentUserContext, get_current_user_context
+    from app.api.deps import (
+        CurrentUserContext,
+        get_current_user_context,
+        get_optional_current_user_context,
+    )
     from app.core.settings import get_settings
     from app.db.session import get_db_session
     from app.main import app
@@ -334,6 +343,7 @@ def client_factory(session, monkeypatch):
         ctx = CurrentUserContext(user=user, organization=org, membership=membership, token=None)  # type: ignore[arg-type]
         app.dependency_overrides[get_db_session] = lambda: session
         app.dependency_overrides[get_current_user_context] = lambda: ctx
+        app.dependency_overrides[get_optional_current_user_context] = lambda: ctx
         return TestClient(app), org, user
 
     yield make
@@ -485,3 +495,37 @@ def test_seed_endpoint_owner_seeds(client_factory) -> None:
     resp = client.post("/api/v1/compliance/sources/seed")
     assert resp.status_code == 200
     assert resp.json()["created"] == len(OFFICIAL_SOURCES)
+
+
+def test_refresh_due_endpoint_requires_admin_or_cron_token(client_factory) -> None:
+    client, _, _ = client_factory(MembershipRole.STAFF)
+    resp = client.post("/api/v1/compliance/refresh-due")
+    assert resp.status_code == 403
+
+
+def test_refresh_due_endpoint_accepts_cron_token(session, monkeypatch) -> None:
+    from app.api.deps import (
+        get_current_user_context,
+        get_db_session,
+        get_optional_current_user_context,
+    )
+    from app.core.settings import get_settings
+    from app.main import app
+
+    org, _, _ = _tenant(session)
+    session.commit()
+    monkeypatch.setattr(get_settings(), "admin_cron_token", "test-cron-token")
+    monkeypatch.setattr(get_settings(), "audit_logging_enabled", False)
+    app.dependency_overrides[get_db_session] = lambda: session
+    app.dependency_overrides[get_optional_current_user_context] = lambda: None
+    app.dependency_overrides.pop(get_current_user_context, None)
+    try:
+        client = TestClient(app)
+        resp = client.post(
+            f"/api/v1/compliance/refresh-due?tenant_id={org.id}",
+            headers={"X-Admin-Cron-Token": "test-cron-token"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert resp.json()["jobs_run"] == 0

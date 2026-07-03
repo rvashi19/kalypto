@@ -81,6 +81,26 @@ def test_http_scraper_fetches_and_normalizes_html(monkeypatch: pytest.MonkeyPatc
     assert "Commercial food imports require importer-side review" in document.markdown
 
 
+def test_http_scraper_uses_configured_fetch_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        compliance_scraper,
+        "validate_public_source_url",
+        lambda source_url, *, allow_private: None,
+    )
+    scraper = HttpComplianceScraper()
+    monkeypatch.setattr(scraper.settings, "compliance_fetch_timeout_seconds", 7)
+    seen: dict[str, int] = {}
+
+    def fake_open(request: Any, timeout: int) -> Any:
+        seen["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(scraper._opener, "open", fake_open)
+    scraper.scrape("https://example.gov/import-rules")
+
+    assert seen["timeout"] == 7
+
+
 def _redirect_error(location: str) -> Any:
     from email.message import Message
 

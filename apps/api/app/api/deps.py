@@ -83,6 +83,22 @@ def get_current_user_context(
     )
 
 
+def get_optional_current_user_context(
+    request: Request,
+    session: Annotated[Session, Depends(get_db_session)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> CurrentUserContext | None:
+    try:
+        return get_current_user_context(request, session, credentials)
+    except HTTPException as error:
+        if error.status_code == status.HTTP_401_UNAUTHORIZED:
+            return None
+        raise
+
+
 DbSession = Annotated[Session, Depends(get_db_session)]
 CurrentUser = Annotated[CurrentUserContext, Depends(get_current_user_context)]
+OptionalCurrentUser = Annotated[
+    CurrentUserContext | None, Depends(get_optional_current_user_context)
+]
 AuthProviderDep = Annotated[AuthProvider, Depends(get_auth_provider)]

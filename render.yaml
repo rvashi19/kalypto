@@ -56,6 +56,12 @@ services:
         value: "10"
       - key: COMPLIANCE_MAX_PDF_MB
         value: "15"
+      - key: COMPLIANCE_FETCH_TIMEOUT_SECONDS
+        value: "30"
+      - key: COMPLIANCE_MAX_RETRIES
+        value: "3"
+      - key: ADMIN_CRON_TOKEN
+        sync: false
       - key: COMPLIANCE_STORAGE_BACKEND
         value: local
       - key: COMPLIANCE_STORAGE_PATH
