@@ -128,15 +128,41 @@ def is_ai_configured() -> bool:
         return False
 
 
-def _chat_json(system: str, user: str) -> dict[str, Any]:
+def _extract_json_object(text: str) -> dict[str, Any]:
+    cleaned = text.strip()
+    cleaned = cleaned.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    match = re.search(r"\{[\s\S]*\}", cleaned)
+    if not match:
+        raise ComplianceAIError("AI did not return JSON.")
+    try:
+        data = json.loads(match.group())
+    except json.JSONDecodeError as error:
+        raise ComplianceAIError(f"AI returned malformed JSON: {error}") from error
+    if not isinstance(data, dict):
+        raise ComplianceAIError("AI returned JSON, but it was not an object.")
+    return data
+
+
+def _chat_text(system: str, user: str) -> str:
     name, api_key, base_url, model = _resolve_provider()
 
     if name == "groq":
-        from app.services.groq_client import GroqClientError, call_groq
+        from groq import Groq  # noqa: PLC0415
+
+        client = Groq(api_key=api_key)
         try:
-            return call_groq(system_prompt=system, user_message=user)
-        except GroqClientError as e:  # pragma: no cover - network
-            raise ComplianceAIError(str(e)) from e
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"},
+            )
+        except Exception as error:  # pragma: no cover - network
+            raise ComplianceAIError(f"AI request failed: {error}") from error
+        return (completion.choices[0].message.content or "").strip()
 
     openai_module: Any = importlib.import_module("openai")
     client = (
@@ -156,16 +182,41 @@ def _chat_json(system: str, user: str) -> dict[str, Any]:
         )
     except Exception as e:  # pragma: no cover - network
         raise ComplianceAIError(f"AI request failed: {e}") from e
+    return (completion.choices[0].message.content or "").strip()
 
-    text = (completion.choices[0].message.content or "").strip()
-    text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        raise ComplianceAIError("AI did not return JSON.")
+
+def _repair_json(*, system: str, invalid_response: str, parse_error: str) -> dict[str, Any]:
+    repair_system = (
+        "You repair malformed JSON for a compliance extraction pipeline. "
+        "Return only valid JSON. Do not add new facts or requirements."
+    )
+    repair_user = (
+        "The previous assistant response failed JSON parsing.\n"
+        f"Parse error: {parse_error}\n\n"
+        "Original system instruction/schema:\n"
+        f"{system[:6000]}\n\n"
+        "Invalid response to repair:\n"
+        f"{invalid_response[:12000]}"
+    )
+    repaired = _chat_text(repair_system, repair_user)
+    return _extract_json_object(repaired)
+
+
+def _chat_json(system: str, user: str) -> dict[str, Any]:
+    text = _chat_text(system, user)
     try:
-        return json.loads(match.group())
-    except json.JSONDecodeError as e:
-        raise ComplianceAIError(f"AI returned malformed JSON: {e}") from e
+        return _extract_json_object(text)
+    except ComplianceAIError as error:
+        try:
+            return _repair_json(
+                system=system,
+                invalid_response=text,
+                parse_error=str(error),
+            )
+        except ComplianceAIError as repair_error:
+            raise ComplianceAIError(
+                f"AI returned invalid JSON and repair failed: {repair_error}"
+            ) from repair_error
 
 
 class ComplianceAIExtractor:

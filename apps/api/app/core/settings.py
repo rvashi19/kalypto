@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     compliance_allowed_domains: str = Field(default="", alias="COMPLIANCE_ALLOWED_DOMAINS")
     compliance_max_pages_per_job: int = Field(default=10, alias="COMPLIANCE_MAX_PAGES_PER_JOB")
     compliance_max_pdf_mb: int = Field(default=15, alias="COMPLIANCE_MAX_PDF_MB")
+    compliance_fetch_timeout_seconds: int = Field(
+        default=30, alias="COMPLIANCE_FETCH_TIMEOUT_SECONDS"
+    )
+    compliance_max_retries: int = Field(default=3, alias="COMPLIANCE_MAX_RETRIES")
+    # Shared secret so an external cron (GitHub Actions) can call refresh-due without
+    # a full admin login. Compared in constant time; unset disables token auth.
+    admin_cron_token: str | None = Field(default=None, alias="ADMIN_CRON_TOKEN")
     # Storage abstraction for raw snapshots + extracted text.
     # local now; maps to S3/Cloudflare R2 in production (see services/storage.py).
     compliance_storage_backend: str = Field(default="local", alias="COMPLIANCE_STORAGE_BACKEND")
