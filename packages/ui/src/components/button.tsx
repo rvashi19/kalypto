@@ -3,18 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center justify-center gap-1.5 rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1868db] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default: "bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/20 hover:bg-cyan-200",
-        secondary: "border border-white/10 bg-slate-900 text-slate-100 hover:border-white/20 hover:bg-slate-800",
-        ghost: "bg-transparent text-slate-300 hover:bg-white/5 hover:text-slate-100",
-        danger: "border border-rose-400/20 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20",
+        default: "border border-[#1868db] bg-[#1868db] text-[#ffffff] hover:bg-[#0c5cc7]",
+        secondary: "border border-[#101214] bg-transparent text-[#101214] hover:bg-[#f0f1f2]",
+        ghost: "bg-transparent text-[#1868db] hover:bg-[#e9f2fe]",
+        danger: "border border-[#de350b] bg-[#de350b] text-white hover:bg-[#bf2600]",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
+        default: "h-11 px-5 py-2",
+        sm: "h-9 px-4 text-xs",
         lg: "h-12 px-6 text-base",
       },
     },

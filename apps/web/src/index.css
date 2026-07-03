@@ -3,13 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 47% 4%;
-  --foreground: 210 40% 98%;
-  --border: 215 25% 16%;
-  --ring: 187 92% 69%;
+  --color-atlassian-blue: #1868db;
+  --color-midnight-navy: #101214;
+  --color-carbon-edge: #292a2e;
+  --color-slate-current: #1c2b42;
+  --color-muted-indigo: #42526e;
+  --color-pure-white: #ffffff;
+  --color-fog-white: #f0f1f2;
+  --color-ash-gray: #b7b9be;
+  --color-taxicab-yellow: #fca700;
+  --color-lavender-wash: #eed7fc;
+  --color-leaf-green: #36b37e;
+  --shadow-subtle:
+    rgba(9, 30, 66, 0.31) 0 0 1px 0,
+    rgba(9, 30, 66, 0.25) 0 1px 1px 0;
+  --background: 0 0% 100%;
+  --foreground: 210 11% 7%;
+  --border: 210 6% 89%;
+  --ring: 215 80% 48%;
   font-family:
-    "Aptos",
-    "IBM Plex Sans",
+    "Inter",
     "Segoe UI",
     system-ui,
     -apple-system,
@@ -17,17 +30,14 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 30rem),
-    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.07), transparent 34rem),
-    #020617;
+  background: var(--color-pure-white);
   color: hsl(var(--foreground));
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -43,6 +53,212 @@ body {
 }
 
 ::selection {
-  background: rgba(103, 232, 249, 0.24);
-  color: #ecfeff;
+  background: rgba(24, 104, 219, 0.18);
+  color: var(--color-midnight-navy);
+}
+
+.font-display {
+  font-family:
+    "Manrope",
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.atlassian-shell {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #ffffff 42%, #f8f9fb 100%);
+  color: var(--color-midnight-navy);
+}
+
+.atlassian-container {
+  width: min(1200px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.atlassian-dark-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-midnight-navy);
+  color: var(--color-pure-white);
+  border-radius: 20px;
+}
+
+.atlassian-confetti {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.atlassian-confetti span {
+  position: absolute;
+  display: block;
+  border-radius: 2px;
+  transform: rotate(var(--tilt, 0deg));
+}
+
+.atlassian-confetti span:nth-child(1) {
+  width: 118px;
+  height: 38px;
+  left: -34px;
+  top: 34px;
+  background: #bf63f3;
+  --tilt: -14deg;
+}
+
+.atlassian-confetti span:nth-child(2) {
+  width: 78px;
+  height: 78px;
+  right: -26px;
+  top: 48px;
+  background: var(--color-taxicab-yellow);
+  --tilt: 17deg;
+}
+
+.atlassian-confetti span:nth-child(3) {
+  width: 132px;
+  height: 32px;
+  right: 76px;
+  bottom: -8px;
+  background: var(--color-atlassian-blue);
+  --tilt: -10deg;
+}
+
+.atlassian-confetti span:nth-child(4) {
+  width: 62px;
+  height: 62px;
+  left: 42px;
+  bottom: -24px;
+  background: var(--color-leaf-green);
+  --tilt: 21deg;
+}
+
+.atlassian-card {
+  border: 1px solid var(--color-fog-white);
+  border-radius: 20px;
+  background: var(--color-pure-white);
+  box-shadow: var(--shadow-subtle);
+}
+
+.atlassian-badge {
+  border-radius: 10000px;
+  background: #e9f2fe;
+  color: var(--color-atlassian-blue);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.atlassian-lavender-band {
+  background: var(--color-lavender-wash);
+  color: var(--color-midnight-navy);
+}
+
+.atlassian-link {
+  color: var(--color-atlassian-blue);
+}
+
+.atlassian-link:hover {
+  text-decoration: underline;
+}
+
+.atlassian-input {
+  border: 1px solid var(--color-ash-gray);
+  border-radius: 8px;
+  background: var(--color-pure-white);
+  color: var(--color-midnight-navy);
+}
+
+.atlassian-input:focus {
+  outline: 2px solid rgba(24, 104, 219, 0.28);
+  outline-offset: 2px;
+  border-color: var(--color-atlassian-blue);
+}
+
+/* Compatibility pass for older dark Tailwind utilities used across feature pages. */
+.atlassian-shell [class*="bg-slate-950"],
+.atlassian-shell [class*="bg-slate-900"],
+.atlassian-shell [class*="bg-slate-800"] {
+  background-color: var(--color-pure-white) !important;
+}
+
+.atlassian-shell [class*="bg-slate-700"] {
+  background-color: var(--color-fog-white) !important;
+}
+
+.atlassian-shell [class*="from-slate-900"],
+.atlassian-shell [class*="from-slate-950"] {
+  --tw-gradient-from: var(--color-pure-white) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.atlassian-shell [class*="to-slate-950"],
+.atlassian-shell [class*="to-slate-900"] {
+  --tw-gradient-to: var(--color-fog-white) var(--tw-gradient-to-position) !important;
+}
+
+.atlassian-shell [class*="border-white"],
+.atlassian-shell [class*="border-slate-800"],
+.atlassian-shell [class*="border-slate-700"],
+.atlassian-shell [class*="border-slate-600"] {
+  border-color: var(--color-fog-white) !important;
+}
+
+.atlassian-shell [class*="text-slate-50"],
+.atlassian-shell [class*="text-slate-100"],
+.atlassian-shell [class*="text-slate-200"],
+.atlassian-shell [class*="text-white"] {
+  color: var(--color-midnight-navy) !important;
+}
+
+.atlassian-shell [class*="text-slate-300"],
+.atlassian-shell [class*="text-slate-400"],
+.atlassian-shell [class*="text-slate-500"],
+.atlassian-shell [class*="text-slate-600"] {
+  color: var(--color-muted-indigo) !important;
+}
+
+.atlassian-shell [class*="text-cyan"] {
+  color: var(--color-atlassian-blue) !important;
+}
+
+.atlassian-shell [class*="bg-cyan"] {
+  background-color: #e9f2fe !important;
+}
+
+.atlassian-shell [class*="border-cyan"] {
+  border-color: #b3d4ff !important;
+}
+
+.atlassian-shell [class*="focus:ring-cyan"] {
+  --tw-ring-color: rgba(24, 104, 219, 0.28) !important;
+}
+
+.atlassian-shell textarea,
+.atlassian-shell select,
+.atlassian-shell input {
+  border-radius: 8px;
+}
+
+.atlassian-dark-panel,
+.atlassian-dark-panel [class*="bg-slate-950"],
+.atlassian-dark-panel [class*="bg-slate-900"],
+.atlassian-dark-panel [class*="bg-slate-800"] {
+  background-color: var(--color-midnight-navy) !important;
+}
+
+.atlassian-dark-panel [class*="text-white"],
+.atlassian-dark-panel [class*="text-slate-50"],
+.atlassian-dark-panel [class*="text-slate-100"],
+.atlassian-dark-panel [class*="text-slate-200"] {
+  color: var(--color-pure-white) !important;
+}
+
+.atlassian-dark-panel [class*="text-slate-300"],
+.atlassian-dark-panel [class*="text-slate-400"],
+.atlassian-dark-panel [class*="text-slate-500"] {
+  color: rgba(255, 255, 255, 0.68) !important;
 }
