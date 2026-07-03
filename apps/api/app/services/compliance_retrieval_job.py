@@ -105,7 +105,10 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
             continue
 
         try:
-            document = scraper.scrape(url)
+            # Pass the source's extra domains so the whitelist is enforced on the
+            # initial URL AND every redirect hop (empty list still enforces the
+            # builtin/env official whitelist).
+            document = scraper.scrape(url, allowed_domains=extra_domains)
         except ComplianceScraperError as exc:
             errors.append(f"{url}: {exc}")
             continue
