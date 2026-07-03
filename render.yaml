@@ -25,6 +25,8 @@ services:
         sync: false
       - key: CORS_ALLOW_ORIGIN_REGEX
         value: https://.*\.vercel\.app
+      - key: AUTH_COOKIE_SAMESITE
+        value: none
       - key: OPENAI_API_KEY
         sync: false
       - key: XAI_API_KEY
