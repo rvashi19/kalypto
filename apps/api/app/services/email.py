@@ -4,6 +4,8 @@ import logging
 import smtplib
 from email.message import EmailMessage
 
+import httpx
+
 from app.core.settings import get_settings
 from app.models import AuthOtpPurpose
 
@@ -32,12 +34,76 @@ def _purpose_body(*, otp_code: str, purpose: AuthOtpPurpose) -> str:
     )
 
 
+def _resend_api_key() -> str | None:
+    settings = get_settings()
+    if settings.resend_api_key:
+        return settings.resend_api_key
+    if (
+        settings.smtp_host
+        and settings.smtp_host.lower() == "smtp.resend.com"
+        and settings.smtp_username == "resend"
+        and settings.smtp_password
+    ):
+        return settings.smtp_password
+    return None
+
+
+def _send_with_resend_http(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -> bool:
+    settings = get_settings()
+    api_key = _resend_api_key()
+    if not api_key or not settings.smtp_from_email:
+        return False
+
+    recipient_domain = email.rsplit("@", 1)[-1] if "@" in email else "unknown"
+    try:
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "from": f"{settings.smtp_from_name} <{settings.smtp_from_email}>",
+                "to": [email],
+                "subject": _purpose_subject(purpose),
+                "text": _purpose_body(otp_code=otp_code, purpose=purpose),
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        logger.info(
+            "Sent auth email with Resend HTTP: from=%s recipient_domain=%s purpose=%s",
+            settings.smtp_from_email,
+            recipient_domain,
+            purpose.value,
+        )
+        return True
+    except httpx.HTTPStatusError as error:
+        logger.exception(
+            "Resend auth email delivery failed: status=%s from=%s recipient_domain=%s purpose=%s response=%s",
+            error.response.status_code,
+            settings.smtp_from_email,
+            recipient_domain,
+            purpose.value,
+            error.response.text[:500],
+        )
+        raise EmailDeliveryError("Email delivery failed.") from error
+    except httpx.HTTPError as error:
+        logger.exception(
+            "Resend auth email request failed: from=%s recipient_domain=%s purpose=%s error_type=%s error=%s",
+            settings.smtp_from_email,
+            recipient_domain,
+            purpose.value,
+            type(error).__name__,
+            error,
+        )
+        raise EmailDeliveryError("Email delivery failed.") from error
+
+
 def send_auth_otp_email(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -> None:
     settings = get_settings()
     has_smtp = bool(settings.smtp_host and settings.smtp_from_email)
+    has_resend = bool(_resend_api_key() and settings.smtp_from_email)
     recipient_domain = email.rsplit("@", 1)[-1] if "@" in email else "unknown"
 
-    if not has_smtp:
+    if not has_smtp and not has_resend:
         if settings.environment.lower() == "production":
             raise EmailDeliveryError("Email delivery is not configured.")
         logger.warning(
@@ -46,6 +112,9 @@ def send_auth_otp_email(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -
             purpose.value,
             otp_code,
         )
+        return
+
+    if _send_with_resend_http(email=email, otp_code=otp_code, purpose=purpose):
         return
 
     message = EmailMessage()
