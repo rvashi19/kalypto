@@ -14,8 +14,9 @@ import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { inputCls, selectCls } from "../../lib/ui";
 
-const COUNTRIES = ["Canada", "USA", "UK", "Netherlands/EU", "United Arab Emirates", "Saudi Arabia"];
-const CATEGORIES = ["food/agri", "beverages", "textiles", "spices", "dry fruits"];
+const COUNTRIES = ["India", "Canada", "USA", "UK", "Netherlands/EU", "United Arab Emirates", "Saudi Arabia"];
+const CATEGORIES = ["food/agri", "beverages", "textiles", "spices", "dry fruits", "chemicals", "plastic/packaging"];
+const SOURCE_TYPES = ["html", "pdf", "xlsx", "csv"];
 
 const GROUP_LABELS: Record<string, string> = {
   documents: "Required Documents",
@@ -234,14 +235,19 @@ const SOURCE_DEFAULT: SourceRegistryCreateRequest = {
   base_url: "",
   allowed_domains: [],
   source_type: "html",
+  authority_level: "official",
   product_categories: ["textiles"],
   refresh_frequency_days: 30,
+  is_active: true,
+  notes: "",
 };
 
 function AdminSourceManager() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<SourceRegistryCreateRequest>(SOURCE_DEFAULT);
+  const [allowedDomainsText, setAllowedDomainsText] = useState("");
+  const [lastSourceJobId, setLastSourceJobId] = useState<string | null>(null);
 
   const sourcesQuery = useQuery({
     queryKey: ["compliance-sources"],
@@ -253,6 +259,7 @@ function AdminSourceManager() {
     mutationFn: () => api.createComplianceSource(form, token!),
     onSuccess: () => {
       setForm(SOURCE_DEFAULT);
+      setAllowedDomainsText("");
       queryClient.invalidateQueries({ queryKey: ["compliance-sources"] });
     },
   });
@@ -270,36 +277,77 @@ function AdminSourceManager() {
     },
   });
 
+  const refreshSourceMut = useMutation({
+    mutationFn: (sourceId: string) => api.refreshComplianceSource(sourceId, token!),
+    onSuccess: (job) => {
+      setLastSourceJobId(job.id);
+      queryClient.invalidateQueries({ queryKey: ["compliance-sources"] });
+      queryClient.invalidateQueries({ queryKey: ["compliance-review-queue"] });
+    },
+  });
+
+  const sourceJobQuery = useQuery({
+    queryKey: ["compliance-source-refresh-job", lastSourceJobId],
+    queryFn: () => api.retrievalJob(lastSourceJobId!, token!),
+    enabled: Boolean(token && lastSourceJobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "queued" || status === "running" ? 2000 : false;
+    },
+  });
+
   const sources: SourceRegistryResponse[] = sourcesQuery.data ?? [];
+  const sourceJob = sourceJobQuery.data;
+
+  function updateAllowedDomains(value: string) {
+    setAllowedDomainsText(value);
+    setForm((current) => ({
+      ...current,
+      allowed_domains: value
+        .split(",")
+        .map((domain) => domain.trim())
+        .filter(Boolean),
+    }));
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Official sources (admin)</CardTitle>
         <CardDescription>
-          Register the government/regulatory page or PDF to fetch. Only whitelisted official
-          domains are accepted (e.g. cbsa-asfc.gc.ca, inspection.canada.ca, fda.gov, apeda.gov.in).
+          Register government or regulatory source URLs. Only whitelisted official domains are accepted.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-            {seedMut.isPending ? "Seeding…" : "Seed official sources"}
+            {seedMut.isPending ? "Seeding..." : "Seed official sources"}
           </Button>
           <Button variant="secondary" onClick={() => refreshMut.mutate()} disabled={refreshMut.isPending}>
-            {refreshMut.isPending ? "Refreshing…" : "Refresh due now"}
+            {refreshMut.isPending ? "Refreshing..." : "Refresh due sources"}
           </Button>
         </div>
         {seedMut.data && (
           <p className="text-xs text-emerald-300">
-            Seeded {seedMut.data.created} new source(s) ({seedMut.data.skipped} already present).
+            Seeded {seedMut.data.created} new source(s), updated {seedMut.data.updated}, skipped {seedMut.data.skipped}.
           </p>
         )}
         {refreshMut.data && (
           <p className="text-xs text-emerald-300">
-            Ran {refreshMut.data.jobs_run} job(s) · {refreshMut.data.snapshots_created} snapshot(s) ·{" "}
-            {refreshMut.data.requirements_extracted} extracted (pending review).
+            Ran {refreshMut.data.jobs_run} job(s) - {refreshMut.data.snapshots_created} snapshot(s) - {refreshMut.data.requirements_extracted} extracted (pending review).
           </p>
+        )}
+        {sourceJob && (
+          <div className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 p-3 text-xs text-cyan-100">
+            <p className="font-semibold">Latest source refresh: {sourceJob.status}</p>
+            <p>
+              Fetched {sourceJob.pages_fetched} page/file(s) - checksum {sourceJob.checksum_status ?? "pending"} - parser {sourceJob.parser_used ?? "pending"}
+            </p>
+            <p>
+              Extracted {sourceJob.requirements_extracted} requirement(s); {sourceJob.pending_review_count} pending review.
+            </p>
+            {sourceJob.error_message && <p className="text-red-200">{sourceJob.error_message}</p>}
+          </div>
         )}
         <div className="grid gap-2 sm:grid-cols-2">
           <SelectField
@@ -313,6 +361,20 @@ function AdminSourceManager() {
             value={(form.product_categories ?? ["textiles"])[0] ?? "textiles"}
             options={CATEGORIES}
             onChange={(v) => setForm((c) => ({ ...c, product_categories: [v] }))}
+          />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <SelectField
+            label="Source type"
+            value={form.source_type ?? "html"}
+            options={SOURCE_TYPES}
+            onChange={(v) => setForm((c) => ({ ...c, source_type: v as SourceRegistryCreateRequest["source_type"] }))}
+          />
+          <Field
+            label="Refresh frequency days"
+            value={String(form.refresh_frequency_days ?? 30)}
+            placeholder="30"
+            onChange={(v) => setForm((c) => ({ ...c, refresh_frequency_days: Number.parseInt(v, 10) || 30 }))}
           />
         </div>
         <Field
@@ -333,27 +395,71 @@ function AdminSourceManager() {
           placeholder="https://www.cbsa-asfc.gc.ca/import/..."
           onChange={(v) => setForm((c) => ({ ...c, base_url: v }))}
         />
+        <Field
+          label="Extra allowed domains (optional, comma separated)"
+          value={allowedDomainsText}
+          placeholder="official-domain.gov, regulator.example"
+          onChange={updateAllowedDomains}
+        />
+        <label className="block space-y-1 text-sm">
+          <span className="text-slate-300">Notes (optional)</span>
+          <textarea
+            className={inputCls}
+            value={form.notes ?? ""}
+            placeholder="What this source covers and when to use it"
+            onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+          <span>Authority level: official</span>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.is_active ?? true}
+              onChange={(e) => setForm((c) => ({ ...c, is_active: e.target.checked }))}
+            />
+            Active source
+          </label>
+        </div>
         <Button
           onClick={() => createMut.mutate()}
           disabled={createMut.isPending || !form.base_url || !form.authority_name}
         >
-          {createMut.isPending ? "Adding…" : "Add official source"}
+          {createMut.isPending ? "Adding..." : "Add official source"}
         </Button>
         {createMut.isError && (
           <p className="text-sm text-red-400">{userMessageForError(createMut.error)}</p>
         )}
 
         {sources.length > 0 && (
-          <div className="space-y-1 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Registered sources
-            </p>
+          <div className="space-y-2 pt-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Registered sources</p>
             {sources.map((s) => (
-              <div key={s.id} className="text-xs text-slate-400">
-                {s.country} · {s.product_categories.join(", ") || "all"} —{" "}
-                <a className="text-cyan-300 underline" href={s.base_url} target="_blank" rel="noreferrer">
-                  {s.source_name}
-                </a>
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400"
+              >
+                <div>
+                  <p className="text-slate-200">
+                    {s.country} - {s.product_categories.join(", ") || "all"} - {s.source_type}
+                    {!s.is_active && " - inactive"}
+                  </p>
+                  <a className="text-cyan-300 underline" href={s.base_url} target="_blank" rel="noreferrer">
+                    {s.source_name}
+                  </a>
+                  <p>
+                    {s.authority_name} - {s.authority_level} - refresh every {s.refresh_frequency_days} day(s)
+                  </p>
+                  <p>Last checked: {s.last_checked_at ?? "never"}</p>
+                  {s.notes && <p>{s.notes}</p>}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => refreshSourceMut.mutate(s.id)}
+                  disabled={refreshSourceMut.isPending || !s.is_active}
+                >
+                  Refresh this source
+                </Button>
               </div>
             ))}
           </div>

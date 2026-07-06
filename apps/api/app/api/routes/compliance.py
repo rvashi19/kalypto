@@ -12,13 +12,16 @@ from app.api.deps import CurrentUser, DbSession, OptionalCurrentUser
 from app.core.settings import get_settings
 from app.models import (
     ComplianceCheckSession,
+    ComplianceCountry,
     ComplianceRequirement,
     ComplianceRequirementEvidence,
     ComplianceRetrievalJob,
     ComplianceReviewQueue,
     ComplianceScrapeRun,
     ComplianceSourceRegistry,
+    ComplianceSourceSnapshot,
     MembershipRole,
+    ProductCategory,
 )
 from app.schemas.compliance import (
     ComplianceCheckerRequest,
@@ -395,7 +398,13 @@ def review_source_change(
 
 # ── Country Compliance Checker v1 endpoints ───────────────────────────────────
 
-def _retrieval_job_response(job: ComplianceRetrievalJob) -> RetrievalJobResponse:
+def _retrieval_job_response(
+    job: ComplianceRetrievalJob,
+    *,
+    checksum_status: str | None = None,
+    parser_used: str | None = None,
+    pending_review_count: int = 0,
+) -> RetrievalJobResponse:
     return RetrievalJobResponse(
         id=str(job.id),
         status=job.status,
@@ -419,7 +428,56 @@ def _retrieval_job_response(job: ComplianceRetrievalJob) -> RetrievalJobResponse
             "completed": "Retrieval complete. No new pending requirements were extracted.",
             "failed": job.error_message or "Retrieval failed.",
         }.get(job.status, job.status),
+        checksum_status=checksum_status,
+        parser_used=parser_used,
+        pending_review_count=pending_review_count,
     )
+
+
+def _retrieval_job_status_details(session: DbSession, job: ComplianceRetrievalJob) -> dict:
+    source_ids: list[UUID] = []
+    for raw_id in job.source_registry_ids_json or []:
+        try:
+            source_ids.append(UUID(str(raw_id)))
+        except ValueError:
+            continue
+
+    snapshot = None
+    if source_ids:
+        snapshot = session.scalars(
+            select(ComplianceSourceSnapshot)
+            .where(
+                ComplianceSourceSnapshot.tenant_id == job.tenant_id,
+                ComplianceSourceSnapshot.source_registry_id.in_(source_ids),
+                ComplianceSourceSnapshot.category == job.product_category,
+                ComplianceSourceSnapshot.country == job.destination_country,
+            )
+            .order_by(ComplianceSourceSnapshot.scraped_at.desc())
+        ).first()
+
+    pending_review_count = len(
+        session.scalars(
+            select(ComplianceReviewQueue)
+            .join(
+                ComplianceRequirement,
+                ComplianceRequirement.id == ComplianceReviewQueue.requirement_id,
+            )
+            .join(ComplianceCountry, ComplianceCountry.id == ComplianceRequirement.country_id)
+            .join(ProductCategory, ProductCategory.id == ComplianceRequirement.category_id)
+            .where(
+                ComplianceReviewQueue.tenant_id == job.tenant_id,
+                ComplianceReviewQueue.status == "pending",
+                ComplianceCountry.name == job.destination_country,
+                ProductCategory.name == job.product_category,
+            )
+        ).all()
+    )
+
+    return {
+        "checksum_status": snapshot.status if snapshot is not None else None,
+        "parser_used": snapshot.parser_used if snapshot is not None else None,
+        "pending_review_count": pending_review_count,
+    }
 
 
 @router.post("/check", response_model=ComplianceCheckResponse)
@@ -535,7 +593,7 @@ def get_retrieval_job(
     job = session.get(ComplianceRetrievalJob, job_id)
     if job is None or job.tenant_id != current_user.organization.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retrieval job not found.")
-    return _retrieval_job_response(job)
+    return _retrieval_job_response(job, **_retrieval_job_status_details(session, job))
 
 
 @router.post("/retrieval-jobs/{job_id}/retry", response_model=RetrievalJobResponse)
@@ -686,11 +744,13 @@ def _source_registry_response(row: ComplianceSourceRegistry) -> SourceRegistryRe
         base_url=row.base_url,
         allowed_domains=list(row.allowed_domains_json or []),
         source_type=row.source_type,
+        authority_level=getattr(row, "authority_level", "official"),
         product_categories=list(row.product_categories_json or []),
         is_active=row.is_active,
         refresh_frequency_days=row.refresh_frequency_days,
         last_checked_at=row.last_checked_at,
         created_at=row.created_at,
+        notes=row.notes,
     )
 
 
@@ -732,9 +792,11 @@ def create_source(
         base_url=payload.base_url,
         allowed_domains_json=payload.allowed_domains,
         source_type=payload.source_type,
+        authority_level=payload.authority_level,
         product_categories_json=payload.product_categories,
         refresh_frequency_days=payload.refresh_frequency_days,
-        is_active=True,
+        is_active=payload.is_active,
+        notes=payload.notes,
     )
     session.add(row)
     session.commit()
@@ -785,6 +847,11 @@ def refresh_source(
     source = session.get(ComplianceSourceRegistry, source_id)
     if source is None or source.tenant_id != current_user.organization.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found.")
+    if not source.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Source is inactive. Activate it before refreshing.",
+        )
     category = (source.product_categories_json or ["food/agri"])[0]
     job = ComplianceRetrievalJob(
         tenant_id=current_user.organization.id,
@@ -800,4 +867,4 @@ def refresh_source(
     enqueue_retrieval_job(
         background_tasks, job_id=job.id, tenant_id=current_user.organization.id, force=True
     )
-    return _retrieval_job_response(job)
+    return _retrieval_job_response(job, **_retrieval_job_status_details(session, job))

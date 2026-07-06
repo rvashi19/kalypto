@@ -1,4 +1,4 @@
-# ruff: noqa: E501
+﻿# ruff: noqa: E501
 """Tests for the Country Compliance Checker v1 (check / retrieval / review / whitelist)."""
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from app.services.compliance_scraper import ScrapedSourceDocument
 from app.services.compliance_storage import reset_compliance_storage
 from app.services.compliance_whitelist import is_domain_allowed
 
-# ── Fixtures / helpers ────────────────────────────────────────────────────────
+# â”€â”€ Fixtures / helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _tenant(session, role: MembershipRole = MembershipRole.OWNER) -> tuple[Organization, User, Membership]:
     org = Organization(name="Demo", slug=f"demo-{uuid.uuid4().hex[:8]}")
@@ -120,7 +120,7 @@ def _register_source(session, org, url="https://www.cbsa-asfc.gc.ca/import/guide
     return src
 
 
-# ── Whitelist ─────────────────────────────────────────────────────────────────
+# â”€â”€ Whitelist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_whitelisted_official_domain_allowed() -> None:
     assert is_domain_allowed("https://www.cbsa-asfc.gc.ca/import/guide.html")
@@ -133,7 +133,7 @@ def test_non_whitelisted_domain_rejected() -> None:
     assert not is_domain_allowed("https://medium.com/@someone/customs")
 
 
-# ── /check: local match, no match, no source ──────────────────────────────────
+# â”€â”€ /check: local match, no match, no source â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_approved_local_requirement_matches(session) -> None:
     org, user, _ = _tenant(session)
@@ -192,11 +192,23 @@ def test_pending_requirement_not_returned_as_answer(session) -> None:
     resp = ComplianceCheckService(session).check(
         payload=_check_payload(), tenant_id=org.id, user_id=user.id
     )
-    # Pending is excluded → no answered match, retrieval queued instead.
+    # Pending is excluded â†’ no answered match, retrieval queued instead.
     assert resp.status == "retrieval_queued"
 
 
-# ── Retrieval job runner: snapshot, dedup, AI, pending_review ─────────────────
+def test_rejected_requirement_not_returned_as_answer(session) -> None:
+    org, user, _ = _tenant(session)
+    ComplianceDataWriter(session, org.id).upsert_requirement(
+        _approved_requirement(status="active", review_status="rejected")
+    )
+    session.flush()
+    resp = ComplianceCheckService(session).check(
+        payload=_check_payload(), tenant_id=org.id, user_id=user.id
+    )
+    assert resp.status == "retrieval_queued"
+
+
+# â”€â”€ Retrieval job runner: snapshot, dedup, AI, pending_review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_retrieval_creates_snapshot_and_pending_requirements(session, monkeypatch, tmp_path) -> None:
     org, user, _ = _tenant(session)
@@ -275,7 +287,7 @@ def test_checksum_dedup_skips_repeated_ai_extraction(session, monkeypatch, tmp_p
     assert fake.calls == 1
 
     second = _run()
-    # Unchanged checksum → no new snapshot, AI NOT called again.
+    # Unchanged checksum â†’ no new snapshot, AI NOT called again.
     assert second.snapshots_created == 0
     assert fake.calls == 1
 
@@ -320,7 +332,7 @@ def test_approved_requirement_appears_in_answer_after_review(session, monkeypatc
     assert resp.status == "answered"
 
 
-# ── API-level: admin-only + tenant scoping ────────────────────────────────────
+# â”€â”€ API-level: admin-only + tenant scoping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @pytest.fixture()
 def client_factory(session, monkeypatch):
@@ -396,6 +408,50 @@ def test_create_source_accepts_official_domain(client_factory) -> None:
     )
     assert resp.status_code == 201, resp.text
     assert resp.json()["country"] == "Canada"
+    assert resp.json()["authority_level"] == "official"
+
+
+@pytest.mark.parametrize("source_type", ["html", "pdf", "xlsx", "csv"])
+def test_create_source_accepts_supported_source_types(client_factory, source_type: str) -> None:
+    client, _, _ = client_factory(MembershipRole.OWNER)
+    resp = client.post(
+        "/api/v1/compliance/sources",
+        json={
+            "country": "USA",
+            "authority_name": "FDA",
+            "source_name": f"FDA import guide {source_type}",
+            "base_url": "https://www.fda.gov/food/importing-food-products-united-states/importing-food-products-overview",
+            "allowed_domains": [],
+            "source_type": source_type,
+            "authority_level": "official",
+            "product_categories": ["food/agri"],
+            "refresh_frequency_days": 14,
+            "is_active": True,
+            "notes": "Official test source.",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["source_type"] == source_type
+    assert body["refresh_frequency_days"] == 14
+    assert body["notes"] == "Official test source."
+
+
+def test_create_source_rejects_invalid_source_type(client_factory) -> None:
+    client, _, _ = client_factory(MembershipRole.OWNER)
+    resp = client.post(
+        "/api/v1/compliance/sources",
+        json={
+            "country": "USA",
+            "authority_name": "FDA",
+            "source_name": "FDA import guide",
+            "base_url": "https://www.fda.gov/food/importing-food-products-united-states/importing-food-products-overview",
+            "allowed_domains": [],
+            "source_type": "mixed",
+            "product_categories": ["food/agri"],
+        },
+    )
+    assert resp.status_code == 422
 
 
 def test_session_tenant_scoping(client_factory) -> None:
@@ -406,7 +462,7 @@ def test_session_tenant_scoping(client_factory) -> None:
     assert resp.status_code == 404
 
 
-# ── Automation: seed sources, refresh-due, auto-retry ─────────────────────────
+# â”€â”€ Automation: seed sources, refresh-due, auto-retry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_seed_official_sources_is_idempotent(session) -> None:
     from app.services.compliance_source_seed import OFFICIAL_SOURCES, seed_official_sources
@@ -427,8 +483,8 @@ def test_seed_official_sources_is_idempotent(session) -> None:
 def test_seeded_sources_are_all_whitelisted() -> None:
     from app.services.compliance_source_seed import OFFICIAL_SOURCES
 
-    for _country, _auth, _name, url, _type, _cats in OFFICIAL_SOURCES:
-        assert is_domain_allowed(url), f"seed URL not whitelisted: {url}"
+    for seed in OFFICIAL_SOURCES:
+        assert is_domain_allowed(seed.source_url), f"seed URL not whitelisted: {seed.source_url}"
 
 
 def test_refresh_due_runs_jobs_for_due_sources(session, monkeypatch, tmp_path) -> None:
@@ -495,6 +551,45 @@ def test_seed_endpoint_owner_seeds(client_factory) -> None:
     resp = client.post("/api/v1/compliance/sources/seed")
     assert resp.status_code == 200
     assert resp.json()["created"] == len(OFFICIAL_SOURCES)
+
+
+def test_refresh_source_endpoint_creates_retrieval_job(
+    client_factory, session, monkeypatch, tmp_path
+) -> None:
+    from app.core.settings import get_settings
+
+    client, org, _ = client_factory(MembershipRole.OWNER)
+    source = _register_source(session, org)
+    session.commit()
+
+    monkeypatch.setattr(get_settings(), "compliance_storage_path", str(tmp_path))
+    reset_compliance_storage()
+    fake = _FakeExtractor()
+    monkeypatch.setattr(job_module, "get_compliance_ai_extractor", lambda: fake)
+    monkeypatch.setattr(
+        job_module,
+        "get_compliance_scraper",
+        lambda: type(
+            "S",
+            (),
+            {
+                "scrape": lambda self, url, allowed_domains=None: ScrapedSourceDocument(
+                    source_url=url,
+                    title="CBSA",
+                    markdown="Importers must file a declaration. " * 20,
+                )
+            },
+        )(),
+    )
+
+    resp = client.post(f"/api/v1/compliance/sources/{source.id}/refresh")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["source_registry_ids"] == [str(source.id)]
+    assert body["product_category"] == "beverages"
+
+    job = session.get(ComplianceRetrievalJob, uuid.UUID(body["id"]))
+    assert job is not None
 
 
 def test_refresh_due_endpoint_requires_admin_or_cron_token(client_factory) -> None:

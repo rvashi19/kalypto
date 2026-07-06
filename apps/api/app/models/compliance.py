@@ -199,11 +199,13 @@ class ComplianceSourceRegistry(Base, UUIDPrimaryKeyMixin, TimestampMixin, Tenant
     base_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     # Official domains this source is allowed to fetch from (merged into whitelist).
     allowed_domains_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    source_type: Mapped[str] = mapped_column(String(20), nullable=False, default="mixed")  # html/pdf/xlsx/csv/mixed
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False, default="html")  # html/pdf/xlsx/csv
+    authority_level: Mapped[str] = mapped_column(String(40), nullable=False, default="official")
     product_categories_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     refresh_frequency_days: Mapped[int] = mapped_column(default=30, nullable=False)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ComplianceRetrievalJob(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):

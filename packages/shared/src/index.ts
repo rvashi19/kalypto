@@ -190,12 +190,17 @@ export interface RetrievalJobResponse {
   pages_fetched: number;
   snapshots_created: number;
   requirements_extracted: number;
+  retry_count: number;
+  max_retries: number;
   source_registry_ids: string[];
   error_message?: string | null;
   started_at?: string | null;
   completed_at?: string | null;
   created_at: string;
   message: string;
+  checksum_status?: string | null;
+  parser_used?: string | null;
+  pending_review_count: number;
 }
 
 export interface ReviewQueueItem {
@@ -220,9 +225,12 @@ export interface SourceRegistryCreateRequest {
   source_name: string;
   base_url: string;
   allowed_domains?: string[];
-  source_type?: "html" | "pdf" | "xlsx" | "csv" | "mixed";
+  source_type?: "html" | "pdf" | "xlsx" | "csv";
+  authority_level?: "official";
   product_categories?: string[];
   refresh_frequency_days?: number;
+  is_active?: boolean;
+  notes?: string | null;
 }
 
 export interface SourceRegistryResponse {
@@ -233,11 +241,13 @@ export interface SourceRegistryResponse {
   base_url: string;
   allowed_domains: string[];
   source_type: string;
+  authority_level: string;
   product_categories: string[];
   is_active: boolean;
   refresh_frequency_days: number;
   last_checked_at?: string | null;
   created_at: string;
+  notes?: string | null;
 }
 
 // ── Shipment types ─────────────────────────────────────────────────────────────

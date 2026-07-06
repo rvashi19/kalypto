@@ -445,8 +445,15 @@ export const api = {
     ),
 
   seedComplianceSources: (token: string) =>
-    request<{ created: number; skipped: number; total: number }>(
+    request<{ created: number; updated: number; skipped: number; total: number }>(
       "/compliance/sources/seed",
+      { method: "POST" },
+      token
+    ),
+
+  refreshComplianceSource: (sourceId: string, token: string) =>
+    request<RetrievalJobResponse>(
+      `/compliance/sources/${sourceId}/refresh`,
       { method: "POST" },
       token
     ),

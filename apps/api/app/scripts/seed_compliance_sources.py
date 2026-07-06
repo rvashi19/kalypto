@@ -36,8 +36,8 @@ def main() -> None:
             result = seed_official_sources(session, org.id)
             session.commit()
             print(
-                f"[{org.slug}] created={result['created']} skipped={result['skipped']} "
-                f"total={result['total']}"
+                f"[{org.slug}] created={result['created']} updated={result['updated']} "
+                f"skipped={result['skipped']} total={result['total']}"
             )
     finally:
         session.close()

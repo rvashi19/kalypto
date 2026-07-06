@@ -354,6 +354,9 @@ class RetrievalJobResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
     message: str
+    checksum_status: str | None = None
+    parser_used: str | None = None
+    pending_review_count: int = 0
 
 
 class ReviewQueueItem(BaseModel):
@@ -389,9 +392,12 @@ class SourceRegistryCreateRequest(BaseModel):
     source_name: str = Field(min_length=2, max_length=255)
     base_url: str = Field(min_length=8, max_length=2048)
     allowed_domains: list[str] = Field(default_factory=list, max_length=50)
-    source_type: Literal["html", "pdf", "xlsx", "csv", "mixed"] = "mixed"
+    source_type: Literal["html", "pdf", "xlsx", "csv"] = "html"
+    authority_level: Literal["official"] = "official"
     product_categories: list[str] = Field(default_factory=list, max_length=20)
     refresh_frequency_days: int = Field(default=30, ge=1, le=365)
+    is_active: bool = True
+    notes: str | None = Field(default=None, max_length=2000)
 
     @field_validator("country")
     @classmethod
@@ -407,8 +413,10 @@ class SourceRegistryResponse(BaseModel):
     base_url: str
     allowed_domains: list[str]
     source_type: str
+    authority_level: str
     product_categories: list[str]
     is_active: bool
     refresh_frequency_days: int
     last_checked_at: datetime | None
     created_at: datetime
+    notes: str | None
