@@ -12,6 +12,7 @@ Create Date: 2026-06-28 00:00:00.000000
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0008_hsn_unique_code"
@@ -26,12 +27,25 @@ def upgrade() -> None:
         return
 
     # Collapse any pre-existing duplicates (keep the most recently updated row).
+    # Use a window-function form instead of PostgreSQL-only DELETE ... USING so
+    # local SQLite dev databases can run the full Alembic chain too.
     op.execute(
         """
-        DELETE FROM hsn_codes a
-        USING hsn_codes b
-        WHERE a.normalized_code = b.normalized_code
-          AND a.updated_at < b.updated_at
+        DELETE FROM hsn_codes
+        WHERE id IN (
+            SELECT id
+            FROM (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY normalized_code
+                        ORDER BY updated_at DESC, id DESC
+                    ) AS duplicate_rank
+                FROM hsn_codes
+                WHERE normalized_code IS NOT NULL
+            ) ranked
+            WHERE duplicate_rank > 1
+        )
         """
     )
     unique_constraints = {

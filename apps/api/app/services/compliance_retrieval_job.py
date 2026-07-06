@@ -162,10 +162,12 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
             key_base = f"{tenant_id}/{snapshot_result.content_hash}"
             extracted_key = f"{key_base}/extracted.txt"
             storage.save_file(extracted_key, doc_text.encode("utf-8"))
-            raw_key = None
+            raw_key = f"{key_base}/raw.txt"
+            raw_payload = doc_text.encode("utf-8")
             if raw_bytes is not None:
                 raw_key = f"{key_base}/raw.{source_type}"
-                storage.save_file(raw_key, raw_bytes)
+                raw_payload = raw_bytes
+            storage.save_file(raw_key, raw_payload)
             # Populate richer snapshot metadata (nullable/backward-compatible fields).
             if snapshot_row is not None:
                 snapshot_row.source_registry_id = source.id

@@ -8,9 +8,9 @@ Create Date: 2026-07-02 00:00:00.000000
 from __future__ import annotations
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision = "0016_full_auth_system"
 down_revision = "0015_auth_hardening"
@@ -108,11 +108,11 @@ def upgrade() -> None:
 
         inspector = sa.inspect(bind)
         columns = {column["name"] for column in inspector.get_columns("users")}
-        if "role" in columns:
+        if bind.dialect.name != "sqlite" and "role" in columns:
             op.alter_column("users", "role", server_default=None)
-        if "status" in columns:
+        if bind.dialect.name != "sqlite" and "status" in columns:
             op.alter_column("users", "status", server_default=None)
-        if "auth_provider_primary" in columns:
+        if bind.dialect.name != "sqlite" and "auth_provider_primary" in columns:
             op.alter_column("users", "auth_provider_primary", server_default=None)
 
     tables = set(sa.inspect(bind).get_table_names())

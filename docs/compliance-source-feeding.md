@@ -63,7 +63,18 @@ The script is idempotent. It reports `created`, `updated`, `skipped`, and `total
 
 Seeded sources are a vetted starting set for India, USA, Canada, UK, EU, and UAE. They do not imply full country coverage.
 
-## E. Run Refresh
+## E. Apply Database Migrations
+
+Before running refresh jobs in production, the API database must be migrated to the latest Alembic head:
+
+```bash
+cd apps/api
+alembic upgrade head
+```
+
+Render currently runs migrations automatically through `apps/api/scripts/start-render.sh` before starting the API. If you run the API, scheduler, or refresh jobs outside that Render start command, run the migration command manually first.
+
+## F. Run Refresh
 
 Use the admin UI buttons:
 
@@ -85,7 +96,7 @@ POST /api/v1/compliance/sources/<source-id>/refresh
 
 After refresh, the UI displays job status, pages/files fetched, checksum status, parser used, extracted requirement count, pending review count, and any error message.
 
-## F. Review Extracted Cards
+## G. Review Extracted Cards
 
 AI-extracted requirement cards go to pending review. They are not used in CCR answers until an admin approves them.
 
@@ -93,6 +104,8 @@ AI-extracted requirement cards go to pending review. They are not used in CCR an
 - Approved cards become reusable source-backed CCR guidance.
 - Rejected cards remain hidden from normal CCR answers.
 
-## G. Warning
+## H. Warning
 
 Use official URLs/documents first, then review extracted cards. CCR must not invent sources, treat random scraped text as truth, or bypass authentication, CAPTCHA, paywalls, access controls, or site restrictions.
+
+CCR coverage depends on the official source URLs that have been seeded or added for an organization. It is source-backed guidance for review, not legal advice or customs filing advice, and it does not imply full country coverage or 100% compliance accuracy.

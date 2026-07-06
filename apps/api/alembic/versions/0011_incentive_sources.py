@@ -8,6 +8,7 @@ Create Date: 2026-06-29 00:00:00.000000
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0011_incentive_sources"
@@ -17,7 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     existing_tables = set(inspector.get_table_names())
     if "incentive_sources" not in existing_tables:
         op.create_table(
@@ -38,8 +40,18 @@ def upgrade() -> None:
             sa.Column("is_active", sa.Boolean(), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("created_by", sa.String(length=320), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.ForeignKeyConstraint(["tenant_id"], ["organizations.id"]),
             sa.PrimaryKeyConstraint("id"),
         )
@@ -65,7 +77,10 @@ def upgrade() -> None:
     existing_foreign_keys = {
         fk["name"] for fk in sa.inspect(op.get_bind()).get_foreign_keys("incentive_rates")
     }
-    if "fk_incentive_rates_source_id" not in existing_foreign_keys:
+    if (
+        bind.dialect.name != "sqlite"
+        and "fk_incentive_rates_source_id" not in existing_foreign_keys
+    ):
         op.create_foreign_key(
             "fk_incentive_rates_source_id",
             "incentive_rates",
@@ -76,8 +91,24 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_incentive_rates_source_id", "incentive_rates", type_="foreignkey")
-    op.drop_index("ix_incentive_rates_source_id", table_name="incentive_rates")
-    op.drop_column("incentive_rates", "review_note")
-    op.drop_column("incentive_rates", "source_id")
-    op.drop_table("incentive_sources")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+    if "incentive_rates" in existing_tables:
+        foreign_keys = {fk["name"] for fk in inspector.get_foreign_keys("incentive_rates")}
+        if bind.dialect.name != "sqlite" and "fk_incentive_rates_source_id" in foreign_keys:
+            op.drop_constraint(
+                "fk_incentive_rates_source_id",
+                "incentive_rates",
+                type_="foreignkey",
+            )
+        indexes = {index["name"] for index in inspector.get_indexes("incentive_rates")}
+        if "ix_incentive_rates_source_id" in indexes:
+            op.drop_index("ix_incentive_rates_source_id", table_name="incentive_rates")
+        columns = {column["name"] for column in inspector.get_columns("incentive_rates")}
+        if "review_note" in columns:
+            op.drop_column("incentive_rates", "review_note")
+        if "source_id" in columns:
+            op.drop_column("incentive_rates", "source_id")
+    if "incentive_sources" in existing_tables:
+        op.drop_table("incentive_sources")

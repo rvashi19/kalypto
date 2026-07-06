@@ -45,7 +45,8 @@ def upgrade() -> None:
                 server_default=sa.false(),
             ),
         )
-        op.alter_column("users", "two_factor_enabled", server_default=None)
+        if bind.dialect.name != "sqlite":
+            op.alter_column("users", "two_factor_enabled", server_default=None)
 
 
 def downgrade() -> None:
