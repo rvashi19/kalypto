@@ -15,6 +15,7 @@ from app.models import (
     ComplianceRequirement,
     ComplianceRequirementEvidence,
     ComplianceRetrievalJob,
+    ComplianceReviewQueue,
     ComplianceScrapeRun,
     ComplianceSourceRegistry,
     MembershipRole,
@@ -601,6 +602,27 @@ def list_review_queue(
     return items
 
 
+def _sync_review_queue(
+    session: DbSession,
+    requirement_id: UUID,
+    status_value: str,
+    current_user: CurrentUser,
+    notes: str | None,
+) -> None:
+    """Mirror an approve/reject decision onto the dedicated review-queue item."""
+    item = session.scalars(
+        select(ComplianceReviewQueue).where(
+            ComplianceReviewQueue.tenant_id == current_user.organization.id,
+            ComplianceReviewQueue.requirement_id == requirement_id,
+        )
+    ).first()
+    if item is not None:
+        item.status = status_value
+        item.assigned_to = current_user.user.id
+        if notes:
+            item.reviewer_notes = notes
+
+
 @router.post("/requirements/{requirement_id}/approve", response_model=RequirementReviewResponse)
 def approve_requirement(
     requirement_id: UUID,
@@ -618,6 +640,7 @@ def approve_requirement(
     requirement.reviewed_at = datetime.now(UTC)
     if payload.notes:
         requirement.notes = payload.notes
+    _sync_review_queue(session, requirement_id, "approved", current_user, payload.notes)
     session.commit()
     return RequirementReviewResponse(
         requirement_id=str(requirement.id),
@@ -644,6 +667,7 @@ def reject_requirement(
     requirement.reviewed_at = datetime.now(UTC)
     if payload.notes:
         requirement.notes = payload.notes
+    _sync_review_queue(session, requirement_id, "rejected", current_user, payload.notes)
     session.commit()
     return RequirementReviewResponse(
         requirement_id=str(requirement.id),

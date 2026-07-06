@@ -28,7 +28,7 @@ from app.models import (
     ComplianceSourceRegistry,
     ComplianceSourceSnapshot,
 )
-from app.models.compliance import ComplianceRequirementEvidence
+from app.models.compliance import ComplianceRequirementEvidence, ComplianceReviewQueue
 from app.schemas.compliance import ComplianceRequirementInput
 from app.services.compliance_ai_extractor import (
     ComplianceAIError,
@@ -36,6 +36,10 @@ from app.services.compliance_ai_extractor import (
 )
 from app.services.compliance_retrieval import ComplianceDataWriter
 from app.services.compliance_scraper import ComplianceScraperError, get_compliance_scraper
+from app.services.compliance_source_retriever import (
+    _detect_source_type,
+    retrieve_source,
+)
 from app.services.compliance_storage import get_compliance_storage
 from app.services.compliance_store import get_compliance_knowledge_store
 from app.services.compliance_whitelist import (
@@ -104,38 +108,74 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
             errors.append(str(exc))
             continue
 
+        source_type = _detect_source_type(url, source.source_type)
+        final_url = url
+        http_status = 200
+        raw_bytes: bytes | None = None
         try:
-            # Pass the source's extra domains so the whitelist is enforced on the
-            # initial URL AND every redirect hop (empty list still enforces the
-            # builtin/env official whitelist).
-            document = scraper.scrape(url, allowed_domains=extra_domains)
+            # XLSX/CSV official sources go through the spreadsheet retriever adapter;
+            # HTML/PDF stay on the existing whitelist/SSRF-guarded scraper (empty list
+            # still enforces the builtin/env official whitelist).
+            if source_type in {"xlsx", "csv"}:
+                result_meta = retrieve_source(
+                    url, declared_source_type=source.source_type, allowed_domains=extra_domains
+                )
+                doc_source_url = result_meta.final_url
+                doc_title = result_meta.source_title
+                doc_text = result_meta.extracted_text
+                final_url = result_meta.final_url
+                http_status = result_meta.http_status
+                parser_used = result_meta.parser_used
+                raw_bytes = result_meta.raw_bytes
+            else:
+                document = scraper.scrape(url, allowed_domains=extra_domains)
+                doc_source_url = document.source_url
+                doc_title = document.title
+                doc_text = document.markdown
+                final_url = document.source_url
+                parser_used = "pdfplumber" if source_type == "pdf" else "html_text"
         except ComplianceScraperError as exc:
             errors.append(f"{url}: {exc}")
             continue
 
         pages_fetched += 1
         snapshot_result = store.record_source_snapshot(
-            source_url=document.source_url,
+            source_url=doc_source_url,
             country=job.destination_country,
             category=job.product_category,
-            title=document.title,
-            markdown=document.markdown,
+            title=doc_title,
+            markdown=doc_text,
         )
 
         snapshot_row = session.scalars(
             select(ComplianceSourceSnapshot)
             .where(
                 ComplianceSourceSnapshot.tenant_id == tenant_id,
-                ComplianceSourceSnapshot.source_url == document.source_url,
+                ComplianceSourceSnapshot.source_url == doc_source_url,
             )
             .order_by(ComplianceSourceSnapshot.scraped_at.desc())
         ).first()
 
-        if snapshot_result.status == "new_snapshot" or snapshot_result.status == "needs_review":
+        if snapshot_result.status in ("new_snapshot", "needs_review"):
             snapshots_created += 1
             # Persist raw + extracted text via storage abstraction (checksum-keyed).
             key_base = f"{tenant_id}/{snapshot_result.content_hash}"
-            storage.save_file(f"{key_base}/extracted.txt", document.markdown.encode("utf-8"))
+            extracted_key = f"{key_base}/extracted.txt"
+            storage.save_file(extracted_key, doc_text.encode("utf-8"))
+            raw_key = None
+            if raw_bytes is not None:
+                raw_key = f"{key_base}/raw.{source_type}"
+                storage.save_file(raw_key, raw_bytes)
+            # Populate richer snapshot metadata (nullable/backward-compatible fields).
+            if snapshot_row is not None:
+                snapshot_row.source_registry_id = source.id
+                snapshot_row.final_url = final_url
+                snapshot_row.source_type = source_type
+                snapshot_row.http_status = http_status
+                snapshot_row.parser_used = parser_used
+                snapshot_row.parser_status = "ok"
+                snapshot_row.raw_storage_key = raw_key
+                snapshot_row.extracted_text_storage_key = extracted_key
 
         # Checksum dedup: skip AI for unchanged sources unless explicitly forced.
         if snapshot_result.status == "unchanged" and not force:
@@ -151,7 +191,7 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
                 break
         try:
             result = ai.extract_requirements_from_source_text(
-                source_text=document.markdown,
+                source_text=doc_text,
                 country=job.destination_country,
                 product_category=job.product_category,
                 hsn_code=job.hsn_code,
@@ -170,7 +210,7 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
                 requirement_type=_REQUIREMENT_TYPE_MAP.get(card.requirement_type, "import_document"),
                 requirement_text=(card.detail or card.summary or card.title)[:4000],
                 extracted_requirement=(card.summary or card.title)[:4000],
-                source_url=document.source_url,
+                source_url=doc_source_url,
                 source_name=source.source_name,
                 source_authority_level="official",
                 confidence_score=_confidence_score(card.confidence_label),
@@ -192,11 +232,19 @@ def run_retrieval_job(session: Session, *, job_id: UUID, tenant_id: UUID, force:
                         tenant_id=tenant_id,
                         requirement_id=UUID(stored.id),
                         source_snapshot_id=snapshot_row.id if snapshot_row else None,
-                        source_url=document.source_url,
+                        source_url=doc_source_url,
                         authority_name=source.authority_name,
                         evidence_excerpt=card.evidence_excerpt[:8000],
                         retrieved_at=datetime.now(UTC),
                         checksum=snapshot_result.content_hash,
+                    )
+                )
+                # Every AI-extracted requirement enters the admin review queue.
+                session.add(
+                    ComplianceReviewQueue(
+                        tenant_id=tenant_id,
+                        requirement_id=UUID(stored.id),
+                        status="pending",
                     )
                 )
         source.last_checked_at = datetime.now(UTC)

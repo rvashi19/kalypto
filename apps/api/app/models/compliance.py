@@ -124,6 +124,18 @@ class ComplianceSourceSnapshot(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     previous_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    # Richer retrieval metadata (nullable for backward compatibility with older snapshots).
+    source_registry_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("compliance_source_registry.id"), nullable=True, index=True
+    )
+    final_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    source_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # html/pdf/xlsx/csv/markdown/text
+    http_status: Mapped[int | None] = mapped_column(nullable=True)
+    parser_used: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    parser_status: Mapped[str | None] = mapped_column(String(40), nullable=True)  # ok/failed
+    raw_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    extracted_text_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     scraped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -267,6 +279,20 @@ class ComplianceRequirementEvidence(Base, UUIDPrimaryKeyMixin, TenantScopedMixin
         server_default=func.now(),
         default=lambda: datetime.now(UTC),
     )
+
+
+class ComplianceReviewQueue(Base, UUIDPrimaryKeyMixin, TimestampMixin, TenantScopedMixin):
+    """Admin review item for an AI-extracted (pending_review) requirement card."""
+
+    __tablename__ = "compliance_review_queue"
+
+    requirement_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("compliance_requirements.id"), nullable=False, index=True
+    )
+    assigned_to: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    # pending / approved / rejected / needs_changes
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="pending", index=True)
+    reviewer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ComplianceChatMessage(Base, UUIDPrimaryKeyMixin):
