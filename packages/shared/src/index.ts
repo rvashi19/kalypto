@@ -501,6 +501,127 @@ export interface VerificationReport {
   disclaimer: string;
 }
 
+// ── AI Document Verifier ─────────────────────────────────────────────────────
+
+export interface DocumentVerificationRunCreate {
+  title: string;
+  reference_number?: string | null;
+  shipment_id?: string | null;
+  quote_id?: string | null;
+  origin_country?: string | null;
+  destination_country?: string | null;
+  hsn_code?: string | null;
+  product_description?: string | null;
+}
+
+export interface VerificationDocumentResponse {
+  id: string;
+  verification_run_id: string;
+  file_name: string;
+  file_type: string;
+  mime_type: string | null;
+  document_type: string | null;
+  parser_used: string;
+  extraction_status: string;
+  extraction_error: string | null;
+  uploaded_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentExtractedFieldResponse {
+  id: string;
+  verification_run_id: string;
+  document_id: string;
+  document_type: string;
+  field_key: string;
+  field_label: string;
+  raw_value: string | null;
+  normalized_value: string | null;
+  confidence_score: number;
+  page_number: number | null;
+  table_reference: string | null;
+  evidence_excerpt: string | null;
+  created_at: string;
+}
+
+export interface DocumentVerificationIssueResponse {
+  id: string;
+  verification_run_id: string;
+  issue_type: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  status: "open" | "resolved" | "ignored";
+  title: string;
+  description: string;
+  field_key: string | null;
+  expected_value: string | null;
+  actual_values_json: unknown[] | null;
+  related_document_ids_json: string[] | null;
+  evidence_json: unknown[] | null;
+  confidence_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentVerificationReportResponse {
+  id: string;
+  verification_run_id: string;
+  summary_json: Record<string, unknown>;
+  issues_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  report_storage_key: string | null;
+  created_at: string;
+}
+
+export interface DocumentVerificationRunResponse {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  shipment_id: string | null;
+  quote_id: string | null;
+  status: string;
+  title: string;
+  reference_number: string | null;
+  origin_country: string | null;
+  destination_country: string | null;
+  hsn_code: string | null;
+  product_description: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  documents: VerificationDocumentResponse[];
+  fields: DocumentExtractedFieldResponse[];
+  issues: DocumentVerificationIssueResponse[];
+  report: DocumentVerificationReportResponse | null;
+}
+
+export interface DocumentUploadResponse {
+  documents: VerificationDocumentResponse[];
+}
+
+export interface DocumentVerifierExtractionResponse {
+  run_id: string;
+  status: string;
+  documents_extracted: number;
+  fields_extracted: number;
+  failures: number;
+  message: string;
+}
+
+export interface DocumentVerifierVerificationResponse {
+  run_id: string;
+  status: string;
+  issues_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  message: string;
+}
+
 export interface HsnRateLookupResponse {
   found: boolean;
   hsn_code: string;

@@ -14,6 +14,7 @@ import { ShipmentsPage } from "./features/shipments/shipments-page";
 import { NewShipmentPage } from "./features/shipments/new-shipment-page";
 import { ShipmentDetailPage } from "./features/shipments/shipment-detail-page";
 import { DocumentBuilderPage } from "./features/documents/document-builder-page";
+import { DocumentVerifierPage } from "./features/documents/document-verifier-page";
 import { ToolsPage } from "./features/tools/tools-page";
 
 export default function App() {
@@ -36,6 +37,8 @@ export default function App() {
       <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />
       <Route path="/shipments/:id" element={<ProtectedRoute><ShipmentDetailPage /></ProtectedRoute>} />
       <Route path="/documents" element={<ProtectedRoute><DocumentBuilderPage /></ProtectedRoute>} />
+      <Route path="/document-verifier" element={<ProtectedRoute><DocumentVerifierPage /></ProtectedRoute>} />
+      <Route path="/document-verifier/:runId" element={<ProtectedRoute><DocumentVerifierPage /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/tools" replace />} />
       <Route path="*" element={<Navigate to="/tools" replace />} />
     </Routes>

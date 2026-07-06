@@ -141,6 +141,11 @@ class Settings(BaseSettings):
     audit_logging_enabled: bool = True
     rate_limit_auth_per_minute: int = 20
     rate_limit_uploads_per_minute: int = 10
+    document_verifier_max_file_mb: int = Field(default=20, alias="DOCUMENT_VERIFIER_MAX_FILE_MB")
+    document_verifier_allowed_types: str = Field(
+        default="pdf,xlsx,csv,jpg,jpeg,png",
+        alias="DOCUMENT_VERIFIER_ALLOWED_TYPES",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -60,6 +60,13 @@ from app.models.compliance import (
     ComplianceSourceSnapshot,
     ProductCategory,
 )
+from app.models.document_verifier import (
+    DocumentExtractedField,
+    DocumentVerificationIssue,
+    DocumentVerificationReport,
+    DocumentVerificationRun,
+    VerificationDocument,
+)
 from app.models.documents import (
     DocumentImportSession,
     ExportDocumentPack,
@@ -84,6 +91,10 @@ from app.models.incentive import (
 __all__ = [
     "Alert",
     "DocumentImportSession",
+    "DocumentExtractedField",
+    "DocumentVerificationIssue",
+    "DocumentVerificationReport",
+    "DocumentVerificationRun",
     "ExportDocumentPack",
     "GeneratedExportDocument",
     "AlertSeverity",
@@ -154,4 +165,5 @@ __all__ = [
     "User",
     "UserRole",
     "UserStatus",
+    "VerificationDocument",
 ]

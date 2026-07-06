@@ -6,6 +6,7 @@ from app.api.routes import (
     calculators,
     compliance,
     dashboard,
+    document_verifier,
     documents,
     health,
     hsn,
@@ -28,3 +29,4 @@ api_router.include_router(calculators.router)
 api_router.include_router(rates.router)
 api_router.include_router(tools.router)
 api_router.include_router(documents.router)
+api_router.include_router(document_verifier.router)

@@ -8,6 +8,7 @@ const NAV = [
   { label: "Incentive Finder", href: "/incentives" },
   { label: "Export Quote", href: "/calculators/export-quote" },
   { label: "Document Builder", href: "/documents" },
+  { label: "AI Document Verifier", href: "/document-verifier" },
   { label: "Shipments", href: "/shipments" },
   { label: "Compliance Checker", href: "/compliance/checker" },
   { label: "Dashboard", href: "/dashboard" },

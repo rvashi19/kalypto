@@ -24,6 +24,13 @@ import type {
   DocumentationAssistantResponse,
   DocumentationAssistantStatus,
   DocumentChecklist,
+  DocumentUploadResponse,
+  DocumentVerifierExtractionResponse,
+  DocumentVerifierVerificationResponse,
+  DocumentVerificationIssueResponse,
+  DocumentVerificationReportResponse,
+  DocumentVerificationRunCreate,
+  DocumentVerificationRunResponse,
   DocumentResponse,
   DocumentType,
   ExportQuoteRequest,
@@ -906,5 +913,101 @@ export const api = {
     const body = await response.json().catch(() => ({ detail: "Extraction failed." }));
     if (!response.ok) throw new Error((body as { detail?: string }).detail ?? "Extraction failed.");
     return body;
+  },
+
+  // AI Document Verifier
+
+  createDocumentVerificationRun: (payload: DocumentVerificationRunCreate, token: string) =>
+    request<DocumentVerificationRunResponse>(
+      "/document-verifier/runs",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
+
+  listDocumentVerificationRuns: (token: string) =>
+    request<DocumentVerificationRunResponse[]>("/document-verifier/runs", {}, token),
+
+  getDocumentVerificationRun: (runId: string, token: string) =>
+    request<DocumentVerificationRunResponse>(`/document-verifier/runs/${runId}`, {}, token),
+
+  uploadVerifierDocuments: async (
+    runId: string,
+    files: File[],
+    token: string
+  ): Promise<DocumentUploadResponse> => {
+    const form = new FormData();
+    files.forEach((file) => form.append("files", file));
+    const response = await fetch(`${API_BASE_URL}/document-verifier/runs/${runId}/documents`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: form,
+      credentials: "include",
+    });
+    const body = await response.json().catch(() => ({ detail: "Upload failed." }));
+    if (!response.ok) {
+      throw new Error((body as { detail?: string }).detail ?? "Upload failed.");
+    }
+    return body as DocumentUploadResponse;
+  },
+
+  extractVerifierRun: (runId: string, token: string) =>
+    request<DocumentVerifierExtractionResponse>(
+      `/document-verifier/runs/${runId}/extract`,
+      { method: "POST" },
+      token
+    ),
+
+  verifyVerifierRun: (runId: string, token: string) =>
+    request<DocumentVerifierVerificationResponse>(
+      `/document-verifier/runs/${runId}/verify`,
+      { method: "POST" },
+      token
+    ),
+
+  listVerifierIssues: (runId: string, token: string) =>
+    request<DocumentVerificationIssueResponse[]>(
+      `/document-verifier/runs/${runId}/issues`,
+      {},
+      token
+    ),
+
+  resolveVerifierIssue: (issueId: string, token: string) =>
+    request<DocumentVerificationIssueResponse>(
+      `/document-verifier/issues/${issueId}/resolve`,
+      { method: "POST" },
+      token
+    ),
+
+  ignoreVerifierIssue: (issueId: string, token: string) =>
+    request<DocumentVerificationIssueResponse>(
+      `/document-verifier/issues/${issueId}/ignore`,
+      { method: "POST" },
+      token
+    ),
+
+  getVerifierReport: (runId: string, token: string) =>
+    request<DocumentVerificationReportResponse>(
+      `/document-verifier/runs/${runId}/report`,
+      {},
+      token
+    ),
+
+  downloadVerifierReportPdf: async (runId: string, token: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/document-verifier/runs/${runId}/report/pdf`, {
+      method: "POST",
+      headers: authHeaders(token),
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ detail: "Report download failed." }));
+      throw new Error((body as { detail?: string }).detail ?? "Report download failed.");
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = `document-verifier-${runId}.pdf`;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
   },
 };
