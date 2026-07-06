@@ -9,7 +9,6 @@ const NAV = [
   { label: "Export Quote", href: "/calculators/export-quote" },
   { label: "Document Builder", href: "/documents" },
   { label: "Shipments", href: "/shipments" },
-  { label: "Compliance", href: "/compliance" },
   { label: "Compliance Checker", href: "/compliance/checker" },
   { label: "Dashboard", href: "/dashboard" },
 ];
