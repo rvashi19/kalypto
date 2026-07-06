@@ -110,6 +110,18 @@ class DocumentVerificationRunResponse(BaseModel):
     fields: list[DocumentExtractedFieldResponse] = Field(default_factory=list)
     issues: list[DocumentVerificationIssueResponse] = Field(default_factory=list)
     report: DocumentVerificationReportResponse | None = None
+    # Scoring summary (populated from the latest report after verification)
+    overall_score: int | None = None
+    score_label: str | None = None
+    readiness_status: str | None = None
+    readiness_label: str | None = None
+    score_breakdown: dict[str, int] | None = None
+    penalty_breakdown: list[dict[str, Any]] | None = None
+    score_explanation: str | None = None
+    recommended_next_actions: list[str] | None = None
+    requested_documents: list[dict[str, Any]] | None = None
+    issue_counts: dict[str, int] | None = None
+    last_verified_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -136,6 +148,10 @@ class VerificationRunResponse(BaseModel):
     medium_count: int
     low_count: int
     message: str
+    overall_score: int | None = None
+    score_label: str | None = None
+    readiness_status: str | None = None
+    requested_documents_missing: int | None = None
 
 
 class VerifierWarningResponse(BaseModel):

@@ -596,6 +596,27 @@ export interface DocumentVerificationRunResponse {
   fields: DocumentExtractedFieldResponse[];
   issues: DocumentVerificationIssueResponse[];
   report: DocumentVerificationReportResponse | null;
+  overall_score: number | null;
+  score_label: string | null;
+  readiness_status: string | null;
+  readiness_label: string | null;
+  score_breakdown: Record<string, number> | null;
+  penalty_breakdown: Array<{ category: string; points: number; reason: string }> | null;
+  score_explanation: string | null;
+  recommended_next_actions: string[] | null;
+  requested_documents: RequestedVerifierDocument[] | null;
+  issue_counts: Record<string, number> | null;
+  last_verified_at: string | null;
+}
+
+export interface RequestedVerifierDocument {
+  document_type: string;
+  label: string;
+  reason: string;
+  priority: "critical" | "high" | "medium" | "low";
+  related_fields: string[];
+  required_for: string;
+  status: "missing" | "uploaded" | "waived";
 }
 
 export interface DocumentUploadResponse {

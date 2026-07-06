@@ -84,12 +84,34 @@ def _run_response(db: DbSession, run: DocumentVerificationRun) -> DocumentVerifi
         .where(DocumentVerificationReport.verification_run_id == run.id)
         .order_by(DocumentVerificationReport.created_at.desc())
     ).first()
+    summary = (report.summary_json or {}) if report else {}
+    scoring = summary.get("scoring") or {}
+    last_verified_raw = summary.get("last_verified_at")
     return DocumentVerificationRunResponse(
-        **DocumentVerificationRunResponse.model_validate(run).model_dump(exclude={"documents", "fields", "issues", "report"}),
+        **DocumentVerificationRunResponse.model_validate(run).model_dump(
+            exclude={
+                "documents", "fields", "issues", "report",
+                "overall_score", "score_label", "readiness_status", "readiness_label",
+                "score_breakdown", "penalty_breakdown", "score_explanation",
+                "recommended_next_actions", "requested_documents", "issue_counts",
+                "last_verified_at",
+            }
+        ),
         documents=[VerificationDocumentResponse.model_validate(doc) for doc in documents],
         fields=[DocumentExtractedFieldResponse.model_validate(field) for field in fields],
         issues=[DocumentVerificationIssueResponse.model_validate(issue) for issue in issues],
         report=DocumentVerificationReportResponse.model_validate(report) if report else None,
+        overall_score=scoring.get("overall_score"),
+        score_label=scoring.get("score_label"),
+        readiness_status=scoring.get("readiness_status"),
+        readiness_label=scoring.get("readiness_label"),
+        score_breakdown=scoring.get("score_breakdown"),
+        penalty_breakdown=scoring.get("penalty_breakdown"),
+        score_explanation=scoring.get("score_explanation"),
+        recommended_next_actions=scoring.get("recommended_next_actions"),
+        requested_documents=summary.get("requested_documents"),
+        issue_counts=summary.get("issue_counts"),
+        last_verified_at=datetime.fromisoformat(last_verified_raw) if last_verified_raw else None,
     )
 
 
@@ -224,6 +246,9 @@ def verify_documents(run_id: UUID, db: DbSession, ctx: CurrentUser) -> Verificat
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     db.commit()
     db.refresh(report)
+    summary = report.summary_json or {}
+    scoring = summary.get("scoring") or {}
+    requested = summary.get("requested_documents") or []
     return VerificationRunResponse(
         run_id=run.id,
         status=run.status,
@@ -232,6 +257,10 @@ def verify_documents(run_id: UUID, db: DbSession, ctx: CurrentUser) -> Verificat
         high_count=report.high_count,
         medium_count=report.medium_count,
         low_count=report.low_count,
+        overall_score=scoring.get("overall_score"),
+        score_label=scoring.get("score_label"),
+        readiness_status=scoring.get("readiness_status"),
+        requested_documents_missing=sum(1 for item in requested if item.get("status") == "missing"),
         message=(
             "No major mismatches found. Manual review is still recommended before filing."
             if report.issues_count == 0

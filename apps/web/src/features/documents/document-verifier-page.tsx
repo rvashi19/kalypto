@@ -206,6 +206,8 @@ export function DocumentVerifierPage() {
               />
             </div>
             <div className="space-y-5">
+              <ScoreCard run={run} />
+              <RequestedDocumentsPanel run={run} />
               <DocumentsPanel run={run} />
               <FieldsPanel fieldsByDocument={fieldsByDocument} />
               <IssuesPanel
@@ -377,6 +379,8 @@ function ActionPanel({
 }) {
   const hasDocs = run.documents.length > 0;
   const readyToVerify = hasDocs && run.documents.every((doc) => doc.extraction_status === "extracted");
+  const needsReverify =
+    run.overall_score != null && run.documents.some((doc) => doc.extraction_status === "pending");
   return (
     <Card>
       <CardHeader>
@@ -384,6 +388,12 @@ function ActionPanel({
         <CardDescription>Extract fields first, then run verification.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
+        {needsReverify ? (
+          <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+            New documents uploaded since the last verification. Extract fields and re-run
+            verification to update the score.
+          </p>
+        ) : null}
         <Button className="w-full" disabled={!hasDocs || extracting} onClick={onExtract}>
           {extracting ? "Extracting..." : "Extract fields"}
         </Button>
@@ -396,6 +406,173 @@ function ActionPanel({
         {extractError ? <ErrorBox error={extractError} /> : null}
         {verifyError ? <ErrorBox error={verifyError} /> : null}
         {pdfError ? <ErrorBox error={pdfError} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+const READINESS_STYLES: Record<string, string> = {
+  ready_for_manual_review: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  needs_minor_review: "border-sky-300 bg-sky-50 text-sky-800",
+  needs_corrections: "border-amber-300 bg-amber-50 text-amber-800",
+  high_risk_do_not_file_without_review: "border-red-300 bg-red-50 text-red-800",
+  waiting_for_required_documents: "border-violet-300 bg-violet-50 text-violet-800",
+};
+
+function scoreColor(score: number): string {
+  if (score >= 90) return "text-emerald-700";
+  if (score >= 75) return "text-sky-700";
+  if (score >= 50) return "text-amber-700";
+  return "text-red-700";
+}
+
+function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
+  if (run.overall_score == null) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Document Verification Score</CardTitle>
+          <CardDescription>
+            Score not calculated yet. Upload documents, extract fields, then run verification.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+  const breakdown = run.score_breakdown ?? {};
+  const counts = run.issue_counts ?? {};
+  const categories: Array<{ key: string; label: string }> = [
+    { key: "document_completeness", label: "Document Completeness" },
+    { key: "field_consistency", label: "Field Consistency" },
+    { key: "extraction_confidence", label: "Extraction Confidence" },
+    { key: "claim_filing_risk", label: "Claim/Filing Risk" },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle>Document Verification Score</CardTitle>
+            <CardDescription>
+              Filing-readiness estimate.
+              {run.last_verified_at
+                ? ` Last verified ${new Date(run.last_verified_at).toLocaleString()}.`
+                : ""}
+            </CardDescription>
+          </div>
+          <div className="text-right">
+            <p className={`text-4xl font-bold ${scoreColor(run.overall_score)}`}>
+              {run.overall_score}
+              <span className="text-base font-medium text-[#42526e]">/100</span>
+            </p>
+            <p className="mt-1 text-xs text-[#42526e]">{run.score_label}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {run.readiness_status ? (
+          <div
+            className={`rounded border px-3 py-2 text-sm font-semibold ${READINESS_STYLES[run.readiness_status] ?? "border-[#dfe1e6] bg-[#f7f8f9] text-[#101214]"}`}
+          >
+            {run.readiness_label ?? run.readiness_status.replaceAll("_", " ")}
+          </div>
+        ) : null}
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {categories.map((category) => {
+            const value = breakdown[category.key];
+            return (
+              <div key={category.key} className="rounded border border-[#dfe1e6] bg-[#f7f8f9] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#42526e]">
+                  {category.label}
+                </p>
+                <p className={`mt-1 text-xl font-bold ${value != null ? scoreColor(value) : "text-[#42526e]"}`}>
+                  {value ?? "-"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {(["critical", "high", "medium", "low", "info"] as const).map((severity) => (
+            <span key={severity} className="rounded-full border border-[#dfe1e6] bg-white px-3 py-1 capitalize text-[#42526e]">
+              {severity}: {counts[severity] ?? 0}
+            </span>
+          ))}
+        </div>
+        {run.score_explanation ? (
+          <p className="rounded border border-[#dfe1e6] bg-white p-3 text-sm text-[#172b4d]">
+            {run.score_explanation}
+          </p>
+        ) : null}
+        {run.recommended_next_actions?.length ? (
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#42526e]">
+              Recommended next actions
+            </p>
+            <ul className="space-y-1 text-sm text-[#172b4d]">
+              {run.recommended_next_actions.map((action) => (
+                <li key={action} className="flex gap-2">
+                  <span className="text-[#1868db]">→</span>
+                  {action}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <p className="text-xs italic text-[#42526e]">
+          This score estimates document consistency based on uploaded files and source-backed
+          KALYPTO checks. Manual review with a CHA/customs broker is still required.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+const PRIORITY_STYLES: Record<string, string> = {
+  critical: "bg-red-100 text-red-800",
+  high: "bg-amber-100 text-amber-800",
+  medium: "bg-sky-100 text-sky-800",
+  low: "bg-slate-100 text-slate-700",
+};
+
+function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse }) {
+  const requested = run.requested_documents ?? [];
+  if (!requested.length) return null;
+  const missing = requested.filter((doc) => doc.status === "missing");
+  const uploaded = requested.filter((doc) => doc.status !== "missing");
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Documents needed for better verification</CardTitle>
+        <CardDescription>
+          {missing.length
+            ? `${missing.length} document(s) missing. Upload them above and re-run verification.`
+            : "All expected documents are present. Re-run verification after any new upload."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {missing.map((doc) => (
+          <div key={doc.document_type} className="rounded border border-[#dfe1e6] bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-[#101214]">{doc.label}</p>
+              <div className="flex gap-2 text-[10px] font-semibold uppercase tracking-wide">
+                <span className={`rounded-full px-2 py-0.5 ${PRIORITY_STYLES[doc.priority] ?? PRIORITY_STYLES.low}`}>
+                  {doc.priority}
+                </span>
+                <span className="rounded-full bg-[#f7f8f9] px-2 py-0.5 text-[#42526e]">
+                  {doc.required_for}
+                </span>
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-800">missing</span>
+              </div>
+            </div>
+            <p className="mt-1 text-sm text-[#42526e]">{doc.reason}</p>
+          </div>
+        ))}
+        {uploaded.length ? (
+          <p className="pt-1 text-xs text-[#42526e]">
+            Present: {uploaded.map((doc) => doc.label).join(", ")}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
