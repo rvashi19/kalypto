@@ -202,6 +202,10 @@ def test_resolve_ignore_and_report_counts(client) -> None:
     report = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/report")
     assert report.status_code == 200
     assert report.json()["issues_count"] == len(issues)
+    pdf = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/report/pdf")
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content.startswith(b"%PDF")
 
 
 def test_missing_required_document_from_ccr_creates_issue(client, session) -> None:

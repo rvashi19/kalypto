@@ -116,6 +116,20 @@ GROQ_API_KEY=
 Uploaded files use KALYPTO's existing storage abstraction: local `UPLOAD_DIR` in development,
 or the configured R2/S3-compatible backend in production.
 
+## Deployment
+
+The verifier tables ship in Alembic migration `0020_document_verifier`. Production databases
+must be migrated before (or as part of) deploying this feature:
+
+```bash
+cd apps/api
+alembic upgrade head
+```
+
+On Render this happens automatically — `scripts/start-render.sh` runs `alembic upgrade head`
+on startup. For any manually managed environment, run the command above against the
+production `DATABASE_URL` before serving traffic.
+
 ## Limitations
 
 The AI Document Verifier is an audit helper only. It does not provide legal advice, customs advice, or 100% verification accuracy. It does not submit anything to customs, DGFT, ICEGATE, banks, or government portals.
