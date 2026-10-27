@@ -174,6 +174,40 @@ export function HsnFinderPage() {
   const hasSearched = Boolean(searchMutation.data) || searchMutation.isPending;
   const stats = statsQuery.data;
 
+  let detailPane: ReactNode;
+  if (detailMutation.isPending) {
+    detailPane = (
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+        <div className="h-6 w-32 animate-pulse rounded bg-slate-800" />
+        <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-800" />
+        <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-slate-800" />
+      </div>
+    );
+  } else if (selected && detail) {
+    detailPane = (
+      <DetailPanel
+        detail={detail}
+        onVerify={() => verifyMutation.mutate(selected)}
+        verifyPending={verifyMutation.isPending}
+        verified={Boolean(verifyMutation.data)}
+        onUseForIncentives={() =>
+          navigate(`/incentives?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
+        }
+        onUseForExportQuote={() =>
+          navigate(
+            `/calculators/export-quote?hsn_code=${encodeURIComponent(detail.normalized_code)}`
+          )
+        }
+      />
+    );
+  } else {
+    detailPane = (
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
+        Select a result to view its hierarchy, code details, and policy notes.
+      </div>
+    );
+  }
+
   return (
     <DashboardShell
       organizationName={session?.organization.name ?? "Workspace"}
@@ -382,34 +416,7 @@ export function HsnFinderPage() {
           ))}
         </section>
 
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          {detailMutation.isPending ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <div className="h-6 w-32 animate-pulse rounded bg-slate-800" />
-              <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-800" />
-              <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-slate-800" />
-            </div>
-          ) : selected && detail ? (
-            <DetailPanel
-              detail={detail}
-              onVerify={() => verifyMutation.mutate(selected)}
-              verifyPending={verifyMutation.isPending}
-              verified={Boolean(verifyMutation.data)}
-              onUseForIncentives={() =>
-                navigate(`/incentives?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
-              }
-              onUseForExportQuote={() =>
-                navigate(
-                  `/calculators/export-quote?hsn_code=${encodeURIComponent(detail.normalized_code)}`
-                )
-              }
-            />
-          ) : (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-              Select a result to view its hierarchy, code details, and policy notes.
-            </div>
-          )}
-        </aside>
+        <aside className="lg:sticky lg:top-4 lg:self-start">{detailPane}</aside>
       </div>
     </DashboardShell>
   );
