@@ -33,7 +33,9 @@ export function DocumentVerifierPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<DocumentVerificationRunCreate>(EMPTY_FORM);
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedIssue, setSelectedIssue] = useState<DocumentVerificationIssueResponse | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<DocumentVerificationIssueResponse | null>(
+    null
+  );
 
   const runsQuery = useQuery({
     queryKey: ["document-verifier-runs", token],
@@ -75,7 +77,9 @@ export function DocumentVerifierPage() {
 
   const issueActionMutation = useMutation({
     mutationFn: ({ id, action }: { id: string; action: "resolve" | "ignore" }) =>
-      action === "resolve" ? api.resolveVerifierIssue(id, token!) : api.ignoreVerifierIssue(id, token!),
+      action === "resolve"
+        ? api.resolveVerifierIssue(id, token!)
+        : api.ignoreVerifierIssue(id, token!),
     onSuccess: () => {
       setSelectedIssue(null);
       queryClient.invalidateQueries({ queryKey: ["document-verifier-run", runId] });
@@ -130,7 +134,11 @@ export function DocumentVerifierPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Field label="Title" value={form.title} onChange={(title) => setForm({ ...form, title })} />
+              <Field
+                label="Title"
+                value={form.title}
+                onChange={(title) => setForm({ ...form, title })}
+              />
               <Field
                 label="Reference number"
                 value={form.reference_number ?? ""}
@@ -175,7 +183,9 @@ export function DocumentVerifierPage() {
       {runId ? (
         runQuery.isLoading ? (
           <Card>
-            <CardContent className="p-6 text-sm text-[#42526e]">Loading verification run...</CardContent>
+            <CardContent className="p-6 text-sm text-[#42526e]">
+              Loading verification run...
+            </CardContent>
           </Card>
         ) : run ? (
           <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
@@ -218,7 +228,9 @@ export function DocumentVerifierPage() {
           </div>
         ) : (
           <Card>
-            <CardContent className="p-6 text-sm text-red-700">Verification run was not found.</CardContent>
+            <CardContent className="p-6 text-sm text-red-700">
+              Verification run was not found.
+            </CardContent>
           </Card>
         )
       ) : null}
@@ -240,7 +252,11 @@ function Field({
       <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#42526e]">
         {label}
       </span>
-      <input className={inputCls} value={value} onChange={(event) => onChange(event.target.value)} />
+      <input
+        className={inputCls}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </label>
   );
 }
@@ -292,7 +308,10 @@ function RunSummary({ run }: { run: DocumentVerificationRunResponse }) {
         <Metric label="Status" value={run.status.replaceAll("_", " ")} />
         <Metric label="Documents" value={String(run.documents.length)} />
         <Metric label="Fields" value={String(run.fields.length)} />
-        <Metric label="Open issues" value={String(run.issues.filter((i) => i.status === "open").length)} />
+        <Metric
+          label="Open issues"
+          value={String(run.issues.filter((i) => i.status === "open").length)}
+        />
       </CardContent>
     </Card>
   );
@@ -374,7 +393,8 @@ function ActionPanel({
   onDownload: () => void;
 }) {
   const hasDocs = run.documents.length > 0;
-  const readyToVerify = hasDocs && run.documents.every((doc) => doc.extraction_status === "extracted");
+  const readyToVerify =
+    hasDocs && run.documents.every((doc) => doc.extraction_status === "extracted");
   const needsReverify =
     run.overall_score != null && run.documents.some((doc) => doc.extraction_status === "pending");
   return (
@@ -396,7 +416,12 @@ function ActionPanel({
         <Button className="w-full" disabled={!readyToVerify || verifying} onClick={onVerify}>
           {verifying ? "Verifying..." : "Run verification"}
         </Button>
-        <Button className="w-full" variant="secondary" disabled={!run.report || downloading} onClick={onDownload}>
+        <Button
+          className="w-full"
+          variant="secondary"
+          disabled={!run.report || downloading}
+          onClick={onDownload}
+        >
           {downloading ? "Preparing PDF..." : "Download report PDF"}
         </Button>
         {extractError ? <ErrorBox error={extractError} /> : null}
@@ -481,7 +506,9 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#42526e]">
                   {category.label}
                 </p>
-                <p className={`mt-1 text-xl font-bold ${value != null ? scoreColor(value) : "text-[#42526e]"}`}>
+                <p
+                  className={`mt-1 text-xl font-bold ${value != null ? scoreColor(value) : "text-[#42526e]"}`}
+                >
                   {value ?? "-"}
                 </p>
               </div>
@@ -490,7 +517,10 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {(["critical", "high", "medium", "low", "info"] as const).map((severity) => (
-            <span key={severity} className="rounded-full border border-[#dfe1e6] bg-white px-3 py-1 capitalize text-[#42526e]">
+            <span
+              key={severity}
+              className="rounded-full border border-[#dfe1e6] bg-white px-3 py-1 capitalize text-[#42526e]"
+            >
               {severity}: {counts[severity] ?? 0}
             </span>
           ))}
@@ -552,13 +582,17 @@ function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold text-[#101214]">{doc.label}</p>
               <div className="flex gap-2 text-[10px] font-semibold uppercase tracking-wide">
-                <span className={`rounded-full px-2 py-0.5 ${PRIORITY_STYLES[doc.priority] ?? PRIORITY_STYLES.low}`}>
+                <span
+                  className={`rounded-full px-2 py-0.5 ${PRIORITY_STYLES[doc.priority] ?? PRIORITY_STYLES.low}`}
+                >
                   {doc.priority}
                 </span>
                 <span className="rounded-full bg-[#f7f8f9] px-2 py-0.5 text-[#42526e]">
                   {doc.required_for}
                 </span>
-                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-800">missing</span>
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-800">
+                  missing
+                </span>
               </div>
             </div>
             <p className="mt-1 text-sm text-[#42526e]">{doc.reason}</p>
@@ -615,7 +649,9 @@ function FieldsPanel({
     <Card>
       <CardHeader>
         <CardTitle>Extracted fields</CardTitle>
-        <CardDescription>Values are grouped by document and include evidence references.</CardDescription>
+        <CardDescription>
+          Values are grouped by document and include evidence references.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {!fieldsByDocument.length ? (
@@ -638,7 +674,9 @@ function FieldsPanel({
                   {group.fields.map((field) => (
                     <tr key={field.id} className="border-t border-[#dfe1e6]">
                       <td className="px-3 py-2 font-medium">{field.field_label}</td>
-                      <td className="px-3 py-2">{field.raw_value || field.normalized_value || "-"}</td>
+                      <td className="px-3 py-2">
+                        {field.raw_value || field.normalized_value || "-"}
+                      </td>
                       <td className="px-3 py-2">{Math.round(field.confidence_score)}%</td>
                       <td className="px-3 py-2">{field.page_number ?? "-"}</td>
                     </tr>
@@ -695,7 +733,9 @@ function IssuesPanel({
                       <div>
                         <p className="font-semibold text-[#101214]">{issue.title}</p>
                         <p className="mt-1 text-sm text-[#42526e]">{issue.description}</p>
-                        <p className="mt-1 text-xs capitalize text-[#42526e]">Status: {issue.status}</p>
+                        <p className="mt-1 text-xs capitalize text-[#42526e]">
+                          Status: {issue.status}
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="secondary" onClick={() => onSelect(issue)}>
@@ -704,7 +744,12 @@ function IssuesPanel({
                         <Button size="sm" disabled={busy} onClick={() => onResolve(issue.id)}>
                           Resolve
                         </Button>
-                        <Button size="sm" variant="secondary" disabled={busy} onClick={() => onIgnore(issue.id)}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={busy}
+                          onClick={() => onIgnore(issue.id)}
+                        >
                           Ignore
                         </Button>
                       </div>
@@ -721,7 +766,11 @@ function IssuesPanel({
               <div>
                 <p className="font-semibold text-[#101214]">Evidence: {selectedIssue.title}</p>
                 <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-white p-3 text-xs text-[#172b4d]">
-                  {JSON.stringify(selectedIssue.evidence_json ?? selectedIssue.actual_values_json, null, 2)}
+                  {JSON.stringify(
+                    selectedIssue.evidence_json ?? selectedIssue.actual_values_json,
+                    null,
+                    2
+                  )}
                 </pre>
               </div>
               <Button size="sm" variant="secondary" onClick={() => onSelect(null)}>

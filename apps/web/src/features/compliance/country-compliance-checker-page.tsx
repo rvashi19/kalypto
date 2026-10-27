@@ -15,8 +15,24 @@ import { useAuth } from "../../lib/auth";
 import { useLogout } from "../../lib/use-logout";
 import { inputCls, selectCls } from "../../lib/ui";
 
-const COUNTRIES = ["India", "Canada", "USA", "UK", "Netherlands/EU", "United Arab Emirates", "Saudi Arabia"];
-const CATEGORIES = ["food/agri", "beverages", "textiles", "spices", "dry fruits", "chemicals", "plastic/packaging"];
+const COUNTRIES = [
+  "India",
+  "Canada",
+  "USA",
+  "UK",
+  "Netherlands/EU",
+  "United Arab Emirates",
+  "Saudi Arabia",
+];
+const CATEGORIES = [
+  "food/agri",
+  "beverages",
+  "textiles",
+  "spices",
+  "dry fruits",
+  "chemicals",
+  "plastic/packaging",
+];
 const SOURCE_TYPES = ["html", "pdf", "xlsx", "csv"];
 
 const GROUP_LABELS: Record<string, string> = {
@@ -158,7 +174,8 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
         <CardHeader>
           <CardTitle>Result</CardTitle>
           <CardDescription>
-            Confidence: {result.confidence_label} ({result.confidence_score}) · {result.answer_summary}
+            Confidence: {result.confidence_label} ({result.confidence_score}) ·{" "}
+            {result.answer_summary}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -172,7 +189,10 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
                 </p>
                 <ul className="mt-1 space-y-2">
                   {cards.map((c, i) => (
-                    <li key={i} className="rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm">
+                    <li
+                      key={i}
+                      className="rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm"
+                    >
                       <p className="text-slate-100">{c.detail}</p>
                       {c.source_url && (
                         <a
@@ -205,7 +225,12 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
           <CardContent className="space-y-2 text-sm">
             {result.sources.map((s) => (
               <div key={s.source_url}>
-                <a className="text-cyan-300 underline" href={s.source_url} target="_blank" rel="noreferrer">
+                <a
+                  className="text-cyan-300 underline"
+                  href={s.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {s.source_name}
                 </a>
                 <span className="ml-2 text-xs text-slate-500">
@@ -316,7 +341,8 @@ function AdminSourceManager() {
       <CardHeader>
         <CardTitle>Official sources (admin)</CardTitle>
         <CardDescription>
-          Register government or regulatory source URLs. Only whitelisted official domains are accepted.
+          Register government or regulatory source URLs. Only whitelisted official domains are
+          accepted.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -324,28 +350,36 @@ function AdminSourceManager() {
           <Button variant="secondary" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
             {seedMut.isPending ? "Seeding..." : "Seed official sources"}
           </Button>
-          <Button variant="secondary" onClick={() => refreshMut.mutate()} disabled={refreshMut.isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => refreshMut.mutate()}
+            disabled={refreshMut.isPending}
+          >
             {refreshMut.isPending ? "Refreshing..." : "Refresh due sources"}
           </Button>
         </div>
         {seedMut.data && (
           <p className="text-xs text-emerald-300">
-            Seeded {seedMut.data.created} new source(s), updated {seedMut.data.updated}, skipped {seedMut.data.skipped}.
+            Seeded {seedMut.data.created} new source(s), updated {seedMut.data.updated}, skipped{" "}
+            {seedMut.data.skipped}.
           </p>
         )}
         {refreshMut.data && (
           <p className="text-xs text-emerald-300">
-            Ran {refreshMut.data.jobs_run} job(s) - {refreshMut.data.snapshots_created} snapshot(s) - {refreshMut.data.requirements_extracted} extracted (pending review).
+            Ran {refreshMut.data.jobs_run} job(s) - {refreshMut.data.snapshots_created} snapshot(s)
+            - {refreshMut.data.requirements_extracted} extracted (pending review).
           </p>
         )}
         {sourceJob && (
           <div className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 p-3 text-xs text-cyan-100">
             <p className="font-semibold">Latest source refresh: {sourceJob.status}</p>
             <p>
-              Fetched {sourceJob.pages_fetched} page/file(s) - checksum {sourceJob.checksum_status ?? "pending"} - parser {sourceJob.parser_used ?? "pending"}
+              Fetched {sourceJob.pages_fetched} page/file(s) - checksum{" "}
+              {sourceJob.checksum_status ?? "pending"} - parser {sourceJob.parser_used ?? "pending"}
             </p>
             <p>
-              Extracted {sourceJob.requirements_extracted} requirement(s); {sourceJob.pending_review_count} pending review.
+              Extracted {sourceJob.requirements_extracted} requirement(s);{" "}
+              {sourceJob.pending_review_count} pending review.
             </p>
             {sourceJob.error_message && <p className="text-red-200">{sourceJob.error_message}</p>}
           </div>
@@ -369,13 +403,20 @@ function AdminSourceManager() {
             label="Source type"
             value={form.source_type ?? "html"}
             options={SOURCE_TYPES}
-            onChange={(v) => setForm((c) => ({ ...c, source_type: v as SourceRegistryCreateRequest["source_type"] }))}
+            onChange={(v) =>
+              setForm((c) => ({
+                ...c,
+                source_type: v as SourceRegistryCreateRequest["source_type"],
+              }))
+            }
           />
           <Field
             label="Refresh frequency days"
             value={String(form.refresh_frequency_days ?? 30)}
             placeholder="30"
-            onChange={(v) => setForm((c) => ({ ...c, refresh_frequency_days: Number.parseInt(v, 10) || 30 }))}
+            onChange={(v) =>
+              setForm((c) => ({ ...c, refresh_frequency_days: Number.parseInt(v, 10) || 30 }))
+            }
           />
         </div>
         <Field
@@ -434,7 +475,9 @@ function AdminSourceManager() {
 
         {sources.length > 0 && (
           <div className="space-y-2 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Registered sources</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Registered sources
+            </p>
             {sources.map((s) => (
               <div
                 key={s.id}
@@ -445,11 +488,17 @@ function AdminSourceManager() {
                     {s.country} - {s.product_categories.join(", ") || "all"} - {s.source_type}
                     {!s.is_active && " - inactive"}
                   </p>
-                  <a className="text-cyan-300 underline" href={s.base_url} target="_blank" rel="noreferrer">
+                  <a
+                    className="text-cyan-300 underline"
+                    href={s.base_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     {s.source_name}
                   </a>
                   <p>
-                    {s.authority_name} - {s.authority_level} - refresh every {s.refresh_frequency_days} day(s)
+                    {s.authority_name} - {s.authority_level} - refresh every{" "}
+                    {s.refresh_frequency_days} day(s)
                   </p>
                   <p>Last checked: {s.last_checked_at ?? "never"}</p>
                   {s.notes && <p>{s.notes}</p>}
@@ -481,9 +530,7 @@ function AdminReviewQueue() {
 
   const decide = useMutation({
     mutationFn: ({ id, action }: { id: string; action: "approve" | "reject" }) =>
-      action === "approve"
-        ? api.approveRequirement(id, token!)
-        : api.rejectRequirement(id, token!),
+      action === "approve" ? api.approveRequirement(id, token!) : api.rejectRequirement(id, token!),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["compliance-review-queue"] }),
   });
 
@@ -502,17 +549,28 @@ function AdminReviewQueue() {
           <p className="text-sm text-slate-500">No pending requirements to review.</p>
         )}
         {items.map((item) => (
-          <div key={item.requirement_id} className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
+          <div
+            key={item.requirement_id}
+            className="rounded-lg border border-white/10 bg-slate-950/60 p-3"
+          >
             <p className="text-sm text-slate-100">{item.detail}</p>
             <p className="mt-1 text-xs text-slate-500">
               {item.country} · {item.category} · {item.requirement_type} · confidence{" "}
               {item.confidence_score}
             </p>
-            <a className="text-xs text-cyan-300 underline" href={item.source_url} target="_blank" rel="noreferrer">
+            <a
+              className="text-xs text-cyan-300 underline"
+              href={item.source_url}
+              target="_blank"
+              rel="noreferrer"
+            >
               {item.source_name}
             </a>
             {item.evidence_excerpts.map((ex, i) => (
-              <p key={i} className="mt-1 border-l-2 border-slate-700 pl-2 text-xs italic text-slate-400">
+              <p
+                key={i}
+                className="mt-1 border-l-2 border-slate-700 pl-2 text-xs italic text-slate-400"
+              >
                 {ex}
               </p>
             ))}

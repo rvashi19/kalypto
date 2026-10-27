@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -18,7 +27,10 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = window.setInterval(() => setCooldown((current) => Math.max(0, current - 1)), 1000);
+    const timer = window.setInterval(
+      () => setCooldown((current) => Math.max(0, current - 1)),
+      1000
+    );
     return () => window.clearInterval(timer);
   }, [cooldown]);
 
@@ -55,7 +67,8 @@ export function VerifyEmailPage() {
         <CardHeader>
           <CardTitle>Verify your email</CardTitle>
           <CardDescription>
-            {stateMessage ?? "We sent a verification code to your email. Enter it to activate your account."}
+            {stateMessage ??
+              "We sent a verification code to your email. Enter it to activate your account."}
           </CardDescription>
         </CardHeader>
         <CardContent>

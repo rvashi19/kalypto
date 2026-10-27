@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -45,7 +54,8 @@ export function SignupPage() {
     },
   });
 
-  const errorMessage = clientError ?? (mutation.isError ? userMessageForError(mutation.error) : null);
+  const errorMessage =
+    clientError ?? (mutation.isError ? userMessageForError(mutation.error) : null);
 
   return (
     <AuthShell
@@ -56,7 +66,9 @@ export function SignupPage() {
       <Card>
         <CardHeader>
           <CardTitle>Create your workspace</CardTitle>
-          <CardDescription>We will email a 6-digit code before activating the account.</CardDescription>
+          <CardDescription>
+            We will email a 6-digit code before activating the account.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -79,11 +91,7 @@ export function SignupPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="company_name">Company name</Label>
-              <Input
-                id="company_name"
-                name="company_name"
-                placeholder="Shah Exports LLP"
-              />
+              <Input id="company_name" name="company_name" placeholder="Shah Exports LLP" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="country">Country</Label>
@@ -91,7 +99,13 @@ export function SignupPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
-              <Input id="email" name="email" type="email" placeholder="owner@shahexports.in" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="owner@shahexports.in"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>

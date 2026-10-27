@@ -26,19 +26,103 @@ export default function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />
-      <Route path="/hsn" element={<ProtectedRoute><HsnFinderPage /></ProtectedRoute>} />
-      <Route path="/incentives" element={<ProtectedRoute><IncentiveFinderPage /></ProtectedRoute>} />
-      <Route path="/calculators/export-quote" element={<ProtectedRoute><ExportQuotePage /></ProtectedRoute>} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools"
+        element={
+          <ProtectedRoute>
+            <ToolsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hsn"
+        element={
+          <ProtectedRoute>
+            <HsnFinderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/incentives"
+        element={
+          <ProtectedRoute>
+            <IncentiveFinderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calculators/export-quote"
+        element={
+          <ProtectedRoute>
+            <ExportQuotePage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/compliance" element={<Navigate to="/compliance/checker" replace />} />
-      <Route path="/compliance/checker" element={<ProtectedRoute><CountryComplianceCheckerPage /></ProtectedRoute>} />
-      <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
-      <Route path="/shipments/new" element={<ProtectedRoute><NewShipmentPage /></ProtectedRoute>} />
-      <Route path="/shipments/:id" element={<ProtectedRoute><ShipmentDetailPage /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><DocumentBuilderPage /></ProtectedRoute>} />
-      <Route path="/document-verifier" element={<ProtectedRoute><DocumentVerifierPage /></ProtectedRoute>} />
-      <Route path="/document-verifier/:runId" element={<ProtectedRoute><DocumentVerifierPage /></ProtectedRoute>} />
+      <Route
+        path="/compliance/checker"
+        element={
+          <ProtectedRoute>
+            <CountryComplianceCheckerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipments"
+        element={
+          <ProtectedRoute>
+            <ShipmentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipments/new"
+        element={
+          <ProtectedRoute>
+            <NewShipmentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipments/:id"
+        element={
+          <ProtectedRoute>
+            <ShipmentDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documents"
+        element={
+          <ProtectedRoute>
+            <DocumentBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/document-verifier"
+        element={
+          <ProtectedRoute>
+            <DocumentVerifierPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/document-verifier/:runId"
+        element={
+          <ProtectedRoute>
+            <DocumentVerifierPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/tools" replace />} />
       <Route path="*" element={<Navigate to="/tools" replace />} />
     </Routes>

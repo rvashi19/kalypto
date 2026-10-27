@@ -1,5 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -12,7 +21,7 @@ import { AiBadge } from "../../lib/ui";
 export function DashboardPage() {
   const { session, token, setSession } = useAuth();
   const [assistantQuestion, setAssistantQuestion] = useState(
-    "What should I verify before my next export shipment?",
+    "What should I verify before my next export shipment?"
   );
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorSetup, setTwoFactorSetup] = useState<{
@@ -76,8 +85,12 @@ export function DashboardPage() {
   });
 
   const shipments = shipmentsQuery.data ?? [];
-  const preCount = shipments.filter((shipment) => shipment.shipment_stage === "pre_shipment").length;
-  const postCount = shipments.filter((shipment) => shipment.shipment_stage === "post_shipment").length;
+  const preCount = shipments.filter(
+    (shipment) => shipment.shipment_stage === "pre_shipment"
+  ).length;
+  const postCount = shipments.filter(
+    (shipment) => shipment.shipment_stage === "post_shipment"
+  ).length;
   const recentShipments = shipments.slice(0, 3);
 
   const user = meQuery.data?.user ?? session?.user;
@@ -85,9 +98,7 @@ export function DashboardPage() {
   const role = meQuery.data?.membership.role ?? session?.membership.role ?? "";
   const twoFactorEnabled = Boolean(user?.two_factor_enabled);
   const twoFactorError =
-    setupTwoFactorMutation.error ||
-    enableTwoFactorMutation.error ||
-    disableTwoFactorMutation.error;
+    setupTwoFactorMutation.error || enableTwoFactorMutation.error || disableTwoFactorMutation.error;
 
   return (
     <DashboardShell
@@ -168,16 +179,22 @@ export function DashboardPage() {
               <div>
                 <CardTitle>Recent shipments</CardTitle>
                 <CardDescription>
-                  Continue document generation, verification, or reconciliation from the shipment record.
+                  Continue document generation, verification, or reconciliation from the shipment
+                  record.
                 </CardDescription>
               </div>
-              <Link to="/shipments" className="text-xs font-semibold text-cyan-300 hover:text-cyan-200">
+              <Link
+                to="/shipments"
+                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+              >
                 View all
               </Link>
             </div>
           </CardHeader>
           <CardContent>
-            {shipmentsQuery.isLoading ? <p className="text-sm text-slate-500">Loading shipments...</p> : null}
+            {shipmentsQuery.isLoading ? (
+              <p className="text-sm text-slate-500">Loading shipments...</p>
+            ) : null}
             {!shipmentsQuery.isLoading && shipments.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 py-8 text-center">
                 <p className="text-sm text-slate-400">No shipments yet.</p>
@@ -197,9 +214,7 @@ export function DashboardPage() {
                     className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 transition-colors hover:border-cyan-300/30 hover:bg-cyan-300/5"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-100">
-                        {shipment.product_name}
-                      </p>
+                      <p className="text-sm font-medium text-slate-100">{shipment.product_name}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         HSN {shipment.hsn_code} / {shipment.destination_country}
                       </p>
@@ -211,7 +226,9 @@ export function DashboardPage() {
                           : "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
                       }`}
                     >
-                      {shipment.shipment_stage === "pre_shipment" ? "Pre-shipment" : "Post-shipment"}
+                      {shipment.shipment_stage === "pre_shipment"
+                        ? "Pre-shipment"
+                        : "Post-shipment"}
                     </span>
                   </Link>
                 ))}
@@ -285,7 +302,9 @@ export function DashboardPage() {
                   </Button>
                 )}
                 {twoFactorError ? (
-                  <p className="mt-2 text-xs text-rose-200">{userMessageForError(twoFactorError)}</p>
+                  <p className="mt-2 text-xs text-rose-200">
+                    {userMessageForError(twoFactorError)}
+                  </p>
                 ) : null}
               </div>
               <Button
@@ -341,7 +360,9 @@ export function DashboardPage() {
                 </p>
               </Link>
             ))}
-            <p className="mt-3 text-xs leading-5 text-slate-600">{discrepancyQuery.data?.disclaimer}</p>
+            <p className="mt-3 text-xs leading-5 text-slate-600">
+              {discrepancyQuery.data?.disclaimer}
+            </p>
           </CardContent>
         </Card>
 
@@ -352,8 +373,8 @@ export function DashboardPage() {
               <AiBadge />
             </div>
             <CardDescription>
-              Ask workflow questions. Legal, tax, and customs certainty still requires your
-              CA, CHA, or customs broker.
+              Ask workflow questions. Legal, tax, and customs certainty still requires your CA, CHA,
+              or customs broker.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -411,7 +432,9 @@ function StatCard({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/75 px-4 py-4 shadow-xl shadow-slate-950/10 backdrop-blur">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </p>
       <p className={`mt-2 text-2xl font-semibold tracking-[-0.02em] ${accent}`}>{value}</p>
     </div>
   );

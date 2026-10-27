@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -115,13 +124,17 @@ export function LoginPage() {
 
   const errorMessage =
     clientError ??
-    (mutation.isError ? userMessageForError(mutation.error, { preserveUnauthorizedMessage: true }) : null) ??
+    (mutation.isError
+      ? userMessageForError(mutation.error, { preserveUnauthorizedMessage: true })
+      : null) ??
     (googleMutation.isError
       ? userMessageForError(googleMutation.error, { preserveUnauthorizedMessage: true })
       : null);
   const sessionMessage =
     successMessage ??
-    (reason === "session-expired" ? "Your session expired for security. Please sign in again." : null);
+    (reason === "session-expired"
+      ? "Your session expired for security. Please sign in again."
+      : null);
   const showVerifyLink = errorMessage?.toLowerCase().includes("not verified");
 
   return (
@@ -191,7 +204,10 @@ export function LoginPage() {
                 {showVerifyLink ? (
                   <>
                     {" "}
-                    <Link className="font-medium text-cyan-200 hover:text-cyan-100" to="/verify-email">
+                    <Link
+                      className="font-medium text-cyan-200 hover:text-cyan-100"
+                      to="/verify-email"
+                    >
                       Verify your email
                     </Link>
                   </>

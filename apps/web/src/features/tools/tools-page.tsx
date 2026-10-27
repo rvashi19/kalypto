@@ -21,7 +21,8 @@ const MODULES = [
     id: "hsn",
     title: "Incentive Finder",
     eyebrow: "Rates",
-    summary: "Look up tenant-verified RoDTEP, Drawback, and RoSCTL records for a selected HSN. Classify codes in HSN Finder first.",
+    summary:
+      "Look up tenant-verified RoDTEP, Drawback, and RoSCTL records for a selected HSN. Classify codes in HSN Finder first.",
   },
   {
     id: "compliance",
@@ -229,13 +230,8 @@ export function ToolsPage() {
   });
 
   const reviewMutation = useMutation({
-    mutationFn: ({
-      changeId,
-      status,
-    }: {
-      changeId: string;
-      status: "reviewed" | "ignored";
-    }) => api.reviewSourceChange(changeId, { status }, token!),
+    mutationFn: ({ changeId, status }: { changeId: string; status: "reviewed" | "ignored" }) =>
+      api.reviewSourceChange(changeId, { status }, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["compliance-source-changes"] });
       queryClient.invalidateQueries({ queryKey: ["compliance-coverage"] });
@@ -491,20 +487,10 @@ function PanelFrame({
   );
 }
 
-function Field({
-  label,
-  children,
-  hint,
-}: {
-  label: string;
-  children: ReactNode;
-  hint?: string;
-}) {
+function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </span>
+      <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{label}</span>
       {children}
       {hint ? <span className="block text-xs text-slate-600">{hint}</span> : null}
     </label>
@@ -537,7 +523,11 @@ function HsnFinderPanel({
     >
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <Field label="HSN code">
-          <input className={inputCls} value={hsn} onChange={(event) => onHsnChange(event.target.value)} />
+          <input
+            className={inputCls}
+            value={hsn}
+            onChange={(event) => onHsnChange(event.target.value)}
+          />
         </Field>
         <Field label="FOB basis in INR" hint="Used only for incentive estimates.">
           <input
@@ -558,10 +548,14 @@ function HsnFinderPanel({
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
               Finder status
             </p>
-            <p className={`mt-3 text-2xl font-black ${result.found ? "text-emerald-300" : "text-amber-300"}`}>
+            <p
+              className={`mt-3 text-2xl font-black ${result.found ? "text-emerald-300" : "text-amber-300"}`}
+            >
               {result.found ? "Approved source found" : "No approved source"}
             </p>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{result.message ?? result.notes}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              {result.message ?? result.notes}
+            </p>
             {!result.found ? (
               <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
                 Import the latest official DGFT/CBIC schedule, keep it as pending, and approve it
@@ -572,12 +566,18 @@ function HsnFinderPanel({
           </div>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
-              <Metric label="RoDTEP" value={result.rodtep_rate != null ? `${result.rodtep_rate}%` : "N/A"} />
+              <Metric
+                label="RoDTEP"
+                value={result.rodtep_rate != null ? `${result.rodtep_rate}%` : "N/A"}
+              />
               <Metric
                 label="Drawback AIR"
                 value={result.duty_drawback_rate != null ? `${result.duty_drawback_rate}%` : "N/A"}
               />
-              <Metric label="RoSCTL" value={result.rosctl_rate != null ? `${result.rosctl_rate}%` : "N/A"} />
+              <Metric
+                label="RoSCTL"
+                value={result.rosctl_rate != null ? `${result.rosctl_rate}%` : "N/A"}
+              />
               {result.estimated_amounts_inr
                 ? Object.entries(result.estimated_amounts_inr).map(([scheme, amount]) => (
                     <Metric
@@ -595,7 +595,10 @@ function HsnFinderPanel({
                 </p>
                 <div className="mt-3 grid gap-3">
                   {result.rate_evidence.map((row) => (
-                    <div key={`${row.scheme}-${row.version_stamp}`} className="rounded-xl bg-white/[0.03] p-3">
+                    <div
+                      key={`${row.scheme}-${row.version_stamp}`}
+                      className="rounded-xl bg-white/[0.03] p-3"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-semibold text-slate-100">
                           {row.scheme} · {row.rate}%
@@ -715,7 +718,7 @@ function ComplianceCheckerPanel({
                     .map((line) => {
                       const [key, ...rest] = line.split(":");
                       return [key.trim(), rest.join(":").trim()];
-                    }),
+                    })
                 ),
               })
             }
@@ -780,18 +783,97 @@ function QuotePanel({
       description="Estimate quote totals and exporter realization without guessing legal duty data."
     >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field label="Product"><input className={inputCls} value={form.product_name} onChange={(e) => set("product_name", e.target.value)} /></Field>
-        <Field label="HSN"><input className={inputCls} value={form.hsn_code} onChange={(e) => set("hsn_code", e.target.value)} /></Field>
-        <Field label="Destination"><input className={inputCls} value={form.destination_country} onChange={(e) => set("destination_country", e.target.value)} /></Field>
-        <Field label="Incoterm"><input className={inputCls} value={form.incoterm} onChange={(e) => set("incoterm", e.target.value)} /></Field>
-        <Field label="Currency"><input className={inputCls} value={form.quote_currency} onChange={(e) => set("quote_currency", e.target.value)} /></Field>
-        <Field label="FOB value"><input className={inputCls} type="number" value={form.fob_value} onChange={(e) => set("fob_value", e.target.value)} /></Field>
-        <Field label="Freight"><input className={inputCls} type="number" value={form.freight_value} onChange={(e) => set("freight_value", e.target.value)} /></Field>
-        <Field label="Insurance"><input className={inputCls} type="number" value={form.insurance_value} onChange={(e) => set("insurance_value", e.target.value)} /></Field>
-        <Field label="Destination charges"><input className={inputCls} type="number" value={form.destination_charges_value} onChange={(e) => set("destination_charges_value", e.target.value)} /></Field>
-        <Field label="Destination duty %" hint="Use broker-confirmed value only."><input className={inputCls} type="number" value={form.destination_duty_percent} onChange={(e) => set("destination_duty_percent", e.target.value)} /></Field>
-        <Field label="FX to INR"><input className={inputCls} type="number" value={form.exchange_rate_to_inr} onChange={(e) => set("exchange_rate_to_inr", e.target.value)} /></Field>
-        <Field label="Domestic charges INR"><input className={inputCls} type="number" value={form.domestic_charges_inr} onChange={(e) => set("domestic_charges_inr", e.target.value)} /></Field>
+        <Field label="Product">
+          <input
+            className={inputCls}
+            value={form.product_name}
+            onChange={(e) => set("product_name", e.target.value)}
+          />
+        </Field>
+        <Field label="HSN">
+          <input
+            className={inputCls}
+            value={form.hsn_code}
+            onChange={(e) => set("hsn_code", e.target.value)}
+          />
+        </Field>
+        <Field label="Destination">
+          <input
+            className={inputCls}
+            value={form.destination_country}
+            onChange={(e) => set("destination_country", e.target.value)}
+          />
+        </Field>
+        <Field label="Incoterm">
+          <input
+            className={inputCls}
+            value={form.incoterm}
+            onChange={(e) => set("incoterm", e.target.value)}
+          />
+        </Field>
+        <Field label="Currency">
+          <input
+            className={inputCls}
+            value={form.quote_currency}
+            onChange={(e) => set("quote_currency", e.target.value)}
+          />
+        </Field>
+        <Field label="FOB value">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.fob_value}
+            onChange={(e) => set("fob_value", e.target.value)}
+          />
+        </Field>
+        <Field label="Freight">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.freight_value}
+            onChange={(e) => set("freight_value", e.target.value)}
+          />
+        </Field>
+        <Field label="Insurance">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.insurance_value}
+            onChange={(e) => set("insurance_value", e.target.value)}
+          />
+        </Field>
+        <Field label="Destination charges">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.destination_charges_value}
+            onChange={(e) => set("destination_charges_value", e.target.value)}
+          />
+        </Field>
+        <Field label="Destination duty %" hint="Use broker-confirmed value only.">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.destination_duty_percent}
+            onChange={(e) => set("destination_duty_percent", e.target.value)}
+          />
+        </Field>
+        <Field label="FX to INR">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.exchange_rate_to_inr}
+            onChange={(e) => set("exchange_rate_to_inr", e.target.value)}
+          />
+        </Field>
+        <Field label="Domestic charges INR">
+          <input
+            className={inputCls}
+            type="number"
+            value={form.domestic_charges_inr}
+            onChange={(e) => set("domestic_charges_inr", e.target.value)}
+          />
+        </Field>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button disabled={isPending || !form.fob_value || !form.hsn_code} onClick={onCalculate}>
@@ -823,7 +905,10 @@ function QuotePanel({
             <p className="text-sm font-semibold text-slate-100">Calculation trail</p>
             <div className="mt-3 space-y-2">
               {result.line_items.map((item) => (
-                <div key={`${item.label}-${item.currency}`} className="flex justify-between gap-3 text-sm">
+                <div
+                  key={`${item.label}-${item.currency}`}
+                  className="flex justify-between gap-3 text-sm"
+                >
                   <span className="text-slate-500">{item.label}</span>
                   <span className="font-medium text-slate-200">
                     {formatMoney(item.amount, item.currency)}
@@ -840,7 +925,7 @@ function QuotePanel({
                     "Incentive estimates",
                     result.incentive_estimates.map(
                       (item) =>
-                        `${item.scheme}: ${formatMoney(item.estimated_amount_inr)} at ${item.rate_percent}% (${item.version_stamp})`,
+                        `${item.scheme}: ${formatMoney(item.estimated_amount_inr)} at ${item.rate_percent}% (${item.version_stamp})`
                     ),
                   ],
                   ["Warnings", result.warnings],
@@ -871,7 +956,12 @@ function ShipmentActionPanel({
   title: string;
   description: string;
   emptyText: string;
-  shipments: Array<{ id: string; product_name: string; hsn_code: string; destination_country: string }>;
+  shipments: Array<{
+    id: string;
+    product_name: string;
+    hsn_code: string;
+    destination_country: string;
+  }>;
   actionLabel: string;
   badge?: ReactNode;
   footer?: ReactNode;
@@ -909,10 +999,14 @@ function ClaimsPanel({
   shipments,
   discrepancies,
 }: {
-  shipments: Array<{ id: string; product_name: string; destination_country: string; fob_value: number | null; invoice_currency: string }>;
-  discrepancies:
-    | Awaited<ReturnType<typeof api.discrepancyDashboard>>
-    | undefined;
+  shipments: Array<{
+    id: string;
+    product_name: string;
+    destination_country: string;
+    fob_value: number | null;
+    invoice_currency: string;
+  }>;
+  discrepancies: Awaited<ReturnType<typeof api.discrepancyDashboard>> | undefined;
 }) {
   return (
     <PanelFrame
@@ -967,7 +1061,9 @@ function ClaimsPanel({
                 </Link>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No persisted findings yet. Run reconciliation on a shipment.</p>
+              <p className="text-sm text-slate-500">
+                No persisted findings yet. Run reconciliation on a shipment.
+              </p>
             )}
           </div>
         </div>
@@ -997,13 +1093,22 @@ function AlertsPanel({
   onEvidenceJsonChange,
   onIngestEvidence,
 }: {
-  dueSources: Array<{ source_url: string; country: string; category: string; last_checked_at: string | null }>;
-  sourceChanges: Array<{ id: string; source_url: string; country: string; category: string; created_at: string }>;
+  dueSources: Array<{
+    source_url: string;
+    country: string;
+    category: string;
+    last_checked_at: string | null;
+  }>;
+  sourceChanges: Array<{
+    id: string;
+    source_url: string;
+    country: string;
+    category: string;
+    created_at: string;
+  }>;
   coverage: ComplianceCoverageResponse | undefined;
   selectedChangeId: string | null;
-  selectedChangeDetail:
-    | Awaited<ReturnType<typeof api.sourceChangeDetail>>
-    | undefined;
+  selectedChangeDetail: Awaited<ReturnType<typeof api.sourceChangeDetail>> | undefined;
   evidenceJson: string;
   discrepancyTotal: number;
   critical: number;
@@ -1080,10 +1185,14 @@ function AlertsPanel({
           <div className="mt-3 space-y-2">
             {dueSources.length ? (
               dueSources.slice(0, 6).map((source) => (
-                <div key={`${source.source_url}-${source.country}`} className="rounded-xl border border-white/6 p-3">
+                <div
+                  key={`${source.source_url}-${source.country}`}
+                  className="rounded-xl border border-white/6 p-3"
+                >
                   <p className="truncate text-sm text-slate-200">{source.source_url}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {source.country} / {source.category} / checked {source.last_checked_at ?? "never"}
+                    {source.country} / {source.category} / checked{" "}
+                    {source.last_checked_at ?? "never"}
                   </p>
                   <Button
                     className="mt-2"
@@ -1106,10 +1215,14 @@ function AlertsPanel({
           <div className="mt-3 space-y-2">
             {sourceChanges.length ? (
               sourceChanges.slice(0, 6).map((change) => (
-                <div key={change.id} className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-3">
+                <div
+                  key={change.id}
+                  className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-3"
+                >
                   <p className="truncate text-sm text-slate-200">{change.source_url}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {change.country} / {change.category} / {new Date(change.created_at).toLocaleString()}
+                    {change.country} / {change.category} /{" "}
+                    {new Date(change.created_at).toLocaleString()}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
@@ -1242,7 +1355,10 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
           <div className="mt-3 space-y-2">
             {values.length ? (
               values.map((value, index) => (
-                <p key={`${title}-${index}`} className="rounded-xl border border-white/6 bg-slate-900/70 p-3 text-sm leading-6 text-slate-300">
+                <p
+                  key={`${title}-${index}`}
+                  className="rounded-xl border border-white/6 bg-slate-900/70 p-3 text-sm leading-6 text-slate-300"
+                >
                   {value}
                 </p>
               ))

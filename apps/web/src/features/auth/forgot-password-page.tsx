@@ -1,6 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -28,7 +37,9 @@ export function ForgotPasswordPage() {
       <Card>
         <CardHeader>
           <CardTitle>Forgot password</CardTitle>
-          <CardDescription>If an account exists for this email, a reset code has been sent.</CardDescription>
+          <CardDescription>
+            If an account exists for this email, a reset code has been sent.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -40,7 +51,13 @@ export function ForgotPasswordPage() {
           >
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="owner@exportco.in" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="owner@exportco.in"
+                required
+              />
             </div>
 
             {errorMessage ? (

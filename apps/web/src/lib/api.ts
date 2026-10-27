@@ -245,10 +245,14 @@ function canRefreshAfterUnauthorized(path: string) {
 
 async function refreshSessionCookie() {
   if (!refreshPromise) {
-    refreshPromise = request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false)
-      .finally(() => {
-        refreshPromise = null;
-      });
+    refreshPromise = request<AuthResponse>(
+      "/auth/refresh",
+      { method: "POST" },
+      undefined,
+      false
+    ).finally(() => {
+      refreshPromise = null;
+    });
   }
   return refreshPromise;
 }
@@ -266,9 +270,9 @@ async function request<T>(
         headers: {
           "Content-Type": "application/json",
           ...authHeaders(token),
-          ...options.headers
+          ...options.headers,
         },
-        credentials: "include"
+        credentials: "include",
       });
     } catch {
       throw new Error(
@@ -299,19 +303,27 @@ export const api = {
     request<RegisterResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
 
   verifyEmailOtp: (payload: VerifyOtpPayload) =>
-    request<AuthResponse>("/auth/verify-email-otp", { method: "POST", body: JSON.stringify(payload) }),
+    request<AuthResponse>("/auth/verify-email-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   resendOtp: (payload: ResendOtpPayload) =>
-    request<AuthMessageResponse>("/auth/resend-otp", { method: "POST", body: JSON.stringify(payload) }),
+    request<AuthMessageResponse>("/auth/resend-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   login: (payload: LoginPayload) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
   loginWithGoogle: (id_token: string) =>
-    request<AuthResponse>("/auth/oauth/google", { method: "POST", body: JSON.stringify({ id_token }) }),
+    request<AuthResponse>("/auth/oauth/google", {
+      method: "POST",
+      body: JSON.stringify({ id_token }),
+    }),
 
-  refresh: () =>
-    request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false),
+  refresh: () => request<AuthResponse>("/auth/refresh", { method: "POST" }, undefined, false),
 
   logout: (token?: string) =>
     request<{ success: boolean }>("/auth/logout", { method: "POST" }, token),
@@ -328,8 +340,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  me: (token?: string) =>
-    request<CurrentUserResponse>("/auth/me", {}, token),
+  me: (token?: string) => request<CurrentUserResponse>("/auth/me", {}, token),
 
   setupTwoFactor: (token?: string) =>
     request<{ secret: string; otpauth_uri: string }>("/auth/2fa/setup", {}, token),
@@ -489,7 +500,7 @@ export const api = {
       method: "POST",
       headers: authHeaders(token),
       body: form,
-      credentials: "include"
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Rate import failed." }));
     if (!response.ok) {
@@ -501,10 +512,13 @@ export const api = {
   // Shipments
 
   createShipment: (payload: ShipmentCreate, token: string) =>
-    request<ShipmentResponse>("/shipments", { method: "POST", body: JSON.stringify(payload) }, token),
+    request<ShipmentResponse>(
+      "/shipments",
+      { method: "POST", body: JSON.stringify(payload) },
+      token
+    ),
 
-  listShipments: (token: string) =>
-    request<ShipmentResponse[]>("/shipments", {}, token),
+  listShipments: (token: string) => request<ShipmentResponse[]>("/shipments", {}, token),
 
   importShipments: async (file: File, token: string): Promise<ShipmentImportResponse> => {
     const form = new FormData();
@@ -513,7 +527,7 @@ export const api = {
       method: "POST",
       headers: authHeaders(token),
       body: form,
-      credentials: "include"
+      credentials: "include",
     });
     const body = await response.json().catch(() => ({ detail: "Import failed." }));
     if (!response.ok) {
@@ -539,7 +553,12 @@ export const api = {
   listDocuments: (shipmentId: string, token: string) =>
     request<DocumentResponse[]>(`/shipments/${shipmentId}/documents`, {}, token),
 
-  uploadDocument: async (shipmentId: string, documentType: DocumentType, file: File, token: string): Promise<DocumentResponse> => {
+  uploadDocument: async (
+    shipmentId: string,
+    documentType: DocumentType,
+    file: File,
+    token: string
+  ): Promise<DocumentResponse> => {
     const form = new FormData();
     form.append("file", file);
     const response = await fetch(
@@ -547,7 +566,9 @@ export const api = {
       { method: "POST", headers: authHeaders(token), body: form, credentials: "include" }
     );
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
+      const body = (await response.json().catch(() => ({ detail: "Upload failed." }))) as {
+        detail?: string;
+      };
       throw new Error(body.detail ?? "Upload failed.");
     }
     return response.json() as Promise<DocumentResponse>;
@@ -620,7 +641,11 @@ export const api = {
   getExportQuote: (id: string, token: string) =>
     request<ExportQuoteDetailResponse>(`/calculators/export-quote/${id}`, {}, token),
   duplicateExportQuote: (id: string, token: string) =>
-    request<ExportQuoteDetailResponse>(`/calculators/export-quote/${id}/duplicate`, { method: "POST" }, token),
+    request<ExportQuoteDetailResponse>(
+      `/calculators/export-quote/${id}/duplicate`,
+      { method: "POST" },
+      token
+    ),
 
   hsnChapters: (token: string) => request<HsnChapterResponse[]>("/hsn/chapters", {}, token),
 
@@ -698,7 +723,11 @@ export const api = {
     ),
 
   refreshIncentiveSource: (id: string, token: string) =>
-    request<IncentiveRefreshResponse>(`/incentives/sources/${id}/refresh`, { method: "POST" }, token),
+    request<IncentiveRefreshResponse>(
+      `/incentives/sources/${id}/refresh`,
+      { method: "POST" },
+      token
+    ),
 
   incentivePendingQueue: (token: string) =>
     request<IncentiveRateItem[]>("/incentives/pending", {}, token),
@@ -715,7 +744,15 @@ export const api = {
 
   importIncentivesFile: async (
     file: File,
-    fields: { source_name: string; scheme?: string; source_url?: string; source_document_title?: string; source_document_date?: string; source_version?: string; import_type?: string },
+    fields: {
+      source_name: string;
+      scheme?: string;
+      source_url?: string;
+      source_document_title?: string;
+      source_document_date?: string;
+      source_version?: string;
+      import_type?: string;
+    },
     token: string
   ): Promise<IncentiveImportResponse> => {
     const form = new FormData();
@@ -736,7 +773,14 @@ export const api = {
 
   importIncentives: async (
     file: File,
-    fields: { source_name: string; scheme?: string; source_url?: string; source_document_title?: string; source_document_date?: string; source_version?: string },
+    fields: {
+      source_name: string;
+      scheme?: string;
+      source_url?: string;
+      source_document_title?: string;
+      source_document_date?: string;
+      source_version?: string;
+    },
     token: string
   ): Promise<IncentiveImportResponse> => {
     const form = new FormData();
@@ -765,11 +809,11 @@ export const api = {
   // Document Builder
 
   validateDocumentData: (data: unknown, token: string) =>
-    request<{ valid: boolean; errors: { code: string; message: string; severity: string }[]; warnings: { code: string; message: string; severity: string }[] }>(
-      "/documents/validate",
-      { method: "POST", body: JSON.stringify({ data }) },
-      token
-    ),
+    request<{
+      valid: boolean;
+      errors: { code: string; message: string; severity: string }[];
+      warnings: { code: string; message: string; severity: string }[];
+    }>("/documents/validate", { method: "POST", body: JSON.stringify({ data }) }, token),
 
   generateDocuments: async (
     data: unknown,
@@ -784,9 +828,13 @@ export const api = {
       credentials: "include",
     });
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: "Generation failed." })) as { detail?: unknown };
-      const msg = typeof body.detail === "string" ? body.detail
-        : (body.detail as { message?: string })?.message ?? "Document generation failed.";
+      const body = (await response.json().catch(() => ({ detail: "Generation failed." }))) as {
+        detail?: unknown;
+      };
+      const msg =
+        typeof body.detail === "string"
+          ? body.detail
+          : ((body.detail as { message?: string })?.message ?? "Document generation failed.");
       throw new Error(msg);
     }
     const blob = await response.blob();
@@ -797,22 +845,37 @@ export const api = {
   },
 
   listDocumentPacks: (token: string, limit = 20, offset = 0) =>
-    request<Array<{
-      id: string; pack_number: string | null; invoice_number: string | null;
-      buyer_name: string | null; destination_country: string | null;
-      incoterm: string | null; currency: string | null;
-      total_invoice_value: number | null; status: string;
-      created_at: string; updated_at: string;
-    }>>(`/documents/packs?limit=${limit}&offset=${offset}`, {}, token),
+    request<
+      Array<{
+        id: string;
+        pack_number: string | null;
+        invoice_number: string | null;
+        buyer_name: string | null;
+        destination_country: string | null;
+        incoterm: string | null;
+        currency: string | null;
+        total_invoice_value: number | null;
+        status: string;
+        created_at: string;
+        updated_at: string;
+      }>
+    >(`/documents/packs?limit=${limit}&offset=${offset}`, {}, token),
 
   getDocumentPack: (packId: string, token: string) =>
     request<{
-      id: string; pack_number: string | null; invoice_number: string | null;
-      buyer_name: string | null; destination_country: string | null;
-      incoterm: string | null; currency: string | null;
-      total_invoice_value: number | null; status: string;
-      created_at: string; updated_at: string;
-      shipment_data: unknown; generated_documents: unknown[];
+      id: string;
+      pack_number: string | null;
+      invoice_number: string | null;
+      buyer_name: string | null;
+      destination_country: string | null;
+      incoterm: string | null;
+      currency: string | null;
+      total_invoice_value: number | null;
+      status: string;
+      created_at: string;
+      updated_at: string;
+      shipment_data: unknown;
+      generated_documents: unknown[];
     }>(`/documents/packs/${packId}`, {}, token),
 
   downloadDocumentPack: async (packId: string, token: string): Promise<void> => {
@@ -853,7 +916,9 @@ export const api = {
       credentials: "include",
     });
     if (!resp.ok) {
-      const body = await resp.json().catch(() => ({ detail: "Upload failed." })) as { detail?: string };
+      const body = (await resp.json().catch(() => ({ detail: "Upload failed." }))) as {
+        detail?: string;
+      };
       throw new Error(body.detail ?? "Logo upload failed.");
     }
   },
@@ -873,10 +938,14 @@ export const api = {
     token: string,
     sheetName?: string
   ): Promise<{
-    session_id: string; original_filename: string; file_type: string;
-    sheet_names: string[]; detected_columns: string[];
+    session_id: string;
+    original_filename: string;
+    file_type: string;
+    sheet_names: string[];
+    detected_columns: string[];
     suggested_mapping: Record<string, string>;
-    parsed_preview: unknown[]; warnings: { code: string; message: string; severity: string }[];
+    parsed_preview: unknown[];
+    warnings: { code: string; message: string; severity: string }[];
     status: string;
   }> => {
     const form = new FormData();

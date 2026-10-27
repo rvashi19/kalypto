@@ -16,15 +16,67 @@ const CONFIDENCE_STYLES: Record<string, string> = {
 };
 
 const CHIP_GROUPS: { label: string; chips: string[] }[] = [
-  { label: "Agri & Food", chips: ["Basmati rice", "Wheat", "Maize", "Turmeric", "Cumin", "Cardamom", "Tea", "Coffee", "Sugar", "Soybean"] },
-  { label: "Nuts & Fruit", chips: ["Almond", "Cashew", "Walnut", "Raisins", "Mango", "Banana", "Grapes", "Pomegranate"] },
+  {
+    label: "Agri & Food",
+    chips: [
+      "Basmati rice",
+      "Wheat",
+      "Maize",
+      "Turmeric",
+      "Cumin",
+      "Cardamom",
+      "Tea",
+      "Coffee",
+      "Sugar",
+      "Soybean",
+    ],
+  },
+  {
+    label: "Nuts & Fruit",
+    chips: ["Almond", "Cashew", "Walnut", "Raisins", "Mango", "Banana", "Grapes", "Pomegranate"],
+  },
   { label: "Pulses", chips: ["Chana", "Lentil", "Tur dal", "Moong", "Urad", "Rajma"] },
-  { label: "Marine & Dairy", chips: ["Shrimp", "Fish", "Ghee", "Milk powder", "Paneer", "Honey", "Buffalo meat"] },
-  { label: "Gems & Metals", chips: ["Gold", "Silver", "Diamond", "Gold jewellery", "Steel", "Aluminium", "Copper"] },
-  { label: "Energy & Chem", chips: ["Diesel", "Petrol", "Crude oil", "LPG", "Urea", "DAP fertilizer", "Medicine"] },
-  { label: "Electronics", chips: ["Mobile phone", "Laptop", "LED TV", "Air conditioner", "Refrigerator", "Solar panel", "Battery"] },
-  { label: "Vehicles & Machinery", chips: ["Car", "Motorcycle", "Tractor", "Auto parts", "Water pump", "Electric motor"] },
-  { label: "Textiles & More", chips: ["Cotton shirt", "T-shirt", "Jeans", "Saree", "Leather wallet", "Leather shoes", "Wooden furniture", "Ceramic tiles"] },
+  {
+    label: "Marine & Dairy",
+    chips: ["Shrimp", "Fish", "Ghee", "Milk powder", "Paneer", "Honey", "Buffalo meat"],
+  },
+  {
+    label: "Gems & Metals",
+    chips: ["Gold", "Silver", "Diamond", "Gold jewellery", "Steel", "Aluminium", "Copper"],
+  },
+  {
+    label: "Energy & Chem",
+    chips: ["Diesel", "Petrol", "Crude oil", "LPG", "Urea", "DAP fertilizer", "Medicine"],
+  },
+  {
+    label: "Electronics",
+    chips: [
+      "Mobile phone",
+      "Laptop",
+      "LED TV",
+      "Air conditioner",
+      "Refrigerator",
+      "Solar panel",
+      "Battery",
+    ],
+  },
+  {
+    label: "Vehicles & Machinery",
+    chips: ["Car", "Motorcycle", "Tractor", "Auto parts", "Water pump", "Electric motor"],
+  },
+  {
+    label: "Textiles & More",
+    chips: [
+      "Cotton shirt",
+      "T-shirt",
+      "Jeans",
+      "Saree",
+      "Leather wallet",
+      "Leather shoes",
+      "Wooden furniture",
+      "Ceramic tiles",
+    ],
+  },
 ];
 
 const LEVELS = [
@@ -39,7 +91,6 @@ type SortKey = "relevance" | "code_asc" | "code_desc" | "az";
 
 const EMPTY_STATE =
   "No HSN match found in the imported master data. This does not mean the code does not exist — try the AI verify, or import/update the official HSN master.";
-
 
 export function HsnFinderPage() {
   const { session, token } = useAuth();
@@ -112,8 +163,10 @@ export function HsnFinderPage() {
 
   const results = useMemo(() => {
     const list = [...(searchMutation.data?.results ?? [])];
-    if (sort === "code_asc") list.sort((a, b) => a.normalized_code.localeCompare(b.normalized_code));
-    if (sort === "code_desc") list.sort((a, b) => b.normalized_code.localeCompare(a.normalized_code));
+    if (sort === "code_asc")
+      list.sort((a, b) => a.normalized_code.localeCompare(b.normalized_code));
+    if (sort === "code_desc")
+      list.sort((a, b) => b.normalized_code.localeCompare(a.normalized_code));
     if (sort === "az") list.sort((a, b) => a.description.localeCompare(b.description));
     return list;
   }, [searchMutation.data, sort]);
@@ -139,8 +192,8 @@ export function HsnFinderPage() {
           Verified India Database
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-          Search India&apos;s complete ITC-HS classification by product name or HSN code.
-          Over 14,000 codes across all 98 chapters — from 2-digit chapters to 8-digit tariff lines.
+          Search India&apos;s complete ITC-HS classification by product name or HSN code. Over
+          14,000 codes across all 98 chapters — from 2-digit chapters to 8-digit tariff lines.
         </p>
 
         {/* Stats */}
@@ -217,7 +270,9 @@ export function HsnFinderPage() {
           <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
         ) : null}
         {aiMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-amber-300">AI verification unavailable: {aiMutation.error.message}</p>
+          <p className="mt-3 text-sm text-amber-300">
+            AI verification unavailable: {aiMutation.error.message}
+          </p>
         ) : null}
         {aiMutation.data ? <AiVerdict data={aiMutation.data} /> : null}
       </section>
@@ -344,7 +399,9 @@ export function HsnFinderPage() {
                 navigate(`/incentives?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
               }
               onUseForExportQuote={() =>
-                navigate(`/calculators/export-quote?hsn_code=${encodeURIComponent(detail.normalized_code)}`)
+                navigate(
+                  `/calculators/export-quote?hsn_code=${encodeURIComponent(detail.normalized_code)}`
+                )
               }
             />
           ) : (
@@ -354,7 +411,6 @@ export function HsnFinderPage() {
           )}
         </aside>
       </div>
-
     </DashboardShell>
   );
 }
@@ -482,10 +538,17 @@ function DetailPanel({
 
       <Section title="Hierarchy">
         <div className="space-y-1 text-sm text-slate-300">
-          <HierRow label="Chapter" value={detail.hierarchy.chapter_code} extra={detail.chapter_name} />
+          <HierRow
+            label="Chapter"
+            value={detail.hierarchy.chapter_code}
+            extra={detail.chapter_name}
+          />
           <HierRow label="Heading" value={detail.hierarchy.heading_code} />
           <HierRow label="Sub-heading" value={detail.hierarchy.subheading_code} />
-          <HierRow label="Tariff line" value={detail.digit_level === 8 ? detail.normalized_code : null} />
+          <HierRow
+            label="Tariff line"
+            value={detail.digit_level === 8 ? detail.normalized_code : null}
+          />
         </div>
       </Section>
 
@@ -494,14 +557,25 @@ function DetailPanel({
           <div className="space-y-1 text-sm text-slate-300">
             {detail.import_policy ? <p>Import: {detail.import_policy}</p> : null}
             {detail.export_policy ? <p>Export: {detail.export_policy}</p> : null}
-            {detail.policy_condition ? <p className="text-slate-400">{detail.policy_condition}</p> : null}
+            {detail.policy_condition ? (
+              <p className="text-slate-400">{detail.policy_condition}</p>
+            ) : null}
           </div>
         </Section>
       ) : null}
 
       <div className="space-y-2 border-t border-slate-800 pt-4">
-        <Button className="w-full" variant="secondary" disabled={verifyPending || verified} onClick={onVerify}>
-          {verified ? "✓ Verification requested" : verifyPending ? "Submitting…" : "Verify with CHA / customs broker"}
+        <Button
+          className="w-full"
+          variant="secondary"
+          disabled={verifyPending || verified}
+          onClick={onVerify}
+        >
+          {verified
+            ? "✓ Verification requested"
+            : verifyPending
+              ? "Submitting…"
+              : "Verify with CHA / customs broker"}
         </Button>
         <Button
           className="w-full !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
@@ -533,7 +607,15 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function HierRow({ label, value, extra }: { label: string; value: string | null; extra?: string | null }) {
+function HierRow({
+  label,
+  value,
+  extra,
+}: {
+  label: string;
+  value: string | null;
+  extra?: string | null;
+}) {
   if (!value) return null;
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -572,13 +654,24 @@ function CopyButton({ value }: { value: string }) {
 
 function VerificationChip({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    cross_verified: { label: "✓ Cross-verified", cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" },
-    exists_weak_match: { label: "Code exists · weak match", cls: "border-amber-500/40 bg-amber-500/15 text-amber-300" },
-    unverified: { label: "⚠ Unverified by source", cls: "border-rose-500/40 bg-rose-500/15 text-rose-300" },
+    cross_verified: {
+      label: "✓ Cross-verified",
+      cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+    },
+    exists_weak_match: {
+      label: "Code exists · weak match",
+      cls: "border-amber-500/40 bg-amber-500/15 text-amber-300",
+    },
+    unverified: {
+      label: "⚠ Unverified by source",
+      cls: "border-rose-500/40 bg-rose-500/15 text-rose-300",
+    },
   };
   const v = map[status] ?? map.unverified;
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${v.cls}`}>
+    <span
+      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${v.cls}`}
+    >
       {v.label}
     </span>
   );

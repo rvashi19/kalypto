@@ -28,7 +28,8 @@ function schemeName(scheme: string) {
 
 function formatRate(item: IncentiveRateItem) {
   if (item.rate_type === "percentage") return `${item.rate_value}%`;
-  if (item.rate_type === "fixed") return `₹${item.rate_value}${item.unit_of_quantity ? ` / ${item.unit_of_quantity}` : ""}`;
+  if (item.rate_type === "fixed")
+    return `₹${item.rate_value}${item.unit_of_quantity ? ` / ${item.unit_of_quantity}` : ""}`;
   return `${item.rate_value}`;
 }
 
@@ -44,7 +45,10 @@ export function IncentiveFinderPage() {
 
   const searchMutation = useMutation({
     mutationFn: (code: string) =>
-      api.incentiveSearch(code, token!, { scheme, includeUnapproved: includeUnapproved && isAdmin }),
+      api.incentiveSearch(code, token!, {
+        scheme,
+        includeUnapproved: includeUnapproved && isAdmin,
+      }),
     onSuccess: () => setDetailId(null),
   });
 
@@ -74,7 +78,7 @@ export function IncentiveFinderPage() {
       map.set(key, [...(map.get(key) ?? []), item]);
     }
     return [...map.entries()].sort(
-      (a, b) => (SCHEME_ORDER.indexOf(a[0]) + 99) - (SCHEME_ORDER.indexOf(b[0]) + 99)
+      (a, b) => SCHEME_ORDER.indexOf(a[0]) + 99 - (SCHEME_ORDER.indexOf(b[0]) + 99)
     );
   }, [data]);
 
@@ -160,7 +164,8 @@ export function IncentiveFinderPage() {
 
       {!data && !searchMutation.isPending ? (
         <div className="mt-6 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-8 text-center text-sm text-slate-500">
-          Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder first.
+          Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder
+          first.
         </div>
       ) : null}
 
@@ -207,7 +212,6 @@ export function IncentiveFinderPage() {
           </aside>
         </div>
       ) : null}
-
     </DashboardShell>
   );
 
@@ -262,10 +266,20 @@ function RateCard({
         <span className="font-mono text-lg font-bold text-amber-300">{formatRate(item)}</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-400 sm:grid-cols-4">
-        <Field label="Cap" value={item.cap_value != null ? `${item.cap_value}${item.cap_unit ? ` ${item.cap_unit}` : ""}` : "—"} />
+        <Field
+          label="Cap"
+          value={
+            item.cap_value != null
+              ? `${item.cap_value}${item.cap_unit ? ` ${item.cap_unit}` : ""}`
+              : "—"
+          }
+        />
         <Field label="Unit" value={item.unit_of_quantity ?? "—"} />
         <Field label="Valid from" value={new Date(item.effective_from).toLocaleDateString()} />
-        <Field label="Valid to" value={item.effective_to ? new Date(item.effective_to).toLocaleDateString() : "current"} />
+        <Field
+          label="Valid to"
+          value={item.effective_to ? new Date(item.effective_to).toLocaleDateString() : "current"}
+        />
       </div>
       {item.condition_text ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
@@ -298,10 +312,18 @@ function DetailPanel({
 
       <Section title="Rate details">
         <Row label="Rate type" value={detail.rate_type} />
-        <Row label="Cap" value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"} />
+        <Row
+          label="Cap"
+          value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"}
+        />
         <Row label="Unit" value={detail.unit_of_quantity ?? "—"} />
         <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
-        <Row label="Valid to" value={detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"} />
+        <Row
+          label="Valid to"
+          value={
+            detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"
+          }
+        />
         {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
       </Section>
 

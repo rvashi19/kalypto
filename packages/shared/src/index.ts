@@ -163,11 +163,7 @@ export interface ComplianceRequirementCard {
 export interface ComplianceCheckResponseV1 {
   session_id: string;
   status:
-    | "answered"
-    | "needs_more_info"
-    | "no_verified_source"
-    | "retrieval_queued"
-    | "pending_review";
+    "answered" | "needs_more_info" | "no_verified_source" | "retrieval_queued" | "pending_review";
   answer_summary: string;
   requirements: Record<string, ComplianceRequirementCard[]>;
   missing_questions: string[];
@@ -1119,7 +1115,13 @@ export interface ExportQuoteCalcResponse {
   invoice_value: number;
   exporter_realization_breakdown: Record<string, number>;
   gross_exporter_realization: number;
-  incentive_breakdown: Array<{ scheme: string; rate_percent: number; source: string; amount_inr: number; cap_applied: boolean }>;
+  incentive_breakdown: Array<{
+    scheme: string;
+    rate_percent: number;
+    source: string;
+    amount_inr: number;
+    cap_applied: boolean;
+  }>;
   incentive_amount: number;
   net_exporter_realization: number;
   net_realization_per_unit: number;

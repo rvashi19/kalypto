@@ -27,7 +27,8 @@ const NAV_GROUPS = [
   },
 ];
 
-const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-nav";
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-nav";
 
 interface SidebarProps {
   organizationName: string;
@@ -47,7 +48,9 @@ function SidebarContent({ organizationName, role, onLogout, pathname, onNavigate
       <nav aria-label="Main navigation" className="flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-[#8b93a1]">{group.label}</p>
+            <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-[#8b93a1]">
+              {group.label}
+            </p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = pathname.startsWith(item.href);
@@ -144,7 +147,10 @@ export function DashboardShell({
           aria-expanded={drawerOpen}
           aria-controls="mobile-nav"
           onClick={() => setDrawerOpen(true)}
-          className={cn("rounded-control border border-[#3a3f47] px-3 py-1.5 text-sm font-medium text-nav-text", FOCUS)}
+          className={cn(
+            "rounded-control border border-[#3a3f47] px-3 py-1.5 text-sm font-medium text-nav-text",
+            FOCUS
+          )}
         >
           Menu
         </button>
@@ -152,7 +158,11 @@ export function DashboardShell({
 
       {drawerOpen && (
         <div className="fixed inset-0 z-50 min-[860px]:hidden">
-          <div className="absolute inset-0 bg-[rgba(16,18,20,0.5)]" onClick={closeDrawer} aria-hidden="true" />
+          <div
+            className="absolute inset-0 bg-[rgba(16,18,20,0.5)]"
+            onClick={closeDrawer}
+            aria-hidden="true"
+          />
           <div
             id="mobile-nav"
             ref={drawer}
@@ -168,7 +178,10 @@ export function DashboardShell({
                 closeDrawer();
                 menuButton.current?.focus();
               }}
-              className={cn("absolute right-2 top-3 rounded-control px-2 py-1 text-xs text-nav-text", FOCUS)}
+              className={cn(
+                "absolute right-2 top-3 rounded-control px-2 py-1 text-xs text-nav-text",
+                FOCUS
+              )}
             >
               Close
             </button>

@@ -91,19 +91,40 @@ export function ExportQuotePage() {
       ...extra,
     };
     const textKeys = [
-      "hsn_code", "product_description", "packaging_description", "unit", "buyer_name",
-      "seller_country", "buyer_country", "origin_city_or_place", "port_of_loading",
-      "port_of_discharge", "final_destination", "notes",
+      "hsn_code",
+      "product_description",
+      "packaging_description",
+      "unit",
+      "buyer_name",
+      "seller_country",
+      "buyer_country",
+      "origin_city_or_place",
+      "port_of_loading",
+      "port_of_discharge",
+      "final_destination",
+      "notes",
     ];
     textKeys.forEach((k) => {
       if (form[k]) (payload as Record<string, unknown>)[k] = form[k];
     });
     const numKeys = [
-      "product_value", "fx_rate_to_inr", "freight_cost", "general_insurance", "ecgc_premium",
-      "destination_handling_charges", "import_duty_rate", "import_duty_amount",
-      "destination_tax_rate", "destination_tax_amount", "other_destination_charges",
-      "commission", "exporter_cost_of_goods", "exporter_overheads", "target_profit_per_unit",
-      "target_profit_total", ...ORIGIN_FIELDS.map(([k]) => k),
+      "product_value",
+      "fx_rate_to_inr",
+      "freight_cost",
+      "general_insurance",
+      "ecgc_premium",
+      "destination_handling_charges",
+      "import_duty_rate",
+      "import_duty_amount",
+      "destination_tax_rate",
+      "destination_tax_amount",
+      "other_destination_charges",
+      "commission",
+      "exporter_cost_of_goods",
+      "exporter_overheads",
+      "target_profit_per_unit",
+      "target_profit_total",
+      ...ORIGIN_FIELDS.map(([k]) => k),
     ];
     numKeys.forEach((k) => {
       const n = num(form, k);
@@ -140,9 +161,14 @@ export function ExportQuotePage() {
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
           Estimate FOB/CFR/CIF, buyer landed cost, and exporter net realization. HSN classification
           comes from{" "}
-          <Link to="/hsn" className="text-amber-300 hover:text-amber-200">HSN Finder</Link> and
-          approved incentive rates from{" "}
-          <Link to="/incentives" className="text-amber-300 hover:text-amber-200">Incentive Finder</Link>.
+          <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
+            HSN Finder
+          </Link>{" "}
+          and approved incentive rates from{" "}
+          <Link to="/incentives" className="text-amber-300 hover:text-amber-200">
+            Incentive Finder
+          </Link>
+          .
         </p>
       </section>
 
@@ -150,87 +176,314 @@ export function ExportQuotePage() {
         <div className="space-y-5">
           <Panel title="1 · Product & HSN">
             <Grid>
-              <Field label="HSN code"><input className={inputCls} value={form.hsn_code} onChange={(e) => set("hsn_code", e.target.value)} placeholder="from HSN Finder" /></Field>
-              <Field label="Product"><input className={inputCls} value={form.product_description} onChange={(e) => set("product_description", e.target.value)} /></Field>
-              <Field label="Packaging"><input className={inputCls} value={form.packaging_description} onChange={(e) => set("packaging_description", e.target.value)} /></Field>
-              <Field label="Quantity"><input className={inputCls} type="number" value={form.quantity} onChange={(e) => set("quantity", e.target.value)} /></Field>
-              <Field label="Unit"><input className={inputCls} value={form.unit} onChange={(e) => set("unit", e.target.value)} /></Field>
-              <Field label={`Unit price (${ccy})`}><input className={inputCls} type="number" value={form.unit_price} onChange={(e) => set("unit_price", e.target.value)} /></Field>
+              <Field label="HSN code">
+                <input
+                  className={inputCls}
+                  value={form.hsn_code}
+                  onChange={(e) => set("hsn_code", e.target.value)}
+                  placeholder="from HSN Finder"
+                />
+              </Field>
+              <Field label="Product">
+                <input
+                  className={inputCls}
+                  value={form.product_description}
+                  onChange={(e) => set("product_description", e.target.value)}
+                />
+              </Field>
+              <Field label="Packaging">
+                <input
+                  className={inputCls}
+                  value={form.packaging_description}
+                  onChange={(e) => set("packaging_description", e.target.value)}
+                />
+              </Field>
+              <Field label="Quantity">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.quantity}
+                  onChange={(e) => set("quantity", e.target.value)}
+                />
+              </Field>
+              <Field label="Unit">
+                <input
+                  className={inputCls}
+                  value={form.unit}
+                  onChange={(e) => set("unit", e.target.value)}
+                />
+              </Field>
+              <Field label={`Unit price (${ccy})`}>
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.unit_price}
+                  onChange={(e) => set("unit_price", e.target.value)}
+                />
+              </Field>
             </Grid>
-            {!form.hsn_code ? <Hint>Select/classify HSN first for better incentive accuracy.</Hint> : null}
+            {!form.hsn_code ? (
+              <Hint>Select/classify HSN first for better incentive accuracy.</Hint>
+            ) : null}
           </Panel>
 
           <Panel title="2 · Route & Incoterm">
             <Grid>
-              <Field label="Seller country"><input className={inputCls} value={form.seller_country} onChange={(e) => set("seller_country", e.target.value)} /></Field>
-              <Field label="Buyer country"><input className={inputCls} value={form.buyer_country} onChange={(e) => set("buyer_country", e.target.value)} /></Field>
-              <Field label="Origin place"><input className={inputCls} value={form.origin_city_or_place} onChange={(e) => set("origin_city_or_place", e.target.value)} /></Field>
-              <Field label="Port of loading"><input className={inputCls} value={form.port_of_loading} onChange={(e) => set("port_of_loading", e.target.value)} /></Field>
-              <Field label="Port of discharge"><input className={inputCls} value={form.port_of_discharge} onChange={(e) => set("port_of_discharge", e.target.value)} /></Field>
-              <Field label="Final destination"><input className={inputCls} value={form.final_destination} onChange={(e) => set("final_destination", e.target.value)} /></Field>
+              <Field label="Seller country">
+                <input
+                  className={inputCls}
+                  value={form.seller_country}
+                  onChange={(e) => set("seller_country", e.target.value)}
+                />
+              </Field>
+              <Field label="Buyer country">
+                <input
+                  className={inputCls}
+                  value={form.buyer_country}
+                  onChange={(e) => set("buyer_country", e.target.value)}
+                />
+              </Field>
+              <Field label="Origin place">
+                <input
+                  className={inputCls}
+                  value={form.origin_city_or_place}
+                  onChange={(e) => set("origin_city_or_place", e.target.value)}
+                />
+              </Field>
+              <Field label="Port of loading">
+                <input
+                  className={inputCls}
+                  value={form.port_of_loading}
+                  onChange={(e) => set("port_of_loading", e.target.value)}
+                />
+              </Field>
+              <Field label="Port of discharge">
+                <input
+                  className={inputCls}
+                  value={form.port_of_discharge}
+                  onChange={(e) => set("port_of_discharge", e.target.value)}
+                />
+              </Field>
+              <Field label="Final destination">
+                <input
+                  className={inputCls}
+                  value={form.final_destination}
+                  onChange={(e) => set("final_destination", e.target.value)}
+                />
+              </Field>
               <Field label="Incoterm">
-                <select className={inputCls} value={form.incoterm} onChange={(e) => set("incoterm", e.target.value)}>
-                  {INCOTERMS.map((i) => <option key={i}>{i}</option>)}
+                <select
+                  className={inputCls}
+                  value={form.incoterm}
+                  onChange={(e) => set("incoterm", e.target.value)}
+                >
+                  {INCOTERMS.map((i) => (
+                    <option key={i}>{i}</option>
+                  ))}
                 </select>
               </Field>
-              <Field label="Incoterms version"><input className={inputCls} value={form.incoterms_version} onChange={(e) => set("incoterms_version", e.target.value)} /></Field>
-              <Field label="Quote currency"><input className={inputCls} value={form.quote_currency} onChange={(e) => set("quote_currency", e.target.value)} /></Field>
-              <Field label="FX rate → INR"><input className={inputCls} type="number" value={form.fx_rate_to_inr} onChange={(e) => set("fx_rate_to_inr", e.target.value)} /></Field>
+              <Field label="Incoterms version">
+                <input
+                  className={inputCls}
+                  value={form.incoterms_version}
+                  onChange={(e) => set("incoterms_version", e.target.value)}
+                />
+              </Field>
+              <Field label="Quote currency">
+                <input
+                  className={inputCls}
+                  value={form.quote_currency}
+                  onChange={(e) => set("quote_currency", e.target.value)}
+                />
+              </Field>
+              <Field label="FX rate → INR">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.fx_rate_to_inr}
+                  onChange={(e) => set("fx_rate_to_inr", e.target.value)}
+                />
+              </Field>
             </Grid>
           </Panel>
 
           <Panel title="3 · Origin / FOB charges (INR)">
             <Grid>
               {ORIGIN_FIELDS.map(([k, label]) => (
-                <Field key={k} label={label}><input className={inputCls} type="number" value={form[k] ?? ""} onChange={(e) => set(k, e.target.value)} /></Field>
+                <Field key={k} label={label}>
+                  <input
+                    className={inputCls}
+                    type="number"
+                    value={form[k] ?? ""}
+                    onChange={(e) => set(k, e.target.value)}
+                  />
+                </Field>
               ))}
             </Grid>
           </Panel>
 
           <Panel title="4 · Freight & Insurance (INR)">
             <Grid>
-              <Field label="Freight"><input className={inputCls} type="number" value={form.freight_cost ?? ""} onChange={(e) => set("freight_cost", e.target.value)} /></Field>
-              <Field label="General insurance"><input className={inputCls} type="number" value={form.general_insurance ?? ""} onChange={(e) => set("general_insurance", e.target.value)} /></Field>
-              <Field label="ECGC premium"><input className={inputCls} type="number" value={form.ecgc_premium ?? ""} onChange={(e) => set("ecgc_premium", e.target.value)} /></Field>
+              <Field label="Freight">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.freight_cost ?? ""}
+                  onChange={(e) => set("freight_cost", e.target.value)}
+                />
+              </Field>
+              <Field label="General insurance">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.general_insurance ?? ""}
+                  onChange={(e) => set("general_insurance", e.target.value)}
+                />
+              </Field>
+              <Field label="ECGC premium">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.ecgc_premium ?? ""}
+                  onChange={(e) => set("ecgc_premium", e.target.value)}
+                />
+              </Field>
             </Grid>
           </Panel>
 
           <Panel title="5 · Destination / Landed cost (INR)">
             <Grid>
-              <Field label="Import duty rate %"><input className={inputCls} type="number" value={form.import_duty_rate ?? ""} onChange={(e) => set("import_duty_rate", e.target.value)} /></Field>
-              <Field label="Import duty amount"><input className={inputCls} type="number" value={form.import_duty_amount ?? ""} onChange={(e) => set("import_duty_amount", e.target.value)} /></Field>
-              <Field label="Destination tax rate %"><input className={inputCls} type="number" value={form.destination_tax_rate ?? ""} onChange={(e) => set("destination_tax_rate", e.target.value)} /></Field>
-              <Field label="Destination tax amount"><input className={inputCls} type="number" value={form.destination_tax_amount ?? ""} onChange={(e) => set("destination_tax_amount", e.target.value)} /></Field>
-              <Field label="Destination handling"><input className={inputCls} type="number" value={form.destination_handling_charges ?? ""} onChange={(e) => set("destination_handling_charges", e.target.value)} /></Field>
-              <Field label="Other destination"><input className={inputCls} type="number" value={form.other_destination_charges ?? ""} onChange={(e) => set("other_destination_charges", e.target.value)} /></Field>
+              <Field label="Import duty rate %">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.import_duty_rate ?? ""}
+                  onChange={(e) => set("import_duty_rate", e.target.value)}
+                />
+              </Field>
+              <Field label="Import duty amount">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.import_duty_amount ?? ""}
+                  onChange={(e) => set("import_duty_amount", e.target.value)}
+                />
+              </Field>
+              <Field label="Destination tax rate %">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.destination_tax_rate ?? ""}
+                  onChange={(e) => set("destination_tax_rate", e.target.value)}
+                />
+              </Field>
+              <Field label="Destination tax amount">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.destination_tax_amount ?? ""}
+                  onChange={(e) => set("destination_tax_amount", e.target.value)}
+                />
+              </Field>
+              <Field label="Destination handling">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.destination_handling_charges ?? ""}
+                  onChange={(e) => set("destination_handling_charges", e.target.value)}
+                />
+              </Field>
+              <Field label="Other destination">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.other_destination_charges ?? ""}
+                  onChange={(e) => set("other_destination_charges", e.target.value)}
+                />
+              </Field>
             </Grid>
-            <Hint>Import duty/tax rates are user-provided and must be verified with destination customs.</Hint>
+            <Hint>
+              Import duty/tax rates are user-provided and must be verified with destination customs.
+            </Hint>
           </Panel>
 
           <Panel title="6 · Exporter cost & profit (INR)">
             <Grid>
-              <Field label="Cost of goods"><input className={inputCls} type="number" value={form.exporter_cost_of_goods ?? ""} onChange={(e) => set("exporter_cost_of_goods", e.target.value)} /></Field>
-              <Field label="Overheads"><input className={inputCls} type="number" value={form.exporter_overheads ?? ""} onChange={(e) => set("exporter_overheads", e.target.value)} /></Field>
-              <Field label="Commission"><input className={inputCls} type="number" value={form.commission ?? ""} onChange={(e) => set("commission", e.target.value)} /></Field>
-              <Field label="Target profit / unit"><input className={inputCls} type="number" value={form.target_profit_per_unit ?? ""} onChange={(e) => set("target_profit_per_unit", e.target.value)} /></Field>
-              <Field label="Target profit total"><input className={inputCls} type="number" value={form.target_profit_total ?? ""} onChange={(e) => set("target_profit_total", e.target.value)} /></Field>
+              <Field label="Cost of goods">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.exporter_cost_of_goods ?? ""}
+                  onChange={(e) => set("exporter_cost_of_goods", e.target.value)}
+                />
+              </Field>
+              <Field label="Overheads">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.exporter_overheads ?? ""}
+                  onChange={(e) => set("exporter_overheads", e.target.value)}
+                />
+              </Field>
+              <Field label="Commission">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.commission ?? ""}
+                  onChange={(e) => set("commission", e.target.value)}
+                />
+              </Field>
+              <Field label="Target profit / unit">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.target_profit_per_unit ?? ""}
+                  onChange={(e) => set("target_profit_per_unit", e.target.value)}
+                />
+              </Field>
+              <Field label="Target profit total">
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={form.target_profit_total ?? ""}
+                  onChange={(e) => set("target_profit_total", e.target.value)}
+                />
+              </Field>
             </Grid>
           </Panel>
 
           <div className="flex flex-wrap gap-3">
-            <Button className="!bg-amber-400 !text-slate-950 hover:!bg-amber-300" disabled={calcMutation.isPending} onClick={() => calcMutation.mutate()}>
+            <Button
+              className="!bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+              disabled={calcMutation.isPending}
+              onClick={() => calcMutation.mutate()}
+            >
               {calcMutation.isPending ? "Calculating…" : "Calculate"}
             </Button>
-            <Button variant="secondary" disabled={saveMutation.isPending || !result} onClick={() => saveMutation.mutate()}>
+            <Button
+              variant="secondary"
+              disabled={saveMutation.isPending || !result}
+              onClick={() => saveMutation.mutate()}
+            >
               {saveMutation.isPending ? "Saving…" : "Save quote"}
             </Button>
-            {saveMutation.data ? <span className="self-center text-sm text-emerald-300">Saved {saveMutation.data.quote_number}</span> : null}
-            {calcMutation.error instanceof Error ? <span className="self-center text-sm text-rose-300">{calcMutation.error.message}</span> : null}
+            {saveMutation.data ? (
+              <span className="self-center text-sm text-emerald-300">
+                Saved {saveMutation.data.quote_number}
+              </span>
+            ) : null}
+            {calcMutation.error instanceof Error ? (
+              <span className="self-center text-sm text-rose-300">
+                {calcMutation.error.message}
+              </span>
+            ) : null}
           </div>
         </div>
 
         <aside className="lg:sticky lg:top-4 lg:self-start space-y-4">
-          {result ? <Results result={result} ccy={ccy} /> : (
+          {result ? (
+            <Results result={result} ccy={ccy} />
+          ) : (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
               Enter values and press Calculate to see FOB/CIF, landed cost, and net realization.
             </div>
@@ -247,29 +500,47 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">{result.named_place_summary}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+          {result.named_place_summary}
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Metric label="Product value" value={inr(result.product_value)} />
         <Metric label="Total expenses" value={inr(result.total_origin_charges)} />
         <Metric label="FOB value" value={inr(result.fob_value)} big />
-        <Metric label={`FOB / unit`} value={`${inr(result.fob_per_unit)}${result.fob_per_unit_quote_ccy != null && ccy !== "INR" ? ` · ${result.fob_per_unit_quote_ccy} ${ccy}` : ""}`} />
+        <Metric
+          label={`FOB / unit`}
+          value={`${inr(result.fob_per_unit)}${result.fob_per_unit_quote_ccy != null && ccy !== "INR" ? ` · ${result.fob_per_unit_quote_ccy} ${ccy}` : ""}`}
+        />
         <Metric label="CFR value" value={inr(result.cfr_value)} />
         <Metric label="CIF value" value={inr(result.cif_value)} big />
-        <Metric label="CIF / unit" value={`${inr(result.cif_per_unit)}${result.cif_per_unit_quote_ccy != null && ccy !== "INR" ? ` · ${result.cif_per_unit_quote_ccy} ${ccy}` : ""}`} />
+        <Metric
+          label="CIF / unit"
+          value={`${inr(result.cif_per_unit)}${result.cif_per_unit_quote_ccy != null && ccy !== "INR" ? ` · ${result.cif_per_unit_quote_ccy} ${ccy}` : ""}`}
+        />
         <Metric label="Buyer landed cost" value={inr(result.total_landed_cost)} />
         <Metric label="Landed / unit" value={inr(result.landed_cost_per_unit)} />
         <Metric label="Incentive amount" value={inr(result.incentive_amount)} />
         <Metric label="Net realization" value={inr(result.net_exporter_realization)} big />
-        <Metric label="Margin" value={`${inr(result.exporter_margin_amount)} · ${result.exporter_margin_percent}%`} />
+        <Metric
+          label="Margin"
+          value={`${inr(result.exporter_margin_amount)} · ${result.exporter_margin_percent}%`}
+        />
       </div>
 
       {result.incentive_breakdown.length ? (
         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Incentives (on FOB)</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Incentives (on FOB)
+          </p>
           {result.incentive_breakdown.map((i, idx) => (
-            <div key={idx} className="mt-1 flex items-center justify-between text-xs text-slate-300">
-              <span>{i.scheme.toUpperCase()} {i.rate_percent}% <Badge source={i.source} /></span>
+            <div
+              key={idx}
+              className="mt-1 flex items-center justify-between text-xs text-slate-300"
+            >
+              <span>
+                {i.scheme.toUpperCase()} {i.rate_percent}% <Badge source={i.source} />
+              </span>
               <span>{inr(i.amount_inr)}</span>
             </div>
           ))}
@@ -278,7 +549,9 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
 
       <div className="space-y-1">
         {result.warnings.map((w, i) => (
-          <p key={i} className="text-[11px] leading-4 text-amber-300/90">⚠ {w}</p>
+          <p key={i} className="text-[11px] leading-4 text-amber-300/90">
+            ⚠ {w}
+          </p>
         ))}
       </div>
       <p className="text-[11px] leading-4 text-slate-500">{result.disclaimer}</p>
@@ -286,22 +559,48 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
   );
 }
 
-function SavedQuotes({ token, onOpen }: { token: string; onOpen: (r: ExportQuoteCalcResponse) => void }) {
-  const quotesQuery = useQuery({ queryKey: ["export-quotes", token], queryFn: () => api.listExportQuotes(token) });
-  const openMut = useMutation({ mutationFn: (id: string) => api.getExportQuote(id, token), onSuccess: (d) => onOpen(d.calculation) });
+function SavedQuotes({
+  token,
+  onOpen,
+}: {
+  token: string;
+  onOpen: (r: ExportQuoteCalcResponse) => void;
+}) {
+  const quotesQuery = useQuery({
+    queryKey: ["export-quotes", token],
+    queryFn: () => api.listExportQuotes(token),
+  });
+  const openMut = useMutation({
+    mutationFn: (id: string) => api.getExportQuote(id, token),
+    onSuccess: (d) => onOpen(d.calculation),
+  });
   const dupMut = useMutation({ mutationFn: (id: string) => api.duplicateExportQuote(id, token) });
   const quotes = quotesQuery.data ?? [];
   if (!quotes.length) return null;
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Saved quotes</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        Saved quotes
+      </p>
       <div className="mt-2 space-y-1.5 text-xs">
         {quotes.slice(0, 8).map((q) => (
-          <div key={q.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 p-2">
-            <button className="text-left text-slate-300 hover:text-amber-200" onClick={() => openMut.mutate(q.id)}>
-              {q.quote_number} · {q.incoterm} · {q.hsn_code ?? "—"} · ₹{q.net_exporter_realization.toLocaleString("en-IN")}
+          <div
+            key={q.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 p-2"
+          >
+            <button
+              className="text-left text-slate-300 hover:text-amber-200"
+              onClick={() => openMut.mutate(q.id)}
+            >
+              {q.quote_number} · {q.incoterm} · {q.hsn_code ?? "—"} · ₹
+              {q.net_exporter_realization.toLocaleString("en-IN")}
             </button>
-            <button className="text-slate-500 hover:text-amber-200" onClick={() => dupMut.mutate(q.id)}>Duplicate</button>
+            <button
+              className="text-slate-500 hover:text-amber-200"
+              onClick={() => dupMut.mutate(q.id)}
+            >
+              Duplicate
+            </button>
           </div>
         ))}
       </div>
@@ -312,7 +611,9 @@ function SavedQuotes({ token, onOpen }: { token: string; onOpen: (r: ExportQuote
 function Badge({ source }: { source: string }) {
   const approved = source === "approved_source_backed";
   return (
-    <span className={`ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${approved ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" : "border-amber-500/40 bg-amber-500/15 text-amber-300"}`}>
+    <span
+      className={`ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${approved ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" : "border-amber-500/40 bg-amber-500/15 text-amber-300"}`}
+    >
       {approved ? "approved" : "user"}
     </span>
   );
@@ -321,7 +622,9 @@ function Badge({ source }: { source: string }) {
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-amber-300">{title}</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-amber-300">
+        {title}
+      </h2>
       {children}
     </section>
   );
@@ -334,7 +637,9 @@ function Grid({ children }: { children: ReactNode }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -342,9 +647,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Metric({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (
-    <div className={`rounded-lg border border-slate-800 bg-slate-950/40 p-2.5 ${big ? "col-span-2" : ""}`}>
+    <div
+      className={`rounded-lg border border-slate-800 bg-slate-950/40 p-2.5 ${big ? "col-span-2" : ""}`}
+    >
       <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-0.5 font-semibold ${big ? "text-lg text-amber-300" : "text-sm text-slate-100"}`}>{value}</p>
+      <p
+        className={`mt-0.5 font-semibold ${big ? "text-lg text-amber-300" : "text-sm text-slate-100"}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

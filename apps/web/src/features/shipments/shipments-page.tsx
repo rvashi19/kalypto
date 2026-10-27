@@ -52,7 +52,8 @@ function ShipmentCard({
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink">{shipment.product_name}</p>
           <p className="mt-0.5 text-sm text-ink-2">
-            HSN <span className="font-mono">{shipment.hsn_code}</span> / {shipment.destination_country}
+            HSN <span className="font-mono">{shipment.hsn_code}</span> /{" "}
+            {shipment.destination_country}
           </p>
         </div>
         <StageBadge stage={shipment.shipment_stage} />
@@ -72,7 +73,10 @@ function ShipmentCard({
       </dl>
 
       <div className="flex gap-2">
-        <Link to={`/shipments/${shipment.id}`} className={buttonClasses("secondary", "sm", "flex-1")}>
+        <Link
+          to={`/shipments/${shipment.id}`}
+          className={buttonClasses("secondary", "sm", "flex-1")}
+        >
           Open
         </Link>
         <Button

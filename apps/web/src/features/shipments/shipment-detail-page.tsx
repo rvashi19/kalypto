@@ -199,9 +199,15 @@ function FindingsTable({ items }: { items: DiscrepancyItem[] }) {
         <caption className="sr-only">Cross-document findings</caption>
         <thead>
           <tr className="bg-surface-2 text-left text-xs font-semibold text-ink-3">
-            <th scope="col" className="px-5 py-2">Field</th>
-            <th scope="col" className="px-5 py-2">Status</th>
-            <th scope="col" className="hidden px-5 py-2 md:table-cell">Documents</th>
+            <th scope="col" className="px-5 py-2">
+              Field
+            </th>
+            <th scope="col" className="px-5 py-2">
+              Status
+            </th>
+            <th scope="col" className="hidden px-5 py-2 md:table-cell">
+              Documents
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -243,7 +249,9 @@ function IncentiveCard({ e }: { e: IncentiveEstimate }) {
     <div className="rounded-panel border border-line bg-surface p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-ink">{e.scheme}</p>
-        <Badge tone={e.eligible ? "success" : "neutral"}>{e.eligible ? "Eligible" : "Not eligible"}</Badge>
+        <Badge tone={e.eligible ? "success" : "neutral"}>
+          {e.eligible ? "Eligible" : "Not eligible"}
+        </Badge>
       </div>
       {e.eligible && e.estimated_amount != null && (
         <p className="mt-1 text-lg font-semibold text-ink">
@@ -332,8 +340,7 @@ export function ShipmentDetailPage() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: (documentType: DocumentType) =>
-      api.generateDocument(id!, documentType, token!),
+    mutationFn: (documentType: DocumentType) => api.generateDocument(id!, documentType, token!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents", id] });
     },
@@ -433,15 +440,39 @@ export function ShipmentDetailPage() {
               isError={checklistQuery.isError}
               error={userMessageForError(checklistQuery.error)}
               onRetry={() => void checklistQuery.refetch()}
-              isEmpty={Boolean(checklistQuery.data) && checklistQuery.data!.required.length === 0 && checklistQuery.data!.optional.length === 0 && checklistQuery.data!.country_specific.length === 0 && checklistQuery.data!.bank_payment.length === 0 && checklistQuery.data!.incentive_refund.length === 0}
-              empty={<EmptyState title="No documents required" description="The checklist came back empty for this profile." />}
+              isEmpty={
+                Boolean(checklistQuery.data) &&
+                checklistQuery.data!.required.length === 0 &&
+                checklistQuery.data!.optional.length === 0 &&
+                checklistQuery.data!.country_specific.length === 0 &&
+                checklistQuery.data!.bank_payment.length === 0 &&
+                checklistQuery.data!.incentive_refund.length === 0
+              }
+              empty={
+                <EmptyState
+                  title="No documents required"
+                  description="The checklist came back empty for this profile."
+                />
+              }
             >
               {checklistQuery.data && (
                 <>
-                  <ChecklistSection title="Required documents" items={checklistQuery.data.required} />
-                  <ChecklistSection title="Country-specific" items={checklistQuery.data.country_specific} />
-                  <ChecklistSection title="Bank & payment" items={checklistQuery.data.bank_payment} />
-                  <ChecklistSection title="Incentive & refund" items={checklistQuery.data.incentive_refund} />
+                  <ChecklistSection
+                    title="Required documents"
+                    items={checklistQuery.data.required}
+                  />
+                  <ChecklistSection
+                    title="Country-specific"
+                    items={checklistQuery.data.country_specific}
+                  />
+                  <ChecklistSection
+                    title="Bank & payment"
+                    items={checklistQuery.data.bank_payment}
+                  />
+                  <ChecklistSection
+                    title="Incentive & refund"
+                    items={checklistQuery.data.incentive_refund}
+                  />
                   <ChecklistSection title="Optional" items={checklistQuery.data.optional} />
                   <p className="mt-4 text-xs text-ink-3">{checklistQuery.data.disclaimer}</p>
                   <Button className="mt-4" onClick={() => setTab("documents")}>
@@ -534,7 +565,9 @@ export function ShipmentDetailPage() {
                   {userMessageForError(uploadMutation.error)}
                 </Alert>
               )}
-              {uploadMutation.isSuccess && <Alert tone="success" title="Document uploaded successfully." />}
+              {uploadMutation.isSuccess && (
+                <Alert tone="success" title="Document uploaded successfully." />
+              )}
             </CardContent>
           </Card>
 
@@ -549,13 +582,21 @@ export function ShipmentDetailPage() {
                 error={userMessageForError(docsQuery.error)}
                 onRetry={() => void docsQuery.refetch()}
                 isEmpty={!hasDocs}
-                empty={<EmptyState title="No documents uploaded yet" description="Upload a file or generate a draft above." />}
+                empty={
+                  <EmptyState
+                    title="No documents uploaded yet"
+                    description="Upload a file or generate a draft above."
+                  />
+                }
               >
                 <ul className="flex flex-col gap-2">
                   {docs.map((doc) => {
                     const status = DOC_STATUS[doc.upload_status];
                     return (
-                      <li key={doc.id} className="rounded-panel border border-line bg-surface px-4 py-3">
+                      <li
+                        key={doc.id}
+                        className="rounded-panel border border-line bg-surface px-4 py-3"
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-ink">
@@ -563,7 +604,9 @@ export function ShipmentDetailPage() {
                             </p>
                             <p className="truncate text-xs text-ink-3">
                               {doc.file_name}
-                              {doc.file_size_bytes ? ` / ${(doc.file_size_bytes / 1024).toFixed(0)} KB` : ""}
+                              {doc.file_size_bytes
+                                ? ` / ${(doc.file_size_bytes / 1024).toFixed(0)} KB`
+                                : ""}
                             </p>
                           </div>
                           {status && (
@@ -572,7 +615,9 @@ export function ShipmentDetailPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => api.downloadDocument(id!, doc.id, doc.file_name, token!)}
+                                onClick={() =>
+                                  api.downloadDocument(id!, doc.id, doc.file_name, token!)
+                                }
                               >
                                 Download
                               </Button>
@@ -600,7 +645,12 @@ export function ShipmentDetailPage() {
         <div className="flex flex-col gap-4">
           {!hasDocs && (
             <Alert tone="warning" title="Upload at least one document before running verification.">
-              <Button size="sm" variant="secondary" className="mt-2" onClick={() => setTab("documents")}>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-2"
+                onClick={() => setTab("documents")}
+              >
                 Upload docs
               </Button>
             </Alert>
@@ -611,12 +661,15 @@ export function ShipmentDetailPage() {
               <CardHeader>
                 <CardTitle>Deterministic reconciliation</CardTitle>
                 <CardDescription>
-                  Checks required documents and extracted cross-document values without asking AI
-                  to invent rules or rates.
+                  Checks required documents and extracted cross-document values without asking AI to
+                  invent rules or rates.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button loading={reconciliationMutation.isPending} onClick={() => reconciliationMutation.mutate()}>
+                <Button
+                  loading={reconciliationMutation.isPending}
+                  onClick={() => reconciliationMutation.mutate()}
+                >
                   {reconciliationMutation.isPending ? "Reconciling..." : "Run reconciliation"}
                 </Button>
                 {reconciliationMutation.isError && (
@@ -640,7 +693,9 @@ export function ShipmentDetailPage() {
                           >
                             <div>
                               <p className="text-sm text-ink">{item.message}</p>
-                              <p className="mt-1 text-xs capitalize text-ink-3">{item.type.replaceAll("_", " ")}</p>
+                              <p className="mt-1 text-xs capitalize text-ink-3">
+                                {item.type.replaceAll("_", " ")}
+                              </p>
                             </div>
                             <Badge tone={sev.tone}>{sev.label}</Badge>
                           </li>
@@ -703,7 +758,8 @@ export function ShipmentDetailPage() {
                       </CardContent>
                     </Card>
 
-                    {(report.ebrc_gst_reminders.length > 0 || report.recommendations.length > 0) && (
+                    {(report.ebrc_gst_reminders.length > 0 ||
+                      report.recommendations.length > 0) && (
                       <Card>
                         <CardHeader>
                           <CardTitle>Action items</CardTitle>
@@ -712,13 +768,17 @@ export function ShipmentDetailPage() {
                           <ul className="flex flex-col gap-2">
                             {report.recommendations.map((rec, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-ink">
-                                <Badge tone="info" className="shrink-0">Action</Badge>
+                                <Badge tone="info" className="shrink-0">
+                                  Action
+                                </Badge>
                                 {rec}
                               </li>
                             ))}
                             {report.ebrc_gst_reminders.map((rem, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-ink">
-                                <Badge tone="warning" className="shrink-0">Reminder</Badge>
+                                <Badge tone="warning" className="shrink-0">
+                                  Reminder
+                                </Badge>
                                 {rem}
                               </li>
                             ))}
@@ -756,7 +816,9 @@ export function ShipmentDetailPage() {
                                 ? "bg-warning-fg"
                                 : "bg-danger-fg"
                           }`}
-                          style={{ width: `${Math.min(100, Math.max(0, report.finance_readiness_score))}%` }}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, report.finance_readiness_score))}%`,
+                          }}
                         />
                       </div>
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -767,9 +829,13 @@ export function ShipmentDetailPage() {
                           </Badge>
                         </dd>
                         <dt className="text-ink-3">Findings</dt>
-                        <dd className="text-right text-ink">{report.discrepancies.length.toLocaleString("en-IN")}</dd>
+                        <dd className="text-right text-ink">
+                          {report.discrepancies.length.toLocaleString("en-IN")}
+                        </dd>
                         <dt className="text-ink-3">Missing docs</dt>
-                        <dd className="text-right text-ink">{report.missing_documents.length.toLocaleString("en-IN")}</dd>
+                        <dd className="text-right text-ink">
+                          {report.missing_documents.length.toLocaleString("en-IN")}
+                        </dd>
                       </dl>
                     </Card>
                   </aside>
@@ -804,7 +870,11 @@ export function ShipmentDetailPage() {
                   <h3 className="text-sm font-semibold text-ink-2">{plan.tier}</h3>
                   <p className="text-2xl font-semibold text-ink">{plan.price}</p>
                   <p className="text-sm text-ink-2">{plan.desc}</p>
-                  <Button variant={plan.highlight ? "primary" : "secondary"} className="mt-auto" disabled>
+                  <Button
+                    variant={plan.highlight ? "primary" : "secondary"}
+                    className="mt-auto"
+                    disabled
+                  >
                     Request review
                   </Button>
                 </div>
