@@ -12,6 +12,7 @@ import { useState } from "react";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 import { inputCls, selectCls } from "../../lib/ui";
 
 const COUNTRIES = ["India", "Canada", "USA", "UK", "Netherlands/EU", "United Arab Emirates", "Saudi Arabia"];
@@ -538,7 +539,7 @@ function AdminReviewQueue() {
 }
 
 export function CountryComplianceCheckerPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const [form, setForm] = useState<ComplianceCheckRequestV1>(DEFAULT_FORM);
   const isAdmin = session?.membership.role === "owner";
 
@@ -546,12 +547,7 @@ export function CountryComplianceCheckerPage() {
     mutationFn: () => api.complianceCheck(form, token!),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   return (
     <DashboardShell

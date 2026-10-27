@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 import { AiBadge } from "../../lib/ui";
 
 export function DashboardPage() {
@@ -47,12 +48,7 @@ export function DashboardPage() {
     mutationFn: () => api.askDocumentationAssistant(assistantQuestion, token!),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const setupTwoFactorMutation = useMutation({
     mutationFn: () => api.setupTwoFactor(token!),

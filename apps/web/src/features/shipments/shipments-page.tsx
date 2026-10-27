@@ -18,6 +18,7 @@ import { useState } from "react";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
@@ -88,7 +89,7 @@ function ShipmentCard({
 }
 
 export function ShipmentsPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const qc = useQueryClient();
   const [importFile, setImportFile] = useState<File | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ShipmentResponse | null>(null);
@@ -113,10 +114,7 @@ export function ShipmentsPage() {
     },
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => { if (token) await api.logout(token); },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const shipments = shipmentsQuery.data ?? [];
 

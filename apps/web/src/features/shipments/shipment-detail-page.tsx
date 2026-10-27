@@ -29,6 +29,7 @@ import type {
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 type Tab = "checklist" | "documents" | "report" | "expert";
 type StepState = "done" | "active" | "available" | "locked";
@@ -289,7 +290,7 @@ const EXPERT_PLANS = [
 
 export function ShipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("checklist");
   const [uploadType, setUploadType] = useState<DocumentType>("commercial_invoice");
@@ -345,12 +346,7 @@ export function ShipmentDetailPage() {
     },
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const s = shipmentQuery.data;
   const docs = docsQuery.data ?? [];

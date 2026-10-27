@@ -12,6 +12,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 import { inputCls } from "../../lib/ui";
 
 const EMPTY_FORM: DocumentVerificationRunCreate = {
@@ -28,7 +29,7 @@ const SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"] as const;
 export function DocumentVerifierPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<DocumentVerificationRunCreate>(EMPTY_FORM);
   const [files, setFiles] = useState<File[]>([]);
@@ -85,12 +86,7 @@ export function DocumentVerifierPage() {
     mutationFn: () => api.downloadVerifierReportPdf(runId!, token!),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const run = runQuery.data;
   const runs = runsQuery.data ?? [];

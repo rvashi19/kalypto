@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 const CONFIDENCE_STYLES: Record<string, string> = {
   High: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
@@ -41,7 +42,7 @@ const EMPTY_STATE =
 
 
 export function HsnFinderPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState(0);
@@ -95,12 +96,7 @@ export function HsnFinderPage() {
       ),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   function runSearch(q: string, lvl = level) {
     if (!q.trim()) return;

@@ -19,6 +19,7 @@ import type { ShipmentCreate, ShipmentMode, ShipmentStage } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 type RequiredField =
   | "product_name"
@@ -92,7 +93,7 @@ function HsnRateCard({
 }
 
 export function NewShipmentPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentCreate>({
@@ -135,12 +136,7 @@ export function NewShipmentPage() {
     onSuccess: (data) => navigate(`/shipments/${data.id}`),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

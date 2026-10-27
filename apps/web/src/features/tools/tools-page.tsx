@@ -13,6 +13,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 import { AiBadge, inputCls, selectCls } from "../../lib/ui";
 
 const MODULES = [
@@ -141,7 +142,7 @@ function buildQuotePayload(form: QuoteForm): ExportQuoteRequest {
 }
 
 export function ToolsPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [activeModule, setActiveModule] = useState<ModuleId>("hsn");
@@ -263,12 +264,7 @@ export function ToolsPage() {
     },
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const shipments = shipmentsQuery.data ?? [];
   const recentShipments = shipments.slice(0, 4);

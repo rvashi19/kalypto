@@ -7,6 +7,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 const INCOTERMS = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"];
 
@@ -63,7 +64,7 @@ function num(form: Form, k: string): number | undefined {
 }
 
 export function ExportQuotePage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState<Form>({ ...DEFAULTS });
@@ -119,12 +120,7 @@ export function ExportQuotePage() {
     mutationFn: () => api.saveExportQuote(buildPayload({ status: "saved" }), token!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["export-quotes"] }),
   });
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const ccy = form.quote_currency || "INR";
 

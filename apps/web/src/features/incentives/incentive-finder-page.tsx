@@ -7,6 +7,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 const SCHEME_LABEL: Record<string, string> = {
   rodtep: "RoDTEP",
@@ -32,7 +33,7 @@ function formatRate(item: IncentiveRateItem) {
 }
 
 export function IncentiveFinderPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const [searchParams] = useSearchParams();
   const isAdmin = session?.membership.role === "owner";
 
@@ -63,12 +64,7 @@ export function IncentiveFinderPage() {
     enabled: Boolean(detailId && token),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const data = searchMutation.data;
   const grouped = useMemo(() => {
