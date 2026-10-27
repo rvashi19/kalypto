@@ -139,7 +139,7 @@ function authHeaders(token?: string): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
-export class ApiError extends Error {
+class ApiError extends Error {
   status: number;
   detail: unknown;
 
