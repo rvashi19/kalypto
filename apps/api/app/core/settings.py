@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
-    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    groq_model: str = Field(default="openai/gpt-oss-120b", alias="GROQ_MODEL")
     xai_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("XAI_API_KEY", "OPENAI_API_KEY"),
