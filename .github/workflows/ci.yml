@@ -30,9 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Version comes from package.json "packageManager"; also passing `version` makes the action fail.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -53,3 +52,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          # Required on pull_request events so the action can list the PR's commits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

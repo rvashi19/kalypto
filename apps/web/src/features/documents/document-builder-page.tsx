@@ -393,7 +393,6 @@ function ExtractPanel({
 // ── Logo panel ───────────────────────────────────────────────────────────────
 
 function LogoPanel({ token }: { token: string }) {
-  const qc = useQueryClient();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const { data: hasLogo, refetch } = useQuery({
@@ -641,7 +640,7 @@ export function DocumentBuilderPage() {
     new Set(DOC_TYPES.map(d => d.id))
   );
   const toggleDoc = (id: string) =>
-    setSelectedDocs(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedDocs(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const [tab, setTab] = useState<"build" | "history">("build");
   const [validationResult, setValidationResult] = useState<{
@@ -669,7 +668,7 @@ export function DocumentBuilderPage() {
       setSuccessMsg(`Downloaded: ${filename}`);
       qc.invalidateQueries({ queryKey: ["document-packs"] });
     },
-    onError: (err: Error) => setSuccessMsg(null),
+    onError: () => setSuccessMsg(null),
   });
 
   const autoTotal = (idx: number, field: "quantity" | "unit_price" | "total_value", value: string) => {
@@ -683,7 +682,6 @@ export function DocumentBuilderPage() {
     }
   };
 
-  const payload = buildPayload(form, items);
 
   return (
     <DashboardShell

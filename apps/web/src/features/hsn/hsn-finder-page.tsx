@@ -39,8 +39,6 @@ type SortKey = "relevance" | "code_asc" | "code_desc" | "az";
 const EMPTY_STATE =
   "No HSN match found in the imported master data. This does not mean the code does not exist — try the AI verify, or import/update the official HSN master.";
 
-const inputClass =
-  "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20";
 
 export function HsnFinderPage() {
   const { session, token, setSession } = useAuth();

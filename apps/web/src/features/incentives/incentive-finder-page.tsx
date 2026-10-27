@@ -25,10 +25,6 @@ function schemeName(scheme: string) {
   return SCHEME_LABEL[scheme.toLowerCase()] ?? scheme.toUpperCase();
 }
 
-function isExpired(item: IncentiveRateItem) {
-  return item.effective_to != null && new Date(item.effective_to) <= new Date();
-}
-
 function formatRate(item: IncentiveRateItem) {
   if (item.rate_type === "percentage") return `${item.rate_value}%`;
   if (item.rate_type === "fixed") return `₹${item.rate_value}${item.unit_of_quantity ? ` / ${item.unit_of_quantity}` : ""}`;
@@ -279,26 +275,6 @@ function RateCard({
         <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
       ) : null}
     </button>
-  );
-}
-
-function ApprovalBadge({ item }: { item: IncentiveRateItem }) {
-  let label = item.approval_status;
-  let cls = "border-slate-600/50 bg-slate-700/40 text-slate-300";
-  if (isExpired(item)) {
-    label = "expired";
-    cls = "border-slate-600/50 bg-slate-700/40 text-slate-400";
-  } else if (item.approval_status === "approved") {
-    cls = "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
-  } else if (item.approval_status === "pending") {
-    cls = "border-amber-500/40 bg-amber-500/15 text-amber-300";
-  } else if (item.approval_status === "rejected") {
-    cls = "border-rose-500/40 bg-rose-500/15 text-rose-300";
-  }
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
-      {label}
-    </span>
   );
 }
 
