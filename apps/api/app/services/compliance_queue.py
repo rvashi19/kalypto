@@ -17,6 +17,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from fastapi import BackgroundTasks
+from sqlalchemy.orm import Session
+
 from app.core.settings import get_settings
 from app.db.session import session_scope
 from app.models import ComplianceRetrievalJob
@@ -73,19 +76,25 @@ def _run_job_in_new_session(job_id: UUID, tenant_id: UUID, force: bool) -> None:
             return
 
 
-def enqueue_retrieval_job(background_tasks, *, job_id: UUID, tenant_id: UUID, force: bool = False) -> None:
+def enqueue_retrieval_job(background_tasks: BackgroundTasks, *, job_id: UUID, tenant_id: UUID, force: bool = False) -> None:
     """Schedule a retrieval job to run after the response is returned."""
     background_tasks.add_task(_run_job_in_new_session, job_id, tenant_id, force)
 
 
-def get_job_status(session, *, job_id: UUID, tenant_id: UUID) -> ComplianceRetrievalJob | None:
+def get_job_status(session: Session, *, job_id: UUID, tenant_id: UUID) -> ComplianceRetrievalJob | None:
     job = session.get(ComplianceRetrievalJob, job_id)
     if job is None or job.tenant_id != tenant_id:
         return None
     return job
 
 
-def retry_job(background_tasks, session, *, job_id: UUID, tenant_id: UUID) -> ComplianceRetrievalJob | None:
+def retry_job(
+    background_tasks: BackgroundTasks,
+    session: Session,
+    *,
+    job_id: UUID,
+    tenant_id: UUID,
+) -> ComplianceRetrievalJob | None:
     job = get_job_status(session, job_id=job_id, tenant_id=tenant_id)
     if job is None:
         return None

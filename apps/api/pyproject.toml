@@ -23,3 +23,8 @@ warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true
 exclude = ["alembic"]
+
+# Optional runtime extras (python-docx, scrapling) with no stubs in the type-check env.
+[[tool.mypy.overrides]]
+module = ["docx", "docx.*", "scrapling", "scrapling.*"]
+ignore_missing_imports = true
