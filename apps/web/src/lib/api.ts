@@ -178,6 +178,11 @@ export function userMessageForError(
     return "Your session has expired. Please sign in again.";
   }
 
+  // Server errors can carry upstream details (e.g. AI provider responses) not meant for users.
+  if (error instanceof ApiError && error.status >= 500) {
+    return "The server could not complete this request. Please try again in a moment.";
+  }
+
   if (error instanceof Error) {
     if (error.message.toLowerCase().includes("failed to fetch")) {
       return "We could not reach the KALYPTO API. Please make sure the backend is running, then try again.";

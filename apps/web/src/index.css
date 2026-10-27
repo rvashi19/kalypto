@@ -21,6 +21,33 @@
   --foreground: 210 11% 7%;
   --border: 210 6% 89%;
   --ring: 215 80% 48%;
+
+  /* Design-system tokens (docs/design-direction.md) */
+  --k-canvas: #f6f7f9;
+  --k-surface: #ffffff;
+  --k-surface-2: #f0f2f5;
+  --k-line: #dfe3e8;
+  --k-line-strong: #c3c9d2;
+  --k-ink: #14181f;
+  --k-ink-2: #4a5568;
+  --k-ink-3: #6b7585;
+  --k-brand: #1868db;
+  --k-brand-hover: #1458bb;
+  --k-brand-soft: #e9f1fd;
+  --k-nav: #101214;
+  --k-nav-text: #c7ccd4;
+  --k-success-fg: #1f7a4d;
+  --k-success-bg: #e8f5ee;
+  --k-success-border: #b5dec8;
+  --k-warning-fg: #8a5a00;
+  --k-warning-bg: #fff5e0;
+  --k-warning-border: #f2d38f;
+  --k-danger-fg: #b42318;
+  --k-danger-bg: #fdeceb;
+  --k-danger-border: #f5c2bd;
+  --k-info-fg: #1868db;
+  --k-info-bg: #e9f1fd;
+  --k-info-border: #bcd4f6;
   font-family:
     "Inter",
     "Segoe UI",
@@ -177,6 +204,8 @@ body {
   border-color: var(--color-atlassian-blue);
 }
 
+/* TODO(remove): compatibility shim below (and the --color-* vars / .atlassian-* classes above)
+   once all feature pages are migrated to the design-system components. */
 /* Compatibility pass for older dark Tailwind utilities used across feature pages. */
 .atlassian-shell [class*="bg-slate-950"],
 .atlassian-shell [class*="bg-slate-900"],

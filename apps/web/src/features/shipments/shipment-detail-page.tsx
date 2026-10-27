@@ -1,7 +1,24 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui";
+import { Link, useParams } from "react-router-dom";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  Field,
+  FileDropzone,
+  PageHeader,
+  QueryState,
+  Select,
+  Stepper,
+  type Tone,
+} from "@repo/ui";
 import type {
   ChecklistItem,
   DiscrepancyItem,
@@ -10,21 +27,15 @@ import type {
   IncentiveEstimate,
 } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import {
-  AiBadge,
-  ComingSoonBadge,
-  DOC_STATUS_CFG,
-  RISK_CFG,
-  SEVERITY_CFG,
-  selectCls,
-} from "../../lib/ui";
 
 type Tab = "checklist" | "documents" | "report" | "expert";
 type StepState = "done" | "active" | "available" | "locked";
 
 const TAB_ORDER: Tab[] = ["checklist", "documents", "report", "expert"];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const UPLOAD_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   proforma_invoice: "Proforma Invoice",
@@ -71,7 +82,29 @@ const FIELD_LABELS: Record<string, string> = {
   marks_and_numbers: "Marks & Nos.",
 };
 
-// Stepper
+const DOC_STATUS: Record<string, { tone: Tone; label: string }> = {
+  pending: { tone: "warning", label: "Processing" },
+  extracted: { tone: "success", label: "Done" },
+  failed: { tone: "danger", label: "Failed" },
+};
+
+const RISK: Record<string, { tone: Tone; label: string }> = {
+  low: { tone: "success", label: "Low risk" },
+  medium: { tone: "warning", label: "Medium risk" },
+  high: { tone: "warning", label: "High risk" },
+  critical: { tone: "danger", label: "Critical risk" },
+};
+
+// match / check / mismatch labels for finding severity.
+const SEVERITY: Record<string, { tone: Tone; label: string }> = {
+  info: { tone: "info", label: "Note" },
+  warn: { tone: "warning", label: "Check" },
+  critical: { tone: "danger", label: "Mismatch" },
+};
+
+function severityOf(severity: string): { tone: Tone; label: string } {
+  return SEVERITY[severity] ?? SEVERITY.info;
+}
 
 const STEPS: { key: Tab; label: string }[] = [
   { key: "checklist", label: "Checklist" },
@@ -90,122 +123,21 @@ function getStepState(key: Tab, current: Tab, hasDocs: boolean): StepState {
   return "available";
 }
 
-function StepBubble({
-  n,
-  label,
-  state,
-  onClick,
-}: {
-  n: number;
-  label: string;
-  state: StepState;
-  onClick?: () => void;
-}) {
-  const circleCls: Record<StepState, string> = {
-    done: "bg-cyan-300 text-slate-950",
-    active: "border-2 border-cyan-300 bg-cyan-300/10 text-cyan-100",
-    available: "border-2 border-slate-700 bg-slate-900 text-slate-400 hover:border-cyan-300/50",
-    locked: "border-2 border-slate-800 bg-slate-950 text-slate-600",
-  };
-  const labelCls: Record<StepState, string> = {
-    done: "text-cyan-200",
-    active: "font-semibold text-slate-100",
-    available: "text-slate-400",
-    locked: "text-slate-600",
-  };
-  const canClick = state !== "locked" && Boolean(onClick);
-
-  return (
-    <button
-      onClick={canClick ? onClick : undefined}
-      disabled={!canClick}
-      className="flex flex-col items-center gap-1.5 disabled:cursor-default"
-      aria-current={state === "active" ? "step" : undefined}
-    >
-      <span
-        className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleCls[state]}`}
-      >
-        {state === "done" ? "OK" : n}
-      </span>
-      <span
-        className={`whitespace-nowrap text-[10px] font-medium uppercase tracking-wide transition-colors ${labelCls[state]}`}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
-function Stepper({
-  current,
-  hasDocs,
-  onSelect,
-}: {
-  current: Tab;
-  hasDocs: boolean;
-  onSelect: (tab: Tab) => void;
-}) {
-  return (
-    <div className="mb-6 overflow-x-auto">
-      <div className="flex min-w-max items-start">
-        {STEPS.flatMap((step, i) => {
-          const bubble = (
-            <StepBubble
-              key={step.key}
-              n={i + 1}
-              label={step.label}
-              state={getStepState(step.key, current, hasDocs)}
-              onClick={() => onSelect(step.key)}
-            />
-          );
-          if (i < STEPS.length - 1) {
-            return [
-              bubble,
-              <div key={`sep-${i}`} className="mt-4 h-px w-8 flex-1 bg-slate-800 sm:w-12 md:w-16" aria-hidden="true" />,
-            ];
-          }
-          return [bubble];
-        })}
-      </div>
-    </div>
-  );
-}
+const formatInr = (n: number) => `INR ${n.toLocaleString("en-IN")}`;
 
 // Sub-components
 
 function ExtractedFieldsPanel({ doc }: { doc: DocumentResponse }) {
   const [open, setOpen] = useState(false);
-  const cfg = DOC_STATUS_CFG[doc.upload_status as keyof typeof DOC_STATUS_CFG];
 
-  if (doc.upload_status === "pending") {
-    return (
-      <div className={`mt-1 flex items-center gap-1.5 text-xs ${cfg?.cls ?? "text-amber-400"}`}>
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-current" aria-hidden="true" />
-        {cfg?.label ?? "Processing"}
-      </div>
-    );
-  }
-
-  if (doc.upload_status === "failed") {
-    return (
-      <p className={`mt-1 flex items-center gap-1 text-xs ${cfg?.cls ?? "text-rose-400"}`}>
-        <span aria-hidden="true">{cfg?.icon}</span>
-        {cfg?.label ?? "Failed"}
-      </p>
-    );
-  }
-
+  if (doc.upload_status === "pending" || doc.upload_status === "failed") return null;
   if (!doc.extracted_fields || Object.keys(doc.extracted_fields).length === 0) return null;
 
   const fields = Object.entries(doc.extracted_fields).filter(([k]) => k !== "_note");
   const note = doc.extracted_fields["_note"] as string | undefined;
 
   if (note) {
-    return (
-      <p className={`mt-1 text-xs ${cfg?.cls ?? "text-emerald-400"}`}>
-        <span aria-hidden="true">{cfg?.icon}</span> {note}
-      </p>
-    );
+    return <p className="mt-2 text-sm text-ink-2">{note}</p>;
   }
 
   if (!fields.length) return null;
@@ -213,113 +145,116 @@ function ExtractedFieldsPanel({ doc }: { doc: DocumentResponse }) {
   return (
     <div className="mt-2">
       <button
+        type="button"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200"
+        className="rounded-sm text-sm font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {open ? "Hide" : "Show"} {fields.length} fields extracted
       </button>
       {open && (
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
+        <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 rounded-panel border border-line bg-surface-2 px-3 py-2">
           {fields.map(([key, value]) => (
             <div key={key} className="flex flex-col">
-              <span className="text-xs text-slate-500">{FIELD_LABELS[key] ?? key}</span>
-              <span className="text-xs text-slate-200">{String(value)}</span>
+              <dt className="text-xs text-ink-3">{FIELD_LABELS[key] ?? key}</dt>
+              <dd className="text-sm text-ink">{String(value)}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       )}
     </div>
   );
 }
 
-function ChecklistSection({
-  title,
-  items,
-  color,
-}: {
-  title: string;
-  items: ChecklistItem[];
-  color: string;
-}) {
+function ChecklistSection({ title, items }: { title: string; items: ChecklistItem[] }) {
   if (!items.length) return null;
   return (
-    <div className="mb-6">
-      <h4 className={`mb-3 text-xs font-bold uppercase tracking-widest ${color}`}>{title}</h4>
-      <div className="flex flex-col gap-2">
+    <section className="mb-6">
+      <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>
+      <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <div
+          <li
             key={item.document_type}
-            className="flex items-start gap-3 rounded-xl border border-white/8 bg-slate-950/60 px-4 py-3"
+            className="flex items-start gap-3 rounded-panel border border-line bg-surface px-4 py-3"
           >
-            <span
-              className={`mt-0.5 text-xs font-semibold uppercase tracking-wide ${item.required ? "text-cyan-200" : "text-slate-500"}`}
-              aria-hidden="true"
-            >
+            <Badge tone={item.required ? "info" : "neutral"} className="mt-0.5 shrink-0">
               {item.required ? "Required" : "Optional"}
-            </span>
+            </Badge>
             <div>
-              <p className="text-sm font-medium text-slate-100">{item.label}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{item.reason}</p>
+              <p className="text-sm font-medium text-ink">{item.label}</p>
+              <p className="mt-0.5 text-sm text-ink-2">{item.reason}</p>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }
 
-function DiscrepancyCard({ d }: { d: DiscrepancyItem }) {
-  const cfg = SEVERITY_CFG[d.severity as keyof typeof SEVERITY_CFG] ?? SEVERITY_CFG.info;
+function FindingsTable({ items }: { items: DiscrepancyItem[] }) {
   return (
-    <div className={`rounded-xl border p-4 ${cfg.cls}`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold capitalize">{d.field.replaceAll("_", " ")}</p>
-        <span className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs capitalize">
-          <span aria-hidden="true">{cfg.icon}</span> {d.severity}
-        </span>
-      </div>
-      <p className="mt-2 text-xs opacity-90">{d.message}</p>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-xs opacity-75">
-        <div>
-          <span className="font-medium">{d.document_a}:</span> {d.value_a}
-        </div>
-        {d.document_b != null && (
-          <div>
-            <span className="font-medium">{d.document_b}:</span> {d.value_b ?? "-"}
-          </div>
-        )}
-      </div>
-      <p className="mt-2 text-xs italic opacity-75">Fix: {d.suggested_fix}</p>
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <caption className="sr-only">Cross-document findings</caption>
+        <thead>
+          <tr className="bg-surface-2 text-left text-xs font-semibold text-ink-3">
+            <th scope="col" className="px-5 py-2">Field</th>
+            <th scope="col" className="px-5 py-2">Status</th>
+            <th scope="col" className="hidden px-5 py-2 md:table-cell">Documents</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((d, i) => {
+            const sev = severityOf(d.severity);
+            return (
+              <tr key={i} className="border-t border-line align-top">
+                <td className="px-5 py-3">
+                  <p className="font-medium capitalize text-ink">{d.field.replaceAll("_", " ")}</p>
+                  <p className="text-ink-2">{d.message}</p>
+                  <p className="mt-1 text-xs text-ink-3">
+                    {d.document_a}: <span className="font-mono">{d.value_a}</span>
+                    {d.document_b != null && (
+                      <>
+                        {" · "}
+                        {d.document_b}: <span className="font-mono">{d.value_b ?? "-"}</span>
+                      </>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-2">Fix: {d.suggested_fix}</p>
+                </td>
+                <td className="px-5 py-3">
+                  <Badge tone={sev.tone}>{sev.label}</Badge>
+                </td>
+                <td className="hidden px-5 py-3 text-xs text-ink-3 md:table-cell">
+                  {[d.document_a, d.document_b].filter(Boolean).join(", ")}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function IncentiveCard({ e }: { e: IncentiveEstimate }) {
   return (
-    <div
-      className={`rounded-xl border p-4 ${
-        e.eligible
-          ? "border-emerald-500/20 bg-emerald-500/8"
-          : "border-white/8 bg-slate-950/60"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <p className="font-semibold text-slate-100">{e.scheme}</p>
-        <span className={`text-xs font-bold ${e.eligible ? "text-emerald-400" : "text-slate-500"}`}>
-          {e.eligible ? "Eligible" : "Not eligible"}
-        </span>
+    <div className="rounded-panel border border-line bg-surface p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-semibold text-ink">{e.scheme}</p>
+        <Badge tone={e.eligible ? "success" : "neutral"}>{e.eligible ? "Eligible" : "Not eligible"}</Badge>
       </div>
       {e.eligible && e.estimated_amount != null && (
-        <p className="mt-1 text-lg font-bold text-emerald-400">
-          INR {e.estimated_amount.toLocaleString("en-IN")}
+        <p className="mt-1 text-lg font-semibold text-ink">
+          {formatInr(e.estimated_amount)}
           {e.rate_percent != null && (
-            <span className="ml-2 text-sm font-normal text-emerald-600">@ {e.rate_percent}%</span>
+            <span className="ml-2 text-sm font-normal text-ink-2">@ {e.rate_percent}%</span>
           )}
         </p>
       )}
-      <p className="mt-1 text-xs text-slate-400">{e.notes}</p>
+      <p className="mt-1 text-sm text-ink-2">{e.notes}</p>
       {e.action_items.length > 0 && (
-        <ul className="mt-2 list-inside list-disc text-xs text-slate-400">
+        <ul className="mt-2 list-inside list-disc text-sm text-ink-2">
           {e.action_items.map((a, i) => (
             <li key={i}>{a}</li>
           ))}
@@ -329,12 +264,32 @@ function IncentiveCard({ e }: { e: IncentiveEstimate }) {
   );
 }
 
+const EXPERT_PLANS = [
+  {
+    tier: "Basic AI check",
+    price: "INR 999",
+    desc: "AI report with priority support response within 24 hrs.",
+    highlight: false,
+  },
+  {
+    tier: "Expert audit",
+    price: "INR 4,999",
+    desc: "Licensed CHA reviews your documents and report. Written feedback within 48 hrs.",
+    highlight: true,
+  },
+  {
+    tier: "Full advisory",
+    price: "INR 9,999",
+    desc: "CHA + CA review. Includes RoDTEP claim filing guidance and eBRC tracking.",
+    highlight: false,
+  },
+];
+
 // Page
 
 export function ShipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { session, token, setSession } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("checklist");
   const [uploadType, setUploadType] = useState<DocumentType>("commercial_invoice");
@@ -398,7 +353,9 @@ export function ShipmentDetailPage() {
   });
 
   const s = shipmentQuery.data;
-  const hasDocs = (docsQuery.data?.length ?? 0) > 0;
+  const docs = docsQuery.data ?? [];
+  const hasDocs = docs.length > 0;
+  const report = reportQuery.data;
 
   return (
     <DashboardShell
@@ -406,35 +363,61 @@ export function ShipmentDetailPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <button
-        onClick={() => navigate("/shipments")}
-        className="mb-3 text-sm text-slate-500 hover:text-slate-300"
-      >
-        Back to shipments
-      </button>
+      <PageHeader
+        title={s?.product_name ?? "Shipment"}
+        breadcrumbs={[
+          { label: "Shipments", href: "/shipments" },
+          { label: s?.product_name ?? "Shipment" },
+        ]}
+        renderLink={(crumb, className) => (
+          <Link to={crumb.href!} className={className}>
+            {crumb.label}
+          </Link>
+        )}
+        meta={
+          s ? (
+            <>
+              <span>
+                HSN <span className="font-mono">{s.hsn_code}</span>
+              </span>
+              <span>{s.destination_country}</span>
+              <span>
+                {s.incoterm} · {s.payment_term}
+              </span>
+              {s.fob_value ? (
+                <span>
+                  FOB {s.invoice_currency} {s.fob_value.toLocaleString("en-IN")}
+                </span>
+              ) : null}
+              <Badge tone="neutral" className="capitalize">
+                {s.shipment_mode} / {s.shipment_stage.replace("_", " ")}
+              </Badge>
+            </>
+          ) : undefined
+        }
+      />
 
-      {s && (
-        <div className="mb-5 rounded-xl border border-white/8 bg-slate-900/70 px-5 py-4 backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-50">{s.product_name}</h2>
-              <p className="text-sm text-slate-400">
-                HSN {s.hsn_code} / {s.destination_country} / {s.incoterm} / {s.payment_term}
-              </p>
-            </div>
-            <span className="rounded-md border border-white/10 px-3 py-1 text-xs capitalize text-slate-400">
-              {s.shipment_mode} / {s.shipment_stage.replace("_", " ")}
-            </span>
-          </div>
-          {s.fob_value && (
-            <p className="mt-2 text-sm text-slate-500">
-              FOB {s.invoice_currency} {s.fob_value.toLocaleString()}
-            </p>
-          )}
-        </div>
+      {shipmentQuery.isError && (
+        <Alert tone="danger" title="Could not load this shipment" className="mb-4">
+          {userMessageForError(shipmentQuery.error)}
+        </Alert>
       )}
 
-      <Stepper current={tab} hasDocs={hasDocs} onSelect={setTab} />
+      <Stepper
+        className="mb-6"
+        label="Shipment progress"
+        current={tab}
+        steps={STEPS.map((step) => ({
+          id: step.key,
+          label: step.label,
+          disabled: getStepState(step.key, tab, hasDocs) === "locked",
+          // A step that failed to load is not "done" just because the user moved past it.
+          done:
+            getStepState(step.key, tab, hasDocs) === "done" &&
+            !(step.key === "checklist" && checklistQuery.isError),
+        }))}
+        onStepClick={(key) => setTab(key as Tab)}
+      />
 
       {/* Checklist */}
       {tab === "checklist" && (
@@ -442,56 +425,35 @@ export function ShipmentDetailPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle>Document Checklist</CardTitle>
-              <AiBadge />
+              <Badge tone="info">AI assist</Badge>
             </div>
             <CardDescription>
               AI-generated based on your shipment profile. Verify with your CHA.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {checklistQuery.isLoading && (
-              <p className="text-sm text-slate-400">Generating checklist...</p>
-            )}
-            {checklistQuery.isError && (
-              <p className="text-sm text-rose-400">
-                {checklistQuery.error instanceof Error
-                  ? checklistQuery.error.message
-                  : "Error loading checklist."}
-              </p>
-            )}
-            {checklistQuery.data && (
-              <>
-                <ChecklistSection
-                  title="Required documents"
-                  items={checklistQuery.data.required}
-                  color="text-cyan-300"
-                />
-                <ChecklistSection
-                  title="Country-specific"
-                  items={checklistQuery.data.country_specific}
-                  color="text-violet-400"
-                />
-                <ChecklistSection
-                  title="Bank & payment"
-                  items={checklistQuery.data.bank_payment}
-                  color="text-amber-400"
-                />
-                <ChecklistSection
-                  title="Incentive & refund"
-                  items={checklistQuery.data.incentive_refund}
-                  color="text-emerald-400"
-                />
-                <ChecklistSection
-                  title="Optional"
-                  items={checklistQuery.data.optional}
-                  color="text-slate-400"
-                />
-                <p className="mt-4 text-xs text-slate-600">{checklistQuery.data.disclaimer}</p>
-                <Button className="mt-4" onClick={() => setTab("documents")}>
-                  Upload documents
-                </Button>
-              </>
-            )}
+            <QueryState
+              isLoading={checklistQuery.isLoading}
+              isError={checklistQuery.isError}
+              error={userMessageForError(checklistQuery.error)}
+              onRetry={() => void checklistQuery.refetch()}
+              isEmpty={Boolean(checklistQuery.data) && checklistQuery.data!.required.length === 0 && checklistQuery.data!.optional.length === 0 && checklistQuery.data!.country_specific.length === 0 && checklistQuery.data!.bank_payment.length === 0 && checklistQuery.data!.incentive_refund.length === 0}
+              empty={<EmptyState title="No documents required" description="The checklist came back empty for this profile." />}
+            >
+              {checklistQuery.data && (
+                <>
+                  <ChecklistSection title="Required documents" items={checklistQuery.data.required} />
+                  <ChecklistSection title="Country-specific" items={checklistQuery.data.country_specific} />
+                  <ChecklistSection title="Bank & payment" items={checklistQuery.data.bank_payment} />
+                  <ChecklistSection title="Incentive & refund" items={checklistQuery.data.incentive_refund} />
+                  <ChecklistSection title="Optional" items={checklistQuery.data.optional} />
+                  <p className="mt-4 text-xs text-ink-3">{checklistQuery.data.disclaimer}</p>
+                  <Button className="mt-4" onClick={() => setTab("documents")}>
+                    Upload documents
+                  </Button>
+                </>
+              )}
+            </QueryState>
           </CardContent>
         </Card>
       )}
@@ -524,11 +486,9 @@ export function ShipmentDetailPage() {
                 </Button>
               ))}
               {generateMutation.isError ? (
-                <p className="w-full text-sm text-rose-400">
-                  {generateMutation.error instanceof Error
-                    ? generateMutation.error.message
-                    : "Document generation failed."}
-                </p>
+                <Alert tone="danger" title="Generation failed" className="w-full">
+                  {userMessageForError(generateMutation.error)}
+                </Alert>
               ) : null}
             </CardContent>
           </Card>
@@ -538,54 +498,48 @@ export function ShipmentDetailPage() {
               <CardTitle>Upload Document</CardTitle>
               <CardDescription>PDF, JPEG, PNG, or Excel. Max 10 MB per file.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                  Document type
-                </label>
-                <select
+            <CardContent className="flex flex-col gap-4">
+              <Field label="Document type" className="max-w-sm">
+                <Select
                   value={uploadType}
                   onChange={(e) => setUploadType(e.target.value as DocumentType)}
-                  className={selectCls}
                 >
                   {Object.entries(DOCUMENT_TYPE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
                       {v}
                     </option>
                   ))}
-                </select>
+                </Select>
+              </Field>
+              <Field label="File">
+                {(p) => (
+                  <FileDropzone
+                    id={p.id}
+                    aria-describedby={p["aria-describedby"]}
+                    accept={UPLOAD_ACCEPT}
+                    maxBytes={MAX_UPLOAD_BYTES}
+                    file={uploadFile}
+                    onFileChange={setUploadFile}
+                    disabled={uploadMutation.isPending}
+                  />
+                )}
+              </Field>
+              <div>
+                <Button
+                  disabled={!uploadFile}
+                  loading={uploadMutation.isPending}
+                  onClick={() => uploadMutation.mutate()}
+                >
+                  {uploadMutation.isPending ? "Uploading..." : "Upload"}
+                </Button>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                  File
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                  className="text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:text-slate-300 hover:file:bg-slate-700"
-                />
-              </div>
-              <Button
-                disabled={!uploadFile || uploadMutation.isPending}
-                onClick={() => uploadMutation.mutate()}
-              >
-                {uploadMutation.isPending ? "Uploading..." : "Upload"}
-              </Button>
+              {uploadMutation.isError && (
+                <Alert tone="danger" title="Upload failed">
+                  {userMessageForError(uploadMutation.error)}
+                </Alert>
+              )}
+              {uploadMutation.isSuccess && <Alert tone="success" title="Document uploaded successfully." />}
             </CardContent>
-            {uploadMutation.isError && (
-              <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-3 py-2 text-sm text-rose-300">
-                <span aria-hidden="true">!</span>
-                {uploadMutation.error instanceof Error
-                  ? uploadMutation.error.message
-                  : "Upload failed."}
-              </div>
-            )}
-            {uploadMutation.isSuccess && (
-              <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-2 text-sm text-emerald-300">
-                <span aria-hidden="true">OK</span> Document uploaded successfully.
-              </div>
-            )}
           </Card>
 
           <Card>
@@ -593,53 +547,48 @@ export function ShipmentDetailPage() {
               <CardTitle>Uploaded documents</CardTitle>
             </CardHeader>
             <CardContent>
-              {docsQuery.isLoading && <p className="text-sm text-slate-400">Loading...</p>}
-              {!docsQuery.isLoading && docsQuery.data?.length === 0 && (
-                <p className="text-sm text-slate-500">No documents uploaded yet.</p>
-              )}
-              <div className="flex flex-col gap-2">
-                {docsQuery.data?.map((doc) => {
-                  const statusCfg =
-                    DOC_STATUS_CFG[doc.upload_status as keyof typeof DOC_STATUS_CFG];
-                  return (
-                    <div
-                      key={doc.id}
-                      className="rounded-xl border border-white/8 bg-slate-950/60 px-4 py-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-100">
-                            {DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {doc.file_name}
-                            {doc.file_size_bytes
-                              ? ` / ${(doc.file_size_bytes / 1024).toFixed(0)} KB`
-                              : ""}
-                          </p>
-                        </div>
-                        {statusCfg && (
-                          <div className="flex items-center gap-3">
-                            <span className={`flex items-center gap-1 text-xs ${statusCfg.cls}`}>
-                              <span aria-hidden="true">{statusCfg.icon}</span>
-                              {statusCfg.label}
-                            </span>
-                            <button
-                              className="text-xs font-medium text-cyan-300 hover:text-cyan-200"
-                              onClick={() =>
-                                api.downloadDocument(id!, doc.id, doc.file_name, token!)
-                              }
-                            >
-                              Download
-                            </button>
+              <QueryState
+                isLoading={docsQuery.isLoading}
+                isError={docsQuery.isError}
+                error={userMessageForError(docsQuery.error)}
+                onRetry={() => void docsQuery.refetch()}
+                isEmpty={!hasDocs}
+                empty={<EmptyState title="No documents uploaded yet" description="Upload a file or generate a draft above." />}
+              >
+                <ul className="flex flex-col gap-2">
+                  {docs.map((doc) => {
+                    const status = DOC_STATUS[doc.upload_status];
+                    return (
+                      <li key={doc.id} className="rounded-panel border border-line bg-surface px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-ink">
+                              {DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type}
+                            </p>
+                            <p className="truncate text-xs text-ink-3">
+                              {doc.file_name}
+                              {doc.file_size_bytes ? ` / ${(doc.file_size_bytes / 1024).toFixed(0)} KB` : ""}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <ExtractedFieldsPanel doc={doc} />
-                    </div>
-                  );
-                })}
-              </div>
+                          {status && (
+                            <div className="flex shrink-0 items-center gap-3">
+                              <Badge tone={status.tone}>{status.label}</Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => api.downloadDocument(id!, doc.id, doc.file_name, token!)}
+                              >
+                                Download
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <ExtractedFieldsPanel doc={doc} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </QueryState>
               {hasDocs && (
                 <Button className="mt-4" onClick={() => setTab("report")}>
                   Run verification
@@ -654,15 +603,14 @@ export function ShipmentDetailPage() {
       {tab === "report" && (
         <div className="flex flex-col gap-4">
           {!hasDocs && (
-            <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-5 py-4 text-sm text-amber-300">
-              <span aria-hidden="true">!</span>
-              Upload at least one document before running verification.
-              <Button size="sm" variant="secondary" onClick={() => setTab("documents")}>
+            <Alert tone="warning" title="Upload at least one document before running verification.">
+              <Button size="sm" variant="secondary" className="mt-2" onClick={() => setTab("documents")}>
                 Upload docs
               </Button>
-            </div>
+            </Alert>
           )}
-          {hasDocs ? (
+
+          {hasDocs && (
             <Card>
               <CardHeader>
                 <CardTitle>Deterministic reconciliation</CardTitle>
@@ -671,162 +619,168 @@ export function ShipmentDetailPage() {
                   to invent rules or rates.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button
-                  disabled={reconciliationMutation.isPending}
-                  onClick={() => reconciliationMutation.mutate()}
-                >
-                  {reconciliationMutation.isPending
-                    ? "Reconciling..."
-                    : "Run reconciliation"}
+              <CardContent className="space-y-3">
+                <Button loading={reconciliationMutation.isPending} onClick={() => reconciliationMutation.mutate()}>
+                  {reconciliationMutation.isPending ? "Reconciling..." : "Run reconciliation"}
                 </Button>
+                {reconciliationMutation.isError && (
+                  <Alert tone="danger" title="Reconciliation failed">
+                    {userMessageForError(reconciliationMutation.error)}
+                  </Alert>
+                )}
                 {reconciliationMutation.data ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-sm font-medium text-slate-200">
-                      {reconciliationMutation.data.discrepancies.length} findings / potential INR{" "}
-                      {reconciliationMutation.data.potential_amount.toLocaleString("en-IN")}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-ink">
+                      {reconciliationMutation.data.discrepancies.length} findings / potential{" "}
+                      {formatInr(reconciliationMutation.data.potential_amount)}
                     </p>
-                    {reconciliationMutation.data.discrepancies.map((item) => (
-                      <div
-                        className="rounded-lg border border-white/8 bg-slate-950/50 p-3"
-                        key={item.id}
-                      >
-                        <p className="text-sm text-slate-200">{item.message}</p>
-                        <p className="mt-1 text-xs capitalize text-slate-500">
-                          {item.severity} / {item.type.replaceAll("_", " ")}
-                        </p>
-                      </div>
-                    ))}
-                    <p className="text-xs text-slate-600">
-                      {reconciliationMutation.data.disclaimer}
-                    </p>
+                    <ul className="space-y-2">
+                      {reconciliationMutation.data.discrepancies.map((item) => {
+                        const sev = severityOf(item.severity);
+                        return (
+                          <li
+                            key={item.id}
+                            className="flex items-start justify-between gap-3 rounded-panel border border-line bg-surface p-3"
+                          >
+                            <div>
+                              <p className="text-sm text-ink">{item.message}</p>
+                              <p className="mt-1 text-xs capitalize text-ink-3">{item.type.replaceAll("_", " ")}</p>
+                            </div>
+                            <Badge tone={sev.tone}>{sev.label}</Badge>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="text-xs text-ink-3">{reconciliationMutation.data.disclaimer}</p>
                   </div>
                 ) : null}
               </CardContent>
             </Card>
-          ) : null}
-          {hasDocs && reportQuery.isLoading && (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-slate-400">
-                Running AI verification...
-              </CardContent>
-            </Card>
           )}
-          {hasDocs && reportQuery.isError && (
-            <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300">
-              <span aria-hidden="true">!</span>
-              {reportQuery.error instanceof Error
-                ? reportQuery.error.message
-                : "Verification failed."}
-            </div>
-          )}
-          {hasDocs &&
-            reportQuery.data &&
-            (() => {
-              const r = reportQuery.data;
-              const risk =
-                RISK_CFG[r.overall_risk as keyof typeof RISK_CFG];
-              return (
-                <>
-                  <div className="flex flex-wrap items-center gap-4 rounded-xl border border-white/8 bg-slate-900/70 px-5 py-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Overall risk
-                      </p>
-                      <span
-                        className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold ${risk?.cls ?? "border-white/10 text-slate-300"}`}
-                      >
-                        <span aria-hidden="true">{risk?.icon}</span>
-                        {risk?.label ?? r.overall_risk}
-                      </span>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Finance readiness
-                      </p>
-                      <p className="mt-1 text-2xl font-bold text-slate-100">
-                        {r.finance_readiness_score}
-                        <span className="text-sm text-slate-500">/100</span>
-                      </p>
-                    </div>
-                  </div>
 
-                  {r.missing_documents.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-rose-400">Missing documents</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="list-inside list-disc space-y-1 text-sm text-slate-300">
-                          {r.missing_documents.map((d, i) => (
+          {hasDocs && reportQuery.isLoading && (
+            <p className="text-sm text-ink-2">Running AI verification...</p>
+          )}
+          {hasDocs && (
+            <QueryState
+              isLoading={reportQuery.isLoading}
+              isError={reportQuery.isError}
+              error={userMessageForError(reportQuery.error)}
+              onRetry={() => void reportQuery.refetch()}
+            >
+              {report && (
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="flex min-w-0 flex-col gap-4">
+                    {report.missing_documents.length > 0 && (
+                      <Alert tone="danger" title="Missing documents">
+                        <ul className="list-inside list-disc">
+                          {report.missing_documents.map((d, i) => (
                             <li key={i}>{d}</li>
                           ))}
                         </ul>
-                      </CardContent>
-                    </Card>
-                  )}
+                      </Alert>
+                    )}
 
-                  {r.discrepancies.length > 0 && (
+                    {report.discrepancies.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center gap-2">
+                            <CardTitle>Cross-document findings</CardTitle>
+                            <Badge tone="info">AI assist</Badge>
+                          </div>
+                        </CardHeader>
+                        <FindingsTable items={report.discrepancies} />
+                      </Card>
+                    )}
+
                     <Card>
                       <CardHeader>
                         <div className="flex items-center gap-2">
-                          <CardTitle>Discrepancies</CardTitle>
-                          <AiBadge />
+                          <CardTitle>Incentive estimates</CardTitle>
+                          <Badge tone="info">AI assist</Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="flex flex-col gap-3">
-                        {r.discrepancies.map((d, i) => (
-                          <DiscrepancyCard key={i} d={d} />
+                      <CardContent className="grid gap-3 md:grid-cols-2">
+                        {report.incentive_estimates.map((e, i) => (
+                          <IncentiveCard key={i} e={e} />
                         ))}
                       </CardContent>
                     </Card>
-                  )}
 
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <CardTitle>Incentive estimates</CardTitle>
-                        <AiBadge />
+                    {(report.ebrc_gst_reminders.length > 0 || report.recommendations.length > 0) && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Action items</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="flex flex-col gap-2">
+                            {report.recommendations.map((rec, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-ink">
+                                <Badge tone="info" className="shrink-0">Action</Badge>
+                                {rec}
+                              </li>
+                            ))}
+                            {report.ebrc_gst_reminders.map((rem, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-ink">
+                                <Badge tone="warning" className="shrink-0">Reminder</Badge>
+                                {rem}
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <p className="text-xs text-ink-3">{report.disclaimer}</p>
+                    <div>
+                      <Button onClick={() => setTab("expert")}>Get expert review</Button>
+                    </div>
+                  </div>
+
+                  <aside className="min-w-0">
+                    <Card className="p-5">
+                      <h2 className="text-base font-semibold text-ink">Finance readiness</h2>
+                      <p className="mt-3 text-4xl font-bold leading-none text-ink">
+                        {report.finance_readiness_score}
+                        <span className="text-base font-normal text-ink-3">/100</span>
+                      </p>
+                      <div
+                        className="my-3 h-1.5 rounded-full bg-surface-2"
+                        role="progressbar"
+                        aria-label="Finance readiness"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={report.finance_readiness_score}
+                      >
+                        <div
+                          className={`h-full rounded-full ${
+                            report.finance_readiness_score >= 80
+                              ? "bg-success-fg"
+                              : report.finance_readiness_score >= 50
+                                ? "bg-warning-fg"
+                                : "bg-danger-fg"
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(0, report.finance_readiness_score))}%` }}
+                        />
                       </div>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 md:grid-cols-2">
-                      {r.incentive_estimates.map((e, i) => (
-                        <IncentiveCard key={i} e={e} />
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {(r.ebrc_gst_reminders.length > 0 || r.recommendations.length > 0) && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Action items</CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex flex-col gap-2">
-                        {r.recommendations.map((rec, i) => (
-                          <div key={i} className="flex gap-2 text-sm text-slate-300">
-                            <span className="mt-0.5 text-cyan-300" aria-hidden="true">
-                              Action
-                            </span>
-                            {rec}
-                          </div>
-                        ))}
-                        {r.ebrc_gst_reminders.map((rem, i) => (
-                          <div key={i} className="flex gap-2 text-sm text-amber-300">
-                            <span className="mt-0.5" aria-hidden="true">
-                              Alert
-                            </span>
-                            {rem}
-                          </div>
-                        ))}
-                      </CardContent>
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                        <dt className="text-ink-3">Overall risk</dt>
+                        <dd className="text-right">
+                          <Badge tone={RISK[report.overall_risk]?.tone ?? "neutral"}>
+                            {RISK[report.overall_risk]?.label ?? report.overall_risk}
+                          </Badge>
+                        </dd>
+                        <dt className="text-ink-3">Findings</dt>
+                        <dd className="text-right text-ink">{report.discrepancies.length.toLocaleString("en-IN")}</dd>
+                        <dt className="text-ink-3">Missing docs</dt>
+                        <dd className="text-right text-ink">{report.missing_documents.length.toLocaleString("en-IN")}</dd>
+                      </dl>
                     </Card>
-                  )}
-
-                  <p className="text-xs text-slate-600">{r.disclaimer}</p>
-                  <Button onClick={() => setTab("expert")}>Get expert review</Button>
-                </>
-              );
-            })()}
+                  </aside>
+                </div>
+              )}
+            </QueryState>
+          )}
         </div>
       )}
 
@@ -836,7 +790,7 @@ export function ShipmentDetailPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle>Expert Review</CardTitle>
-              <ComingSoonBadge />
+              <Badge tone="neutral">Coming soon</Badge>
             </div>
             <CardDescription>
               Have a licensed export documentation expert review this shipment audit report.
@@ -844,57 +798,24 @@ export function ShipmentDetailPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="grid gap-4 md:grid-cols-3">
-              {[
-                {
-                  tier: "Basic AI check",
-                  price: "INR 999",
-                  desc: "AI report with priority support response within 24 hrs.",
-                  highlight: false,
-                },
-                {
-                  tier: "Expert audit",
-                  price: "INR 4,999",
-                  desc: "Licensed CHA reviews your documents and report. Written feedback within 48 hrs.",
-                  highlight: true,
-                },
-                {
-                  tier: "Full advisory",
-                  price: "INR 9,999",
-                  desc: "CHA + CA review. Includes RoDTEP claim filing guidance and eBRC tracking.",
-                  highlight: false,
-                },
-              ].map((plan) => (
+              {EXPERT_PLANS.map((plan) => (
                 <div
                   key={plan.tier}
-                  className={`flex flex-col gap-3 rounded-xl border p-5 ${
-                    plan.highlight
-                      ? "border-cyan-300/20 bg-cyan-300/10"
-                      : "border-white/10 bg-slate-950/60"
+                  className={`flex flex-col gap-3 rounded-card border p-5 ${
+                    plan.highlight ? "border-info-border bg-brand-soft" : "border-line bg-surface"
                   }`}
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    {plan.tier}
-                  </p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      plan.highlight ? "text-cyan-100" : "text-slate-100"
-                    }`}
-                  >
-                    {plan.price}
-                  </p>
-                  <p className="text-sm text-slate-400">{plan.desc}</p>
-                  <Button
-                    variant={plan.highlight ? "default" : "secondary"}
-                    className="mt-auto"
-                    disabled
-                  >
+                  <h3 className="text-sm font-semibold text-ink-2">{plan.tier}</h3>
+                  <p className="text-2xl font-semibold text-ink">{plan.price}</p>
+                  <p className="text-sm text-ink-2">{plan.desc}</p>
+                  <Button variant={plan.highlight ? "primary" : "secondary"} className="mt-auto" disabled>
                     Request review
                   </Button>
                 </div>
               ))}
             </div>
-            <div className="rounded-xl border border-white/8 bg-slate-950/60 px-5 py-4 text-sm text-slate-400">
-              <p className="mb-1 font-medium text-slate-300">What experts check</p>
+            <div className="rounded-panel border border-line bg-surface-2 px-5 py-4 text-sm text-ink-2">
+              <p className="mb-1 font-medium text-ink">What experts check</p>
               <ul className="list-inside list-disc space-y-1">
                 <li>All document field mismatches</li>
                 <li>RoDTEP / Duty Drawback claim eligibility and filing</li>
