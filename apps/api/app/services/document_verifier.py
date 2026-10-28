@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import csv
 import importlib
 import io
 import json
@@ -257,7 +258,9 @@ def extract_document_text(file_bytes: bytes, file_type: str) -> tuple[str, str]:
         return "\n".join(lines), "openpyxl"
 
     if file_type == "csv":
-        return file_bytes.decode("utf-8-sig", errors="replace"), "csv"
+        decoded = file_bytes.decode("utf-8-sig", errors="replace")
+        # Tab-join cells so quoted values like "1,00,000" stay whole.
+        return "\n".join("\t".join(row) for row in csv.reader(io.StringIO(decoded))), "csv"
 
     if file_type in {"jpg", "jpeg", "png"}:
         return "", "image-no-ocr"
@@ -399,8 +402,20 @@ FIELD_PATTERNS = {
 }
 
 
+def _label_value_rows(text: str) -> str:
+    """Turn two-cell spreadsheet rows ("Invoice No<TAB>INV-1") into "Invoice No: INV-1"."""
+    lines = []
+    for line in text.splitlines():
+        cells = [cell.strip() for cell in line.split("\t") if cell.strip()]
+        if len(cells) == 2 and not cells[0].endswith(":"):
+            line = f"{cells[0]}: {cells[1]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _heuristic_extract(text: str, file_type: str) -> DocumentExtractionResult:
     document_type = _document_type_from_text(text, file_type)
+    text = _label_value_rows(text)
     normalized_text = re.sub(r"([A-Za-z][A-Za-z0-9 /_.-]{1,80}):\s*[,	]\s*", r"\1: ", text)
     fields: list[ExtractedFieldValue] = []
     for field_key, patterns in FIELD_PATTERNS.items():

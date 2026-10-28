@@ -1,11 +1,21 @@
 from pathlib import Path
 
+import pytest
 from openpyxl import Workbook
 
+from app.services import ocr_service
+from app.services.groq_client import GroqClientError
 from app.services.ocr_service import extract_fields
 
 
-def test_excel_upload_extracts_fields_without_ai(tmp_path: Path) -> None:
+def test_excel_upload_extracts_fields_without_ai(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Simulate "no AI" even when a developer's .env has a provider key.
+    def no_ai(**_: object) -> dict[str, object]:
+        raise GroqClientError("AI disabled in test")
+
+    monkeypatch.setattr(ocr_service, "call_groq", no_ai)
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Invoice"
