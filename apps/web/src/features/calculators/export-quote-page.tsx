@@ -194,11 +194,17 @@ export function ExportQuotePage() {
         meta={
           <span>
             FOB, CFR, CIF, buyer landed cost and net realization. HSN codes come from the{" "}
-            <Link to="/hsn" className="text-brand hover:underline">
+            <Link
+              to="/hsn"
+              className="rounded-sm text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               HSN finder
             </Link>
             , approved rates from the{" "}
-            <Link to="/incentives" className="text-brand hover:underline">
+            <Link
+              to="/incentives"
+              className="rounded-sm text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               incentive finder
             </Link>
             .

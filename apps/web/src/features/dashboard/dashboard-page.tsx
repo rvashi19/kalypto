@@ -382,7 +382,8 @@ export function DashboardPage() {
                 {assistantStatusQuery.data?.message ?? "Checking AI helper status..."}
               </div>
               <textarea
-                className="min-h-24 w-full rounded-panel border border-line bg-surface px-3.5 py-3 text-sm text-ink outline-none focus:ring-2 focus:ring-brand"
+                aria-label="Question for the AI helper"
+                className="min-h-24 w-full rounded-panel border border-line bg-surface px-3.5 py-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 value={assistantQuestion}
                 onChange={(event) => setAssistantQuestion(event.target.value)}
               />
