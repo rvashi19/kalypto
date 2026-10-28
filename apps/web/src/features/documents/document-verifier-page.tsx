@@ -4,16 +4,29 @@ import type {
   DocumentVerificationRunCreate,
   DocumentVerificationRunResponse,
 } from "@repo/shared";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  QueryState,
+  type Tone,
+} from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLogout } from "../../lib/use-logout";
-import { inputCls } from "../../lib/ui";
 
 const EMPTY_FORM: DocumentVerificationRunCreate = {
   title: "Shipment document audit",
@@ -103,75 +116,86 @@ export function DocumentVerifierPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-brand">Audit - AI Document Verifier</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-ink">
-            Compare shipment documents before filing or claiming
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-2">
-            This audit is based on uploaded documents and source-backed KALYPTO data. Verify with
-            your CHA/customs broker before filing.
-          </p>
-        </div>
-        {runId ? (
-          <Link to="/document-verifier">
-            <Button variant="secondary">New run</Button>
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title="AI Document Verifier"
+        breadcrumbs={[{ label: "Audit" }, { label: "Document verifier" }]}
+        meta={
+          <span>
+            Compare shipment documents before filing or claiming. Based on uploaded documents and
+            source-backed KALYPTO data; verify with your CHA/customs broker before filing.
+          </span>
+        }
+        actions={
+          runId ? (
+            <Link to="/document-verifier">
+              <Button variant="secondary">New run</Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
       {!runId ? (
         <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
           <Card>
             <CardHeader>
-              <CardTitle>Create verification run</CardTitle>
+              <SectionTitle>Create verification run</SectionTitle>
               <CardDescription>
                 Upload shipment documents to compare fields before customs filing or incentive
                 claims.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Field
-                label="Title"
-                value={form.title}
-                onChange={(title) => setForm({ ...form, title })}
-              />
-              <Field
-                label="Reference number"
-                value={form.reference_number ?? ""}
-                onChange={(reference_number) => setForm({ ...form, reference_number })}
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field
-                  label="Origin"
-                  value={form.origin_country ?? ""}
-                  onChange={(origin_country) => setForm({ ...form, origin_country })}
-                />
-                <Field
-                  label="Destination"
-                  value={form.destination_country ?? ""}
-                  onChange={(destination_country) => setForm({ ...form, destination_country })}
-                />
-              </div>
-              <Field
-                label="HSN"
-                value={form.hsn_code ?? ""}
-                onChange={(hsn_code) => setForm({ ...form, hsn_code })}
-              />
-              <Field
-                label="Product"
-                value={form.product_description ?? ""}
-                onChange={(product_description) => setForm({ ...form, product_description })}
-              />
-              <Button
-                className="w-full"
-                disabled={createRunMutation.isPending || !form.title.trim()}
-                onClick={() => createRunMutation.mutate()}
+            <CardContent>
+              <form
+                className="space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createRunMutation.mutate();
+                }}
               >
-                {createRunMutation.isPending ? "Creating..." : "Create run"}
-              </Button>
-              {createRunMutation.error ? <ErrorBox error={createRunMutation.error} /> : null}
+                <TextField
+                  label="Title"
+                  value={form.title}
+                  onChange={(title) => setForm({ ...form, title })}
+                />
+                <TextField
+                  label="Reference number"
+                  mono
+                  value={form.reference_number ?? ""}
+                  onChange={(reference_number) => setForm({ ...form, reference_number })}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextField
+                    label="Origin"
+                    value={form.origin_country ?? ""}
+                    onChange={(origin_country) => setForm({ ...form, origin_country })}
+                  />
+                  <TextField
+                    label="Destination"
+                    value={form.destination_country ?? ""}
+                    onChange={(destination_country) => setForm({ ...form, destination_country })}
+                  />
+                </div>
+                <TextField
+                  label="HSN"
+                  mono
+                  value={form.hsn_code ?? ""}
+                  onChange={(hsn_code) => setForm({ ...form, hsn_code })}
+                />
+                <TextField
+                  label="Product"
+                  value={form.product_description ?? ""}
+                  onChange={(product_description) => setForm({ ...form, product_description })}
+                />
+                <Button
+                  type="submit"
+                  className="w-full"
+                  loading={createRunMutation.isPending}
+                  disabled={!form.title.trim()}
+                >
+                  Create run
+                </Button>
+                {createRunMutation.error ? <ErrorBox error={createRunMutation.error} /> : null}
+              </form>
             </CardContent>
           </Card>
           <RunList runs={runs} loading={runsQuery.isLoading} />
@@ -180,11 +204,9 @@ export function DocumentVerifierPage() {
 
       {runId ? (
         runQuery.isLoading ? (
-          <Card>
-            <CardContent className="p-6 text-sm text-ink-2">
-              Loading verification run...
-            </CardContent>
-          </Card>
+          <QueryState isLoading isError={false}>
+            {null}
+          </QueryState>
         ) : run ? (
           <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
             <div className="space-y-5">
@@ -225,35 +247,36 @@ export function DocumentVerifierPage() {
             </div>
           </div>
         ) : (
-          <Card>
-            <CardContent className="p-6 text-sm text-danger-fg">
-              Verification run was not found.
-            </CardContent>
-          </Card>
+          <Alert tone="danger" title="Verification run was not found." />
         )
       ) : null}
     </DashboardShell>
   );
 }
 
-function Field({
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="text-base font-semibold text-ink">{children}</h2>;
+}
+
+function TextField({
   label,
   value,
+  mono,
   onChange,
 }: {
   label: string;
   value: string;
+  mono?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-ink-2">{label}</span>
-      <input
-        className={inputCls}
+    <Field label={label}>
+      <Input
+        className={mono ? "font-mono" : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-    </label>
+    </Field>
   );
 }
 
@@ -261,30 +284,33 @@ function RunList({ runs, loading }: { runs: DocumentVerificationRunResponse[]; l
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent verification runs</CardTitle>
+        <SectionTitle>Recent verification runs</SectionTitle>
         <CardDescription>Open a run to upload, extract, verify, and review issues.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {loading ? <p className="text-sm text-ink-2">Loading runs...</p> : null}
-        {!loading && !runs.length ? (
-          <p className="rounded border border-dashed border-line p-6 text-sm text-ink-2">
-            No document verification runs yet.
-          </p>
-        ) : null}
+        <QueryState
+          isLoading={loading}
+          isError={false}
+          isEmpty={!runs.length}
+          empty={<EmptyState title="No document verification runs yet" />}
+        >
+          {null}
+        </QueryState>
         {runs.map((run) => (
           <Link
             key={run.id}
             to={`/document-verifier/${run.id}`}
-            className="block rounded border border-line bg-surface p-4 transition hover:border-brand"
+            className="block rounded-panel border border-line bg-surface p-4 transition hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-semibold text-ink">{run.title}</p>
                 <p className="mt-1 text-xs text-ink-2">
-                  {run.reference_number || "No reference"} / {run.status}
+                  <span className="font-mono">{run.reference_number || "No reference"}</span> /{" "}
+                  {run.status}
                 </p>
               </div>
-              <span className="text-sm text-brand">{run.issues.length} issues</span>
+              <span className="text-sm tabular-nums text-brand">{run.issues.length} issues</span>
             </div>
           </Link>
         ))}
@@ -297,8 +323,10 @@ function RunSummary({ run }: { run: DocumentVerificationRunResponse }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{run.title}</CardTitle>
-        <CardDescription>{run.reference_number || "No reference number"}</CardDescription>
+        <SectionTitle>{run.title}</SectionTitle>
+        <CardDescription className="font-mono">
+          {run.reference_number || "No reference number"}
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
         <Metric label="Status" value={run.status.replaceAll("_", " ")} />
@@ -315,7 +343,7 @@ function RunSummary({ run }: { run: DocumentVerificationRunResponse }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-line bg-surface-2 p-3">
+    <div className="rounded-panel border border-line bg-surface-2 p-3">
       <p className="text-xs font-semibold text-ink-2">{label}</p>
       <p className="mt-1 font-semibold capitalize text-ink">{value}</p>
     </div>
@@ -338,24 +366,26 @@ function UploadPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload documents</CardTitle>
+        <SectionTitle>Upload documents</SectionTitle>
         <CardDescription>Accepted: PDF, XLSX, CSV, JPG, JPEG, PNG.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <input
-          multiple
-          type="file"
-          accept=".pdf,.xlsx,.csv,.jpg,.jpeg,.png"
-          onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
-          className="w-full rounded border border-line bg-surface p-2 text-sm"
-        />
+        <Field label="Documents">
+          <input
+            multiple
+            type="file"
+            accept=".pdf,.xlsx,.csv,.jpg,.jpeg,.png"
+            onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
+            className="w-full rounded-panel border border-line bg-surface p-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          />
+        </Field>
         {files.length ? (
           <p className="text-xs text-ink-2">{files.map((file) => file.name).join(", ")}</p>
         ) : (
           <p className="text-xs text-ink-2">No documents selected.</p>
         )}
-        <Button className="w-full" disabled={!files.length || uploading} onClick={onUpload}>
-          {uploading ? "Uploading..." : "Upload documents"}
+        <Button className="w-full" loading={uploading} disabled={!files.length} onClick={onUpload}>
+          Upload documents
         </Button>
         {error ? <ErrorBox error={error} /> : null}
       </CardContent>
@@ -394,29 +424,30 @@ function ActionPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Audit actions</CardTitle>
+        <SectionTitle>Audit actions</SectionTitle>
         <CardDescription>Extract fields first, then run verification.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {needsReverify ? (
-          <p className="rounded border border-warning-border bg-warning-bg p-2 text-xs text-warning-fg">
+          <Alert tone="warning">
             New documents uploaded since the last verification. Extract fields and re-run
             verification to update the score.
-          </p>
+          </Alert>
         ) : null}
-        <Button className="w-full" disabled={!hasDocs || extracting} onClick={onExtract}>
-          {extracting ? "Extracting..." : "Extract fields"}
+        <Button className="w-full" loading={extracting} disabled={!hasDocs} onClick={onExtract}>
+          Extract fields
         </Button>
-        <Button className="w-full" disabled={!readyToVerify || verifying} onClick={onVerify}>
-          {verifying ? "Verifying..." : "Run verification"}
+        <Button className="w-full" loading={verifying} disabled={!readyToVerify} onClick={onVerify}>
+          Run verification
         </Button>
         <Button
           className="w-full"
           variant="secondary"
-          disabled={!run.report || downloading}
+          loading={downloading}
+          disabled={!run.report}
           onClick={onDownload}
         >
-          {downloading ? "Preparing PDF..." : "Download report PDF"}
+          Download report PDF
         </Button>
         {extractError ? <ErrorBox error={extractError} /> : null}
         {verifyError ? <ErrorBox error={verifyError} /> : null}
@@ -426,12 +457,12 @@ function ActionPanel({
   );
 }
 
-const READINESS_STYLES: Record<string, string> = {
-  ready_for_manual_review: "border-success-border bg-success-bg text-success-fg",
-  needs_minor_review: "border-info-border bg-info-bg text-info-fg",
-  needs_corrections: "border-warning-border bg-warning-bg text-warning-fg",
-  high_risk_do_not_file_without_review: "border-danger-border bg-danger-bg text-danger-fg",
-  waiting_for_required_documents: "border-info-border bg-info-bg text-info-fg",
+const READINESS_TONES: Record<string, Tone> = {
+  ready_for_manual_review: "success",
+  needs_minor_review: "info",
+  needs_corrections: "warning",
+  high_risk_do_not_file_without_review: "danger",
+  waiting_for_required_documents: "info",
 };
 
 function scoreColor(score: number): string {
@@ -446,7 +477,7 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Document Verification Score</CardTitle>
+          <SectionTitle>Document Verification Score</SectionTitle>
           <CardDescription>
             Score not calculated yet. Upload documents, extract fields, then run verification.
           </CardDescription>
@@ -467,7 +498,7 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <CardTitle>Document Verification Score</CardTitle>
+            <SectionTitle>Document Verification Score</SectionTitle>
             <CardDescription>
               Filing-readiness estimate.
               {run.last_verified_at
@@ -476,7 +507,7 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
             </CardDescription>
           </div>
           <div className="text-right">
-            <p className={`text-4xl font-bold ${scoreColor(run.overall_score)}`}>
+            <p className={`text-4xl font-bold tabular-nums ${scoreColor(run.overall_score)}`}>
               {run.overall_score}
               <span className="text-base font-medium text-ink-2">/100</span>
             </p>
@@ -486,20 +517,18 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {run.readiness_status ? (
-          <div
-            className={`rounded border px-3 py-2 text-sm font-semibold ${READINESS_STYLES[run.readiness_status] ?? "border-line bg-surface-2 text-ink"}`}
-          >
+          <Badge tone={READINESS_TONES[run.readiness_status] ?? "neutral"} className="text-sm">
             {run.readiness_label ?? run.readiness_status.replaceAll("_", " ")}
-          </div>
+          </Badge>
         ) : null}
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {categories.map((category) => {
             const value = breakdown[category.key];
             return (
-              <div key={category.key} className="rounded border border-line bg-surface-2 p-3">
+              <div key={category.key} className="rounded-panel border border-line bg-surface-2 p-3">
                 <p className="text-xs font-semibold text-ink-2">{category.label}</p>
                 <p
-                  className={`mt-1 text-xl font-bold ${value != null ? scoreColor(value) : "text-ink-2"}`}
+                  className={`mt-1 text-xl font-bold tabular-nums ${value != null ? scoreColor(value) : "text-ink-2"}`}
                 >
                   {value ?? "-"}
                 </p>
@@ -509,22 +538,19 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {(["critical", "high", "medium", "low", "info"] as const).map((severity) => (
-            <span
-              key={severity}
-              className="rounded-full border border-line bg-surface px-3 py-1 capitalize text-ink-2"
-            >
+            <Badge key={severity} className="capitalize">
               {severity}: {counts[severity] ?? 0}
-            </span>
+            </Badge>
           ))}
         </div>
         {run.score_explanation ? (
-          <p className="rounded border border-line bg-surface p-3 text-sm text-ink">
+          <p className="rounded-panel border border-line bg-surface p-3 text-sm text-ink">
             {run.score_explanation}
           </p>
         ) : null}
         {run.recommended_next_actions?.length ? (
           <div>
-            <p className="mb-2 text-xs font-bold text-ink-2">Recommended next actions</p>
+            <p className="mb-2 text-xs font-semibold text-ink-2">Recommended next actions</p>
             <ul className="space-y-1 text-sm text-ink">
               {run.recommended_next_actions.map((action) => (
                 <li key={action} className="flex gap-2">
@@ -544,11 +570,11 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
   );
 }
 
-const PRIORITY_STYLES: Record<string, string> = {
-  critical: "bg-danger-bg text-danger-fg",
-  high: "bg-warning-bg text-warning-fg",
-  medium: "bg-info-bg text-info-fg",
-  low: "bg-surface-2 text-ink-3",
+const PRIORITY_TONES: Record<string, Tone> = {
+  critical: "danger",
+  high: "warning",
+  medium: "info",
+  low: "neutral",
 };
 
 function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse }) {
@@ -559,7 +585,7 @@ function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Documents needed for better verification</CardTitle>
+        <SectionTitle>Documents needed for better verification</SectionTitle>
         <CardDescription>
           {missing.length
             ? `${missing.length} document(s) missing. Upload them above and re-run verification.`
@@ -568,19 +594,13 @@ function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse
       </CardHeader>
       <CardContent className="space-y-2">
         {missing.map((doc) => (
-          <div key={doc.document_type} className="rounded border border-line bg-surface p-3">
+          <div key={doc.document_type} className="rounded-panel border border-line bg-surface p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold text-ink">{doc.label}</p>
-              <div className="flex gap-2 text-xs font-semibold">
-                <span
-                  className={`rounded-full px-2 py-0.5 ${PRIORITY_STYLES[doc.priority] ?? PRIORITY_STYLES.low}`}
-                >
-                  {doc.priority}
-                </span>
-                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-ink-2">
-                  {doc.required_for}
-                </span>
-                <span className="rounded-full bg-info-bg px-2 py-0.5 text-info-fg">missing</span>
+              <div className="flex gap-2">
+                <Badge tone={PRIORITY_TONES[doc.priority] ?? "neutral"}>{doc.priority}</Badge>
+                <Badge>{doc.required_for}</Badge>
+                <Badge tone="info">missing</Badge>
               </div>
             </div>
             <p className="mt-1 text-sm text-ink-2">{doc.reason}</p>
@@ -600,24 +620,25 @@ function DocumentsPanel({ run }: { run: DocumentVerificationRunResponse }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Uploaded documents</CardTitle>
+        <SectionTitle>Uploaded documents</SectionTitle>
         <CardDescription>Detected types and extraction status.</CardDescription>
       </CardHeader>
       <CardContent>
         {!run.documents.length ? (
-          <p className="rounded border border-dashed border-line p-6 text-sm text-ink-2">
-            Upload shipment documents to compare fields before customs filing or incentive claims.
-          </p>
+          <EmptyState
+            title="No documents uploaded"
+            description="Upload shipment documents to compare fields before customs filing or incentive claims."
+          />
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             {run.documents.map((document) => (
-              <div key={document.id} className="rounded border border-line bg-surface p-3">
+              <div key={document.id} className="rounded-panel border border-line bg-surface p-3">
                 <p className="truncate font-semibold text-ink">{document.file_name}</p>
                 <p className="mt-1 text-xs text-ink-2">
                   {document.document_type || "not detected"} / {document.extraction_status}
                 </p>
                 {document.extraction_error ? (
-                  <p className="mt-2 text-xs text-warning-fg">{document.extraction_error}</p>
+                  <p className="mt-2 text-xs text-danger-fg">{document.extraction_error}</p>
                 ) : null}
               </div>
             ))}
@@ -636,26 +657,32 @@ function FieldsPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Extracted fields</CardTitle>
+        <SectionTitle>Extracted fields</SectionTitle>
         <CardDescription>
           Values are grouped by document and include evidence references.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!fieldsByDocument.length ? (
-          <p className="text-sm text-ink-2">No extracted fields yet.</p>
-        ) : null}
+        {!fieldsByDocument.length ? <EmptyState title="No extracted fields yet" /> : null}
         {fieldsByDocument.map((group) => (
           <div key={group.document}>
-            <p className="mb-2 text-sm font-semibold text-ink">{group.document}</p>
-            <div className="overflow-x-auto rounded border border-line">
+            <h3 className="mb-2 text-sm font-semibold text-ink">{group.document}</h3>
+            <div className="overflow-x-auto rounded-panel border border-line">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-surface-2 text-xs text-ink-2">
+                <thead className="bg-surface-2 text-xs font-medium text-ink-2">
                   <tr>
-                    <th className="px-3 py-2">Field</th>
-                    <th className="px-3 py-2">Value</th>
-                    <th className="px-3 py-2">Confidence</th>
-                    <th className="px-3 py-2">Page</th>
+                    <th scope="col" className="px-3 py-2">
+                      Field
+                    </th>
+                    <th scope="col" className="px-3 py-2">
+                      Value
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-right">
+                      Confidence
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-right">
+                      Page
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -665,8 +692,12 @@ function FieldsPanel({
                       <td className="px-3 py-2">
                         {field.raw_value || field.normalized_value || "-"}
                       </td>
-                      <td className="px-3 py-2">{Math.round(field.confidence_score)}%</td>
-                      <td className="px-3 py-2">{field.page_number ?? "-"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {Math.round(field.confidence_score)}%
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {field.page_number ?? "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -698,7 +729,7 @@ function IssuesPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Audit issues</CardTitle>
+        <SectionTitle>Audit issues</SectionTitle>
         <CardDescription>
           {total
             ? "Critical mismatch found. Review before filing or claiming."
@@ -711,12 +742,12 @@ function IssuesPanel({
           if (!issues.length) return null;
           return (
             <div key={severity}>
-              <p className="mb-2 text-xs font-bold text-ink-2">
+              <p className="mb-2 text-xs font-semibold capitalize text-ink-2">
                 {severity} ({issues.length})
               </p>
               <div className="space-y-2">
                 {issues.map((issue) => (
-                  <div key={issue.id} className="rounded border border-line bg-surface p-3">
+                  <div key={issue.id} className="rounded-panel border border-line bg-surface p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-ink">{issue.title}</p>
@@ -747,11 +778,11 @@ function IssuesPanel({
           );
         })}
         {selectedIssue ? (
-          <div className="rounded border border-brand bg-brand-soft p-4">
+          <div className="rounded-panel border border-brand bg-brand-soft p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-ink">Evidence: {selectedIssue.title}</p>
-                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-surface p-3 text-xs text-ink">
+                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-panel bg-surface p-3 text-xs text-ink">
                   {JSON.stringify(
                     selectedIssue.evidence_json ?? selectedIssue.actual_values_json,
                     null,
@@ -788,9 +819,5 @@ function groupFields(run: DocumentVerificationRunResponse | undefined) {
 }
 
 function ErrorBox({ error }: { error: unknown }) {
-  return (
-    <div className="rounded border border-danger-border bg-danger-bg p-3 text-sm text-danger-fg">
-      {userMessageForError(error)}
-    </div>
-  );
+  return <Alert tone="danger" title={userMessageForError(error)} />;
 }
