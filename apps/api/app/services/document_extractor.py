@@ -161,6 +161,7 @@ def extract_text_from_xlsx_as_text(file_bytes: bytes, sheet_name: str | None = N
 
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb[sheet_name] if sheet_name and sheet_name in wb.sheetnames else wb.active
+    assert ws is not None  # None only for a workbook with no sheets
     lines: list[str] = []
     for row in ws.iter_rows(values_only=True):
         cells = [str(c).strip() if c is not None else "" for c in row]
@@ -244,7 +245,8 @@ def _call_llm(document_text: str) -> dict[str, Any]:
         raise RuntimeError(f"LLM did not return valid JSON. Response: {text[:200]}")
 
     try:
-        return json.loads(match.group())
+        parsed: dict[str, Any] = json.loads(match.group())
+        return parsed
     except json.JSONDecodeError as e:
         raise RuntimeError(f"LLM returned malformed JSON: {e}") from e
 
@@ -330,7 +332,10 @@ def extract_and_parse(
         document_text = extract_text_from_csv(file_bytes)
         # Try column-mapper first
         from app.services.document_sheet_parser import (
-            detect_column_mapping, detect_missing_fields, parse_rows, parse_csv,
+            detect_column_mapping,
+            detect_missing_fields,
+            parse_csv,
+            parse_rows,
         )
         headers, rows = parse_csv(file_bytes)
         mapping, _ = detect_column_mapping(headers)

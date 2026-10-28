@@ -106,18 +106,16 @@ export function DashboardPage() {
       role={role}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/75 p-6 shadow-2xl shadow-slate-950/20">
+      <section className="mb-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-card ">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200">
-              Export assurance overview
-            </p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.035em] text-white md:text-4xl">
+            <p className="text-xs font-semibold text-brand">Export assurance overview</p>
+            <h1 className="mt-3 max-w-3xl text-2xl font-semibold tracking-tight text-ink md:text-3xl">
               {user?.full_name
                 ? `Welcome back, ${user.full_name.split(" ")[0]}.`
                 : "Welcome to your KALYPTO workspace."}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-ink-2">
               Monitor shipment readiness, claim exposure, compliance evidence, and AI-assisted
               document checks from one tenant-isolated workspace.
             </p>
@@ -136,12 +134,12 @@ export function DashboardPage() {
         <StatCard
           label="Pre-shipment"
           value={shipmentsQuery.isLoading ? "-" : String(preCount)}
-          accent="text-cyan-200"
+          accent="text-brand"
         />
         <StatCard
           label="Post-shipment"
           value={shipmentsQuery.isLoading ? "-" : String(postCount)}
-          accent="text-emerald-300"
+          accent="text-success-fg"
         />
         <StatCard
           label="Money at risk"
@@ -150,12 +148,12 @@ export function DashboardPage() {
               ? "-"
               : `INR ${(discrepancyQuery.data?.potential_amount ?? 0).toLocaleString("en-IN")}`
           }
-          accent="text-amber-300"
+          accent="text-warning-fg"
         />
       </div>
 
-      <Card className="mb-6 overflow-hidden border-cyan-300/20 bg-slate-900/80">
-        <div className="h-px bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent" />
+      <Card className="mb-6 overflow-hidden border-brand bg-surface">
+        <div className="h-px bg-surface from-transparent  to-transparent" />
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -183,21 +181,18 @@ export function DashboardPage() {
                   record.
                 </CardDescription>
               </div>
-              <Link
-                to="/shipments"
-                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
-              >
+              <Link to="/shipments" className="text-xs font-semibold text-brand hover:text-brand">
                 View all
               </Link>
             </div>
           </CardHeader>
           <CardContent>
             {shipmentsQuery.isLoading ? (
-              <p className="text-sm text-slate-500">Loading shipments...</p>
+              <p className="text-sm text-ink-2">Loading shipments...</p>
             ) : null}
             {!shipmentsQuery.isLoading && shipments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 py-8 text-center">
-                <p className="text-sm text-slate-400">No shipments yet.</p>
+              <div className="rounded-card border border-dashed border-line bg-surface py-8 text-center">
+                <p className="text-sm text-ink-2">No shipments yet.</p>
                 <Link to="/shipments/new">
                   <Button className="mt-4" size="sm">
                     Create first shipment
@@ -211,19 +206,19 @@ export function DashboardPage() {
                   <Link
                     key={shipment.id}
                     to={`/shipments/${shipment.id}`}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 transition-colors hover:border-cyan-300/30 hover:bg-cyan-300/5"
+                    className="flex items-center justify-between rounded-card border border-line bg-surface px-4 py-3 transition-colors hover:border-brand hover:bg-brand-soft"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-100">{shipment.product_name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="text-sm font-medium text-ink">{shipment.product_name}</p>
+                      <p className="mt-0.5 text-xs text-ink-2">
                         HSN {shipment.hsn_code} / {shipment.destination_country}
                       </p>
                     </div>
                     <span
                       className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                         shipment.shipment_stage === "pre_shipment"
-                          ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
-                          : "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
+                          ? "border-brand bg-brand-soft text-brand"
+                          : "border-success-border bg-success-bg text-success-fg"
                       }`}
                     >
                       {shipment.shipment_stage === "pre_shipment"
@@ -247,11 +242,11 @@ export function DashboardPage() {
               <Row label="Email" value={user?.email ?? "-"} />
               <Row label="Role" value={role.replaceAll("_", " ")} />
               <Row label="2FA" value={twoFactorEnabled ? "enabled" : "off"} />
-              <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+              <div className="rounded-panel border border-line bg-surface p-3">
                 {twoFactorSetup ? (
                   <div className="space-y-2">
                     <Label htmlFor="two_factor_code">Authenticator code</Label>
-                    <p className="break-all rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 font-mono text-[11px] text-cyan-100">
+                    <p className="break-all rounded-lg border border-brand bg-brand-soft px-2 py-1 font-mono text-xs text-brand">
                       {twoFactorSetup.secret}
                     </p>
                     <Input
@@ -302,7 +297,7 @@ export function DashboardPage() {
                   </Button>
                 )}
                 {twoFactorError ? (
-                  <p className="mt-2 text-xs text-rose-200">
+                  <p className="mt-2 text-xs text-danger-fg">
                     {userMessageForError(twoFactorError)}
                   </p>
                 ) : null}
@@ -317,10 +312,10 @@ export function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
-          <Card className="border-amber-300/20 bg-amber-300/10">
+          <Card className="border-warning-border bg-warning-bg">
             <CardContent className="pt-5">
-              <p className="text-sm font-semibold text-amber-100">Decision-support mode</p>
-              <p className="mt-2 text-xs leading-5 text-amber-100/75">
+              <p className="text-sm font-semibold text-warning-fg">Decision-support mode</p>
+              <p className="mt-2 text-xs leading-5 text-warning-fg">
                 Rates, HSN suggestions, and compliance guidance must be verified by an operator,
                 CHA, CA, or customs broker before filing.
               </p>
@@ -334,7 +329,7 @@ export function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <CardTitle>Discrepancy overview</CardTitle>
-              <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-400">
+              <span className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2">
                 {discrepancyQuery.data?.total ?? 0} findings
               </span>
             </div>
@@ -350,19 +345,17 @@ export function DashboardPage() {
             </div>
             {discrepancyQuery.data?.items.slice(0, 5).map((item) => (
               <Link
-                className="mt-2 block rounded-2xl border border-white/10 bg-slate-950/50 p-3 transition hover:border-cyan-300/30"
+                className="mt-2 block rounded-card border border-line bg-surface p-3 transition hover:border-brand"
                 key={item.id}
                 to={`/shipments/${item.shipment_id}`}
               >
-                <p className="text-sm font-medium text-slate-200">{item.message}</p>
-                <p className="mt-1 text-xs capitalize text-slate-500">
+                <p className="text-sm font-medium text-ink">{item.message}</p>
+                <p className="mt-1 text-xs capitalize text-ink-2">
                   {item.severity} / {item.type.replaceAll("_", " ")}
                 </p>
               </Link>
             ))}
-            <p className="mt-3 text-xs leading-5 text-slate-600">
-              {discrepancyQuery.data?.disclaimer}
-            </p>
+            <p className="mt-3 text-xs leading-5 text-ink-3">{discrepancyQuery.data?.disclaimer}</p>
           </CardContent>
         </Card>
 
@@ -380,16 +373,17 @@ export function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div
-                className={`rounded-xl border px-3 py-2 text-sm ${
+                className={`rounded-panel border px-3 py-2 text-sm ${
                   assistantStatusQuery.data?.configured
-                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                    : "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                    ? "border-success-border bg-success-bg text-success-fg"
+                    : "border-warning-border bg-warning-bg text-warning-fg"
                 }`}
               >
                 {assistantStatusQuery.data?.message ?? "Checking AI helper status..."}
               </div>
               <textarea
-                className="min-h-24 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3.5 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/50"
+                aria-label="Question for the AI helper"
+                className="min-h-24 w-full rounded-panel border border-line bg-surface px-3.5 py-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 value={assistantQuestion}
                 onChange={(event) => setAssistantQuestion(event.target.value)}
               />
@@ -404,12 +398,12 @@ export function DashboardPage() {
                 {assistantMutation.isPending ? "Asking..." : "Ask assistant"}
               </Button>
               {assistantMutation.data ? (
-                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                <div className="rounded-card border border-line bg-surface p-4 text-sm leading-6 text-ink">
                   {assistantMutation.data.answer}
                 </div>
               ) : null}
               {assistantMutation.isError ? (
-                <p className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+                <p className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-fg">
                   {userMessageForError(assistantMutation.error)}
                 </p>
               ) : null}
@@ -424,17 +418,15 @@ export function DashboardPage() {
 function StatCard({
   label,
   value,
-  accent = "text-slate-50",
+  accent = "text-ink",
 }: {
   label: string;
   value: string;
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900/75 px-4 py-4 shadow-xl shadow-slate-950/10 backdrop-blur">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-        {label}
-      </p>
+    <div className="rounded-card border border-line bg-surface px-4 py-4 shadow-card  backdrop-blur">
+      <p className="text-xs font-semibold text-ink-2">{label}</p>
       <p className={`mt-2 text-2xl font-semibold tracking-[-0.02em] ${accent}`}>{value}</p>
     </div>
   );
@@ -442,9 +434,9 @@ function StatCard({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
-      <span className="text-slate-500">{label}</span>
-      <span className="truncate font-medium capitalize text-slate-200">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-panel border border-line bg-surface px-3 py-2">
+      <span className="text-ink-2">{label}</span>
+      <span className="truncate font-medium capitalize text-ink">{value}</span>
     </div>
   );
 }

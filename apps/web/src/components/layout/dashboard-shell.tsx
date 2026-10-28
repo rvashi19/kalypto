@@ -41,16 +41,14 @@ interface SidebarProps {
 function SidebarContent({ organizationName, role, onLogout, pathname, onNavigate }: SidebarProps) {
   return (
     <div className="flex h-full flex-col bg-nav text-nav-text">
-      <div className="border-b border-[#2a2d33] px-4 py-4">
-        <p className="text-sm font-semibold text-[#ffffff]">KALYPTO</p>
+      <div className="border-b border-nav-line px-4 py-4">
+        <p className="text-sm font-semibold text-white">KALYPTO</p>
         <p className="truncate text-xs">{organizationName}</p>
       </div>
       <nav aria-label="Main navigation" className="flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-[#8b93a1]">
-              {group.label}
-            </p>
+            <p className="px-3 pb-1 text-xs font-medium uppercase text-nav-muted">{group.label}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = pathname.startsWith(item.href);
@@ -61,9 +59,9 @@ function SidebarContent({ organizationName, role, onLogout, pathname, onNavigate
                       onClick={onNavigate}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "block rounded-control border-l-2 px-3 py-2 text-sm font-medium transition-colors hover:bg-[#1c1f24]",
+                        "block rounded-control border-l-2 px-3 py-2 text-sm font-medium transition-colors hover:bg-nav-hover",
                         FOCUS,
-                        active ? "border-brand bg-[#23272e] text-[#ffffff]" : "border-transparent"
+                        active ? "border-brand bg-nav-active text-white" : "border-transparent"
                       )}
                     >
                       {item.label}
@@ -75,7 +73,7 @@ function SidebarContent({ organizationName, role, onLogout, pathname, onNavigate
           </div>
         ))}
       </nav>
-      <div className="space-y-2 border-t border-[#2a2d33] p-4">
+      <div className="space-y-2 border-t border-nav-line p-4">
         <p className="text-xs capitalize">{role.replaceAll("_", " ")}</p>
         <Button size="sm" variant="secondary" className="w-full" onClick={onLogout}>
           Sign out
@@ -140,7 +138,7 @@ export function DashboardShell({
       </aside>
 
       <header className="sticky top-0 z-40 flex items-center justify-between bg-nav px-4 py-2 min-[860px]:hidden">
-        <span className="text-sm font-semibold text-[#ffffff]">KALYPTO</span>
+        <span className="text-sm font-semibold text-white">KALYPTO</span>
         <button
           ref={menuButton}
           type="button"
@@ -148,7 +146,7 @@ export function DashboardShell({
           aria-controls="mobile-nav"
           onClick={() => setDrawerOpen(true)}
           className={cn(
-            "rounded-control border border-[#3a3f47] px-3 py-1.5 text-sm font-medium text-nav-text",
+            "rounded-control border border-nav-line-strong px-3 py-1.5 text-sm font-medium text-nav-text",
             FOCUS
           )}
         >
