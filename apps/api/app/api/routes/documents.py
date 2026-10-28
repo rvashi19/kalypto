@@ -20,7 +20,7 @@ from __future__ import annotations
 import io
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
@@ -28,7 +28,6 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
-from app.services.storage import storage
 from app.models.documents import (
     DocumentImportSession,
     ExportDocumentPack,
@@ -36,17 +35,16 @@ from app.models.documents import (
 )
 from app.schemas.documents import (
     ExtractResponse,
-    GenerateRequest,
-    GenerateResponse,
     GeneratedDocumentMeta,
+    GenerateRequest,
     ImportSessionUploadResponse,
     MappingConfirmRequest,
     MappingConfirmResponse,
     PackDetail,
     PackSummary,
-    ValidationIssue,
     ValidateRequest,
     ValidateResponse,
+    ValidationIssue,
 )
 from app.services.document_generator import (
     SUPPORTED_DOC_TYPES,
@@ -62,6 +60,7 @@ from app.services.document_sheet_parser import (
     parse_xlsx,
 )
 from app.services.document_validator import validate_shipment_data
+from app.services.storage import storage
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -115,9 +114,9 @@ _LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
 
 @router.post("/logo", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def upload_logo(
-    file: UploadFile = File(...),
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    file: Annotated[UploadFile, File()],
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> None:
     """Upload or replace the organisation logo used on all generated documents."""
     raw = await file.read()
@@ -131,7 +130,7 @@ async def upload_logo(
 
 
 @router.get("/logo")
-def get_logo(ctx: CurrentUser = ...) -> Response:
+def get_logo(ctx: CurrentUser) -> Response:
     """Return the organisation logo image, or 404 if none uploaded."""
     raw = storage.get(_logo_storage_key(ctx.organization.id)) if storage.exists(_logo_storage_key(ctx.organization.id)) else None
     if not raw:
@@ -151,7 +150,7 @@ def get_logo(ctx: CurrentUser = ...) -> Response:
 
 
 @router.delete("/logo", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
-def delete_logo(ctx: CurrentUser = ...) -> None:
+def delete_logo(ctx: CurrentUser) -> None:
     """Remove the organisation logo."""
     storage.delete(_logo_storage_key(ctx.organization.id))
 
@@ -160,9 +159,9 @@ def delete_logo(ctx: CurrentUser = ...) -> None:
 
 @router.post("/import/extract", response_model=ExtractResponse)
 async def extract_from_document(
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
+    ctx: CurrentUser,
     sheet_name: str | None = Form(default=None),
-    ctx: CurrentUser = ...,
 ) -> ExtractResponse:
     """Upload any export document (PDF, DOCX, XLSX, CSV) and auto-extract shipment data.
 
@@ -205,10 +204,10 @@ async def extract_from_document(
 
 @router.post("/import/upload", response_model=ImportSessionUploadResponse)
 async def upload_import_file(
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
+    db: DbSession,
+    ctx: CurrentUser,
     sheet_name: str | None = Form(default=None),
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
 ) -> ImportSessionUploadResponse:
     raw = await file.read()
     if len(raw) > _MAX_UPLOAD_BYTES:
@@ -281,8 +280,8 @@ async def upload_import_file(
 def confirm_mapping(
     session_id: UUID,
     body: MappingConfirmRequest,
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> MappingConfirmResponse:
     session = db.get(DocumentImportSession, session_id)
     if not session or session.tenant_id != ctx.organization.id:
@@ -290,6 +289,7 @@ def confirm_mapping(
     if session.status == "expired" or (session.expires_at and session.expires_at < datetime.now(UTC)):
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Import session has expired. Please upload again.")
 
+    assert session.raw_file_storage_key is not None  # always set on upload
     raw = _load_file(session.raw_file_storage_key)
     if session.file_type == "xlsx":
         _, rows, _ = parse_xlsx(raw, body.sheet_name or session.sheet_name)
@@ -323,7 +323,7 @@ def confirm_mapping(
 @router.post("/validate", response_model=ValidateResponse)
 def validate_data(
     body: ValidateRequest,
-    ctx: CurrentUser = ...,
+    ctx: CurrentUser,
 ) -> ValidateResponse:
     raw_issues = validate_shipment_data(body.data.model_dump())
     errors = [ValidationIssue(**i) for i in raw_issues if i["severity"] == "error"]
@@ -336,8 +336,8 @@ def validate_data(
 @router.post("/generate")
 def generate_documents(
     body: GenerateRequest,
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> StreamingResponse:
     # Validate first
     raw_issues = validate_shipment_data(body.data.model_dump())
@@ -444,8 +444,8 @@ def generate_documents(
 
 @router.get("/packs", response_model=list[PackSummary])
 def list_packs(
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[PackSummary]:
@@ -467,8 +467,8 @@ def list_packs(
 @router.get("/packs/{pack_id}", response_model=PackDetail)
 def get_pack(
     pack_id: UUID,
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> PackDetail:
     pack = db.get(ExportDocumentPack, pack_id)
     if not pack:
@@ -497,8 +497,8 @@ def get_pack(
 @router.get("/packs/{pack_id}/download")
 def download_pack(
     pack_id: UUID,
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> StreamingResponse:
     pack = db.get(ExportDocumentPack, pack_id)
     if not pack:
@@ -515,7 +515,10 @@ def download_pack(
             select(GeneratedExportDocument).where(GeneratedExportDocument.pack_id == pack_id)
         ).all()
         if not docs:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No generated documents found for this pack.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No generated documents found for this pack.",
+            ) from None
         pairs: list[tuple[str, bytes]] = []
         for d in docs:
             try:
@@ -523,7 +526,10 @@ def download_pack(
             except FileNotFoundError:
                 pass
         if not pairs:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document files are no longer available. Please regenerate.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document files are no longer available. Please regenerate.",
+            ) from None
         zip_bytes = generate_zip(pairs)
 
     inv_label = (pack.invoice_number or str(pack_id)[:8]).replace("/", "-")
@@ -539,8 +545,8 @@ def download_pack(
 @router.delete("/packs/{pack_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 def archive_pack(
     pack_id: UUID,
-    db: DbSession = ...,
-    ctx: CurrentUser = ...,
+    db: DbSession,
+    ctx: CurrentUser,
 ) -> None:
     pack = db.get(ExportDocumentPack, pack_id)
     if not pack:

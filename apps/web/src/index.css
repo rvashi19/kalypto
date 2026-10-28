@@ -34,6 +34,11 @@
   --k-brand-soft: #e9f1fd;
   --k-nav: #101214;
   --k-nav-text: #c7ccd4;
+  --k-nav-muted: #8b93a1;
+  --k-nav-line: #2a2d33;
+  --k-nav-line-strong: #3a3f47;
+  --k-nav-hover: #1c1f24;
+  --k-nav-active: #23272e;
   --k-success-fg: #1f7a4d;
   --k-success-bg: #e8f5ee;
   --k-success-border: #b5dec8;

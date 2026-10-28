@@ -1,5 +1,17 @@
 import type { IncentiveDetailResponse, IncentiveRateItem } from "@repo/shared";
-import { Button } from "@repo/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Skeleton,
+} from "@repo/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -15,9 +27,6 @@ const SCHEME_LABEL: Record<string, string> = {
   rosctl: "RoSCTL",
 };
 const SCHEME_ORDER = ["rodtep", "drawback", "rosctl"];
-
-const inputClass =
-  "w-full rounded-panel border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-warning-border focus:ring-2 focus:ring-warning-border";
 
 const DISCLAIMER =
   "Incentive/rate information is source-backed but should be verified before filing export documents or claiming benefits.";
@@ -42,6 +51,8 @@ export function IncentiveFinderPage() {
   const [scheme, setScheme] = useState("all");
   const [includeUnapproved, setIncludeUnapproved] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   const searchMutation = useMutation({
     mutationFn: (code: string) =>
@@ -88,98 +99,106 @@ export function IncentiveFinderPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-card border border-line bg-surface   px-6 py-8 text-center md:py-10">
-        <p className="text-xs font-semibold text-warning-fg">
-          — Export Incentives · RoDTEP · Drawback · RoSCTL —
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
-          Incentive Finder
-        </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-ink-2">
-          Look up RoDTEP, Drawback, and RoSCTL rates for any Indian export HSN code.{" "}
-          <Link to="/hsn" className="text-warning-fg hover:text-warning-fg">
-            Find your HSN code first
-          </Link>{" "}
-          for best accuracy.
-        </p>
+      <PageHeader
+        title="Incentive finder"
+        breadcrumbs={[{ label: "Lookup" }, { label: "Incentive finder" }]}
+        meta={
+          <span>
+            Look up RoDTEP, Drawback and RoSCTL rates for any Indian export HSN code.{" "}
+            <Link to="/hsn" className="text-brand hover:underline">
+              Find your HSN code first
+            </Link>{" "}
+            for best accuracy.
+          </span>
+        }
+      />
 
-        <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
-          <input
-            className={`${inputClass} flex-1`}
-            placeholder="Enter or select HSN code (e.g. 12119030)"
-            value={hsn}
-            onChange={(e) => setHsn(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && hsn.trim()) searchMutation.mutate(hsn.trim());
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <form
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (hsn.trim()) searchMutation.mutate(hsn.trim());
             }}
-          />
-          <select
-            value={scheme}
-            onChange={(e) => setScheme(e.target.value)}
-            className="rounded-panel border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-warning-border"
           >
-            <option value="all">All schemes</option>
-            <option value="rodtep">RoDTEP</option>
-            <option value="drawback">Drawback</option>
-            <option value="rosctl">RoSCTL</option>
-          </select>
-          <Button
-            className="shrink-0   "
-            disabled={searchMutation.isPending || !hsn.trim()}
-            onClick={() => searchMutation.mutate(hsn.trim())}
-          >
-            {searchMutation.isPending ? "Searching…" : "Find incentives"}
-          </Button>
-        </div>
+            <Field label="HSN code" className="flex-1">
+              <Input
+                placeholder="Enter or select HSN code (e.g. 12119030)"
+                value={hsn}
+                onChange={(e) => setHsn(e.target.value)}
+              />
+            </Field>
+            <Field label="Scheme">
+              <Select value={scheme} onChange={(e) => setScheme(e.target.value)}>
+                <option value="all">All schemes</option>
+                <option value="rodtep">RoDTEP</option>
+                <option value="drawback">Drawback</option>
+                <option value="rosctl">RoSCTL</option>
+              </Select>
+            </Field>
+            <Button type="submit" loading={searchMutation.isPending} disabled={!hsn.trim()}>
+              Find incentives
+            </Button>
+          </form>
 
-        {hsn.trim() ? (
-          <div className="mt-3">
+          {hsn.trim() ? (
             <Link
               to={`/calculators/export-quote?hsn_code=${encodeURIComponent(hsn.trim())}`}
-              className="text-xs font-medium text-warning-fg hover:text-warning-fg"
+              className="inline-block text-sm font-medium text-brand hover:underline"
             >
               Calculate landed cost / export quote for this HSN →
             </Link>
-          </div>
-        ) : null}
+          ) : null}
 
-        {isAdmin ? (
-          <label className="mt-3 inline-flex items-center gap-2 text-xs text-ink-2">
-            <input
-              type="checkbox"
-              checked={includeUnapproved}
-              onChange={(e) => {
-                setIncludeUnapproved(e.target.checked);
-                if (hsn.trim()) searchMutation.mutate(hsn.trim());
-              }}
-            />
-            Admin: include pending / expired records
-          </label>
-        ) : null}
+          {isAdmin ? (
+            <div className="flex items-center gap-2 text-sm text-ink">
+              <input
+                id="include-unapproved"
+                type="checkbox"
+                className="h-4 w-4 accent-brand"
+                checked={includeUnapproved}
+                onChange={(e) => {
+                  setIncludeUnapproved(e.target.checked);
+                  if (hsn.trim()) searchMutation.mutate(hsn.trim());
+                }}
+              />
+              <label htmlFor="include-unapproved">Admin: include pending / expired records</label>
+            </div>
+          ) : null}
 
-        {searchMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-danger-fg">{searchMutation.error.message}</p>
-        ) : null}
-      </section>
+          {searchMutation.error instanceof Error ? (
+            <Alert tone="danger" title="Could not search incentives">
+              {searchMutation.error.message}
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {!data && !searchMutation.isPending ? (
-        <div className="mt-6 rounded-card border border-dashed border-line bg-surface p-8 text-center text-sm text-ink-2">
-          Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder
-          first.
-        </div>
+        <EmptyState
+          className="mt-6"
+          title="No search yet"
+          description="Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder first."
+        />
       ) : null}
 
       {data ? (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
           <section className="space-y-5">
             {data.count === 0 ? (
-              <EmptyState data={data} />
+              <Alert tone="warning" title="No incentive rates found">
+                {data.message ??
+                  (data.hsn_exists
+                    ? "HSN exists, but no approved incentive/rate data is available for this code."
+                    : "Classify or verify the HSN in HSN Finder before relying on incentive rates.")}
+              </Alert>
             ) : (
               grouped.map(([key, items]) => (
                 <div key={key}>
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-warning-fg">
+                  <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-ink">
                     {schemeName(key)}
-                    <span className="text-xs text-ink-2">{items.length}</span>
+                    <Badge>{items.length}</Badge>
                   </h2>
                   <div className="space-y-2">
                     {items.map((item) => (
@@ -194,21 +213,35 @@ export function IncentiveFinderPage() {
                 </div>
               ))
             )}
-            <p className="text-xs leading-5 text-ink-2">{data.disclaimer}</p>
+            <p className="text-xs text-ink-2">{data.disclaimer}</p>
           </section>
 
-          <aside className="lg:sticky lg:top-4 lg:self-start">
+          <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start" aria-live="polite">
+            {approveError ? (
+              <Alert tone="danger" title="Could not approve this rate">
+                {approveError}
+              </Alert>
+            ) : null}
+            {detailId && detailQuery.isPending ? <Skeleton className="h-48 w-full" /> : null}
+            {detailId && detailQuery.error instanceof Error ? (
+              <Alert tone="danger" title="Could not load rate details">
+                {detailQuery.error.message}
+              </Alert>
+            ) : null}
             {detailId && detailQuery.data ? (
               <DetailPanel
                 detail={detailQuery.data}
                 isAdmin={Boolean(isAdmin)}
+                approving={approving}
                 onApprove={() => approveAndRefresh(detailQuery.data.id)}
               />
-            ) : (
-              <div className="rounded-card border border-line bg-surface p-6 text-sm text-ink-2">
-                Select a rate to view full details, validity period, and conditions.
-              </div>
-            )}
+            ) : null}
+            {!detailId ? (
+              <EmptyState
+                title="No rate selected"
+                description="Select a rate to view full details, validity period, and conditions."
+              />
+            ) : null}
           </aside>
         </div>
       ) : null}
@@ -216,24 +249,18 @@ export function IncentiveFinderPage() {
   );
 
   function approveAndRefresh(id: string) {
+    setApproving(true);
+    setApproveError(null);
     api
       .approveIncentive(id, token!)
       .then(() => {
         if (hsn.trim()) searchMutation.mutate(hsn.trim());
       })
-      .catch(() => undefined);
+      .catch((err: unknown) =>
+        setApproveError(err instanceof Error ? err.message : "Approval failed. Try again.")
+      )
+      .finally(() => setApproving(false));
   }
-}
-
-function EmptyState({ data }: { data: { hsn_exists: boolean; message: string | null } }) {
-  return (
-    <div className="rounded-card border border-dashed border-warning-border bg-warning-bg p-6 text-sm leading-6 text-warning-fg">
-      {data.message ??
-        (data.hsn_exists
-          ? "HSN exists, but no approved incentive/rate data is available for this code."
-          : "Classify or verify the HSN in HSN Finder before relying on incentive rates.")}
-    </div>
-  );
 }
 
 function RateCard({
@@ -247,26 +274,26 @@ function RateCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onSelect}
-      className={`block w-full rounded-panel border p-4 text-left transition ${
+      aria-pressed={selected}
+      className={`block w-full rounded-panel border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
         selected
-          ? "border-warning-border bg-warning-bg ring-1 ring-warning-border"
-          : "border-line bg-surface hover:border-line-strong hover:bg-surface"
+          ? "border-brand bg-brand-soft ring-1 ring-brand"
+          : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <span className="font-mono text-sm font-semibold text-ink">{item.hsn_code}</span>
           {item.match_level === "prefix" ? (
-            <span className="rounded border border-line-strong px-1.5 py-0.5 text-xs text-ink-2">
-              applies at {item.normalized_hsn_code}
-            </span>
+            <Badge>applies at {item.normalized_hsn_code}</Badge>
           ) : null}
         </span>
-        <span className="font-mono text-lg font-bold text-warning-fg">{formatRate(item)}</span>
+        <span className="font-mono text-lg font-bold text-brand">{formatRate(item)}</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-ink-2 sm:grid-cols-4">
-        <Field
+        <KeyValue
           label="Cap"
           value={
             item.cap_value != null
@@ -274,15 +301,15 @@ function RateCard({
               : "—"
           }
         />
-        <Field label="Unit" value={item.unit_of_quantity ?? "—"} />
-        <Field label="Valid from" value={new Date(item.effective_from).toLocaleDateString()} />
-        <Field
+        <KeyValue label="Unit" value={item.unit_of_quantity ?? "—"} />
+        <KeyValue label="Valid from" value={new Date(item.effective_from).toLocaleDateString()} />
+        <KeyValue
           label="Valid to"
           value={item.effective_to ? new Date(item.effective_to).toLocaleDateString() : "current"}
         />
       </div>
       {item.condition_text ? (
-        <p className="mt-2 text-xs leading-5 text-ink-2">{item.condition_text}</p>
+        <p className="mt-2 text-xs text-ink-2">{item.condition_text}</p>
       ) : null}
     </button>
   );
@@ -291,55 +318,59 @@ function RateCard({
 function DetailPanel({
   detail,
   isAdmin,
+  approving,
   onApprove,
 }: {
   detail: IncentiveDetailResponse;
   isAdmin: boolean;
+  approving: boolean;
   onApprove: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-card border border-line bg-surface p-5">
-      <div>
-        <p className="text-xs font-semibold text-warning-fg">{schemeName(detail.scheme)}</p>
-        <p className="mt-1 font-mono text-2xl font-bold text-warning-fg">{formatRate(detail)}</p>
-        <p className="mt-1 text-sm text-ink">
-          HSN {detail.hsn_code}
-          {detail.product_description ? ` · ${detail.product_description}` : ""}
-        </p>
-      </div>
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <div>
+          <p className="text-xs font-semibold text-brand">{schemeName(detail.scheme)}</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-brand">{formatRate(detail)}</p>
+          <p className="mt-1 text-sm text-ink">
+            HSN {detail.hsn_code}
+            {detail.product_description ? ` · ${detail.product_description}` : ""}
+          </p>
+        </div>
 
-      <Section title="Rate details">
-        <Row label="Rate type" value={detail.rate_type} />
-        <Row
-          label="Cap"
-          value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"}
-        />
-        <Row label="Unit" value={detail.unit_of_quantity ?? "—"} />
-        <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
-        <Row
-          label="Valid to"
-          value={
-            detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"
-          }
-        />
-        {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
-      </Section>
+        <Section title="Rate details">
+          <Row label="Rate type" value={detail.rate_type} />
+          <Row
+            label="Cap"
+            value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"}
+          />
+          <Row label="Unit" value={detail.unit_of_quantity ?? "—"} />
+          <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
+          <Row
+            label="Valid to"
+            value={
+              detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"
+            }
+          />
+          {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
+        </Section>
 
-      {isAdmin && detail.approval_status !== "approved" ? (
-        <Button className="w-full" onClick={onApprove}>
-          Approve this rate
-        </Button>
-      ) : null}
+        {isAdmin && detail.approval_status !== "approved" ? (
+          <Button className="w-full" loading={approving} onClick={onApprove}>
+            Approve this rate
+          </Button>
+        ) : null}
 
-      <p className="text-xs leading-5 text-ink-2">{DISCLAIMER}</p>
-    </div>
+        <p className="text-xs text-ink-2">{DISCLAIMER}</p>
+      </CardContent>
+    </Card>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="rounded-panel border border-line bg-surface p-4">
-      <p className="text-xs font-semibold text-ink-2">{title}</p>
+      <h3 className="text-xs font-semibold text-ink-2">{title}</h3>
       <div className="mt-2 space-y-1">{children}</div>
     </div>
   );
@@ -354,7 +385,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function KeyValue({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <span className="block text-xs text-ink-3">{label}</span>
