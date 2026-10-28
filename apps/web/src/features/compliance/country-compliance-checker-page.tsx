@@ -5,15 +5,27 @@ import type {
   SourceRegistryCreateRequest,
   SourceRegistryResponse,
 } from "@repo/shared";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Textarea,
+} from "@repo/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useLogout } from "../../lib/use-logout";
-import { inputCls, selectCls } from "../../lib/ui";
 
 const COUNTRIES = [
   "India",
@@ -53,7 +65,7 @@ const DEFAULT_FORM: ComplianceCheckRequestV1 = {
   start_retrieval: true,
 };
 
-function Field({
+function TextField({
   label,
   value,
   onChange,
@@ -65,15 +77,9 @@ function Field({
   placeholder?: string;
 }) {
   return (
-    <label className="block space-y-1 text-sm">
-      <span className="text-ink">{label}</span>
-      <input
-        className={inputCls}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
+    <Field label={label}>
+      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </Field>
   );
 }
 
@@ -89,17 +95,20 @@ function SelectField({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="block space-y-1 text-sm">
-      <span className="text-ink">{label}</span>
-      <select className={selectCls} value={value} onChange={(e) => onChange(e.target.value)}>
+    <Field label={label}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o} value={o}>
             {o}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="text-base font-semibold text-ink">{children}</h2>;
 }
 
 function QuestionList({ title, items }: { title: string; items: string[] }) {
@@ -132,12 +141,10 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
 
   if (result.status === "no_verified_source") {
     return (
-      <Card>
-        <CardContent className="py-6 text-sm text-warning-fg">
-          No verified official requirement found in the current knowledge base or official-source
-          search.
-        </CardContent>
-      </Card>
+      <Alert tone="warning" title="No verified requirement found">
+        No verified official requirement found in the current knowledge base or official-source
+        search.
+      </Alert>
     );
   }
 
@@ -146,13 +153,15 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Official-source retrieval in progress</CardTitle>
-          <CardDescription>
+          <SectionTitle>Official-source retrieval in progress</SectionTitle>
+          <p className="text-sm text-ink-2">
             Results will require review before becoming approved guidance.
-          </CardDescription>
+          </p>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-ink">
-          <p>Status: {job?.status ?? "queued"}</p>
+          <p>
+            Status: <Badge tone="info">{job?.status ?? "queued"}</Badge>
+          </p>
           {job && (
             <p className="text-xs text-ink-2">
               Pages fetched: {job.pages_fetched} · Snapshots: {job.snapshots_created} · Extracted
@@ -160,7 +169,11 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             </p>
           )}
           {job?.message && <p className="text-xs text-ink-2">{job.message}</p>}
-          <Button variant="secondary" onClick={() => jobQuery.refetch()}>
+          <Button
+            variant="secondary"
+            loading={jobQuery.isFetching}
+            onClick={() => jobQuery.refetch()}
+          >
             Refresh status
           </Button>
         </CardContent>
@@ -172,11 +185,11 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Result</CardTitle>
-          <CardDescription>
+          <SectionTitle>Result</SectionTitle>
+          <p className="text-sm text-ink-2">
             Confidence: {result.confidence_label} ({result.confidence_score}) ·{" "}
             {result.answer_summary}
-          </CardDescription>
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           {Object.entries(GROUP_LABELS).map(([key, label]) => {
@@ -184,10 +197,10 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             if (!cards.length) return null;
             return (
               <div key={key}>
-                <p className="text-xs font-semibold text-brand">{label}</p>
+                <h3 className="text-sm font-semibold text-ink">{label}</h3>
                 <ul className="mt-1 space-y-2">
                   {cards.map((c, i) => (
-                    <li key={i} className="rounded-lg border border-line bg-surface p-3 text-sm">
+                    <li key={i} className="rounded-panel border border-line bg-surface p-3 text-sm">
                       <p className="text-ink">{c.detail}</p>
                       {c.source_url && (
                         <a
@@ -215,7 +228,7 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
       {result.sources.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Official source evidence</CardTitle>
+            <SectionTitle>Official source evidence</SectionTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {result.sources.map((s) => (
@@ -237,14 +250,16 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
         </Card>
       )}
 
-      <Card>
-        <CardContent className="space-y-1 py-4 text-xs text-ink-2">
-          {result.warnings.map((w) => (
-            <p key={w}>⚠ {w}</p>
-          ))}
-          <p className="pt-1 text-ink-2">{result.disclaimer}</p>
-        </CardContent>
-      </Card>
+      {result.warnings.length > 0 && (
+        <Alert tone="warning" title="Check before relying on this result">
+          <ul className="list-disc space-y-1 pl-4">
+            {result.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+      <p className="text-xs text-ink-2">{result.disclaimer}</p>
     </div>
   );
 }
@@ -334,40 +349,44 @@ function AdminSourceManager() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Official sources (admin)</CardTitle>
-        <CardDescription>
+        <SectionTitle>Official sources (admin)</SectionTitle>
+        <p className="text-sm text-ink-2">
           Register government or regulatory source URLs. Only whitelisted official domains are
           accepted.
-        </CardDescription>
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-            {seedMut.isPending ? "Seeding..." : "Seed official sources"}
+          <Button variant="secondary" onClick={() => seedMut.mutate()} loading={seedMut.isPending}>
+            Seed official sources
           </Button>
           <Button
             variant="secondary"
             onClick={() => refreshMut.mutate()}
-            disabled={refreshMut.isPending}
+            loading={refreshMut.isPending}
           >
-            {refreshMut.isPending ? "Refreshing..." : "Refresh due sources"}
+            Refresh due sources
           </Button>
         </div>
         {seedMut.data && (
-          <p className="text-xs text-success-fg">
+          <Alert tone="success">
             Seeded {seedMut.data.created} new source(s), updated {seedMut.data.updated}, skipped{" "}
             {seedMut.data.skipped}.
-          </p>
+          </Alert>
         )}
         {refreshMut.data && (
-          <p className="text-xs text-success-fg">
+          <Alert tone="success">
             Ran {refreshMut.data.jobs_run} job(s) - {refreshMut.data.snapshots_created} snapshot(s)
             - {refreshMut.data.requirements_extracted} extracted (pending review).
-          </p>
+          </Alert>
+        )}
+        {(seedMut.error || refreshMut.error || refreshSourceMut.error) && (
+          <Alert tone="danger" title="Source action failed">
+            {userMessageForError(seedMut.error ?? refreshMut.error ?? refreshSourceMut.error)}
+          </Alert>
         )}
         {sourceJob && (
-          <div className="rounded-lg border border-brand bg-brand-soft p-3 text-xs text-brand">
-            <p className="font-semibold">Latest source refresh: {sourceJob.status}</p>
+          <Alert tone="info" title={`Latest source refresh: ${sourceJob.status}`}>
             <p>
               Fetched {sourceJob.pages_fetched} page/file(s) - checksum{" "}
               {sourceJob.checksum_status ?? "pending"} - parser {sourceJob.parser_used ?? "pending"}
@@ -377,7 +396,7 @@ function AdminSourceManager() {
               {sourceJob.pending_review_count} pending review.
             </p>
             {sourceJob.error_message && <p className="text-danger-fg">{sourceJob.error_message}</p>}
-          </div>
+          </Alert>
         )}
         <div className="grid gap-2 sm:grid-cols-2">
           <SelectField
@@ -405,7 +424,7 @@ function AdminSourceManager() {
               }))
             }
           />
-          <Field
+          <TextField
             label="Refresh frequency days"
             value={String(form.refresh_frequency_days ?? 30)}
             placeholder="30"
@@ -414,67 +433,70 @@ function AdminSourceManager() {
             }
           />
         </div>
-        <Field
+        <TextField
           label="Authority name"
           value={form.authority_name}
           placeholder="Canada Border Services Agency"
           onChange={(v) => setForm((c) => ({ ...c, authority_name: v }))}
         />
-        <Field
+        <TextField
           label="Source name"
           value={form.source_name}
           placeholder="CBSA import requirements"
           onChange={(v) => setForm((c) => ({ ...c, source_name: v }))}
         />
-        <Field
+        <TextField
           label="Official source URL"
           value={form.base_url}
           placeholder="https://www.cbsa-asfc.gc.ca/import/..."
           onChange={(v) => setForm((c) => ({ ...c, base_url: v }))}
         />
-        <Field
+        <TextField
           label="Extra allowed domains (optional, comma separated)"
           value={allowedDomainsText}
           placeholder="official-domain.gov, regulator.example"
           onChange={updateAllowedDomains}
         />
-        <label className="block space-y-1 text-sm">
-          <span className="text-ink">Notes (optional)</span>
-          <textarea
-            className={inputCls}
+        <Field label="Notes (optional)">
+          <Textarea
             value={form.notes ?? ""}
             placeholder="What this source covers and when to use it"
             onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
           />
-        </label>
+        </Field>
         <div className="flex flex-wrap items-center gap-4 text-sm text-ink">
           <span>Authority level: official</span>
-          <label className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <input
+              id="source-active"
               type="checkbox"
+              className="h-4 w-4 accent-brand"
               checked={form.is_active ?? true}
               onChange={(e) => setForm((c) => ({ ...c, is_active: e.target.checked }))}
             />
-            Active source
-          </label>
+            <label htmlFor="source-active">Active source</label>
+          </div>
         </div>
         <Button
           onClick={() => createMut.mutate()}
-          disabled={createMut.isPending || !form.base_url || !form.authority_name}
+          loading={createMut.isPending}
+          disabled={!form.base_url || !form.authority_name}
         >
-          {createMut.isPending ? "Adding..." : "Add official source"}
+          Add official source
         </Button>
         {createMut.isError && (
-          <p className="text-sm text-danger-fg">{userMessageForError(createMut.error)}</p>
+          <Alert tone="danger" title="Could not add the source">
+            {userMessageForError(createMut.error)}
+          </Alert>
         )}
 
         {sources.length > 0 && (
           <div className="space-y-2 pt-2">
-            <p className="text-xs font-semibold text-ink-2">Registered sources</p>
+            <h3 className="text-sm font-semibold text-ink">Registered sources</h3>
             {sources.map((s) => (
               <div
                 key={s.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-xs text-ink-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-line bg-surface p-3 text-xs text-ink-2"
               >
                 <div>
                   <p className="text-ink">
@@ -499,6 +521,7 @@ function AdminSourceManager() {
                 <Button
                   variant="secondary"
                   onClick={() => refreshSourceMut.mutate(s.id)}
+                  loading={refreshSourceMut.isPending && refreshSourceMut.variables === s.id}
                   disabled={refreshSourceMut.isPending || !s.is_active}
                 >
                   Refresh this source
@@ -532,17 +555,30 @@ function AdminReviewQueue() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Pending requirement review</CardTitle>
-        <CardDescription>
+        <SectionTitle>Pending requirement review</SectionTitle>
+        <p className="text-sm text-ink-2">
           AI-extracted requirements stay pending until an admin approves the source evidence.
-        </CardDescription>
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        {items.length === 0 && (
-          <p className="text-sm text-ink-2">No pending requirements to review.</p>
+        {queue.isError && (
+          <Alert tone="danger" title="Could not load the review queue">
+            {userMessageForError(queue.error)}
+          </Alert>
+        )}
+        {decide.isError && (
+          <Alert tone="danger" title="Could not record the decision">
+            {userMessageForError(decide.error)}
+          </Alert>
+        )}
+        {queue.isSuccess && items.length === 0 && (
+          <EmptyState title="Nothing to review" description="No pending requirements to review." />
         )}
         {items.map((item) => (
-          <div key={item.requirement_id} className="rounded-lg border border-line bg-surface p-3">
+          <div
+            key={item.requirement_id}
+            className="rounded-panel border border-line bg-surface p-3"
+          >
             <p className="text-sm text-ink">{item.detail}</p>
             <p className="mt-1 text-xs text-ink-2">
               {item.country} · {item.category} · {item.requirement_type} · confidence{" "}
@@ -603,57 +639,68 @@ export function CountryComplianceCheckerPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="mb-6">
-        <p className="text-xs font-semibold text-brand">Source-backed assistant</p>
-        <h2 className="mt-1 text-xl font-semibold text-ink">Country Compliance Checker</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-2">
-          Enter your shipment details to see destination-country documents, certificates, labels,
-          inspections, licences, restrictions, and buyer/CHA questions — backed by official-source
-          evidence only.
-        </p>
-      </div>
+      <PageHeader
+        title="Country compliance checker"
+        breadcrumbs={[{ label: "Compliance" }, { label: "Country checker" }]}
+        meta={
+          <span>
+            See destination-country documents, certificates, labels, inspections, licences and
+            restrictions, backed by official-source evidence only.
+          </span>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Check requirements</CardTitle>
-            <CardDescription>Official evidence is the source of truth.</CardDescription>
+            <SectionTitle>Check requirements</SectionTitle>
+            <p className="text-sm text-ink-2">Official evidence is the source of truth.</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <SelectField
-              label="Origin country"
-              value={form.origin_country}
-              options={["India"]}
-              onChange={(v) => setForm((c) => ({ ...c, origin_country: v }))}
-            />
-            <SelectField
-              label="Destination country"
-              value={form.destination_country}
-              options={COUNTRIES}
-              onChange={(v) => setForm((c) => ({ ...c, destination_country: v }))}
-            />
-            <Field
-              label="HSN code"
-              value={form.hsn_code ?? ""}
-              onChange={(v) => setForm((c) => ({ ...c, hsn_code: v }))}
-            />
-            <Field
-              label="Product description"
-              value={form.product_description}
-              onChange={(v) => setForm((c) => ({ ...c, product_description: v }))}
-            />
-            <SelectField
-              label="Product category"
-              value={form.product_category}
-              options={CATEGORIES}
-              onChange={(v) => setForm((c) => ({ ...c, product_category: v }))}
-            />
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !token}>
-              {mutation.isPending ? "Checking…" : "Check compliance"}
-            </Button>
-            {mutation.isError && (
-              <p className="text-sm text-danger-fg">{userMessageForError(mutation.error)}</p>
-            )}
+          <CardContent>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                mutation.mutate();
+              }}
+            >
+              <SelectField
+                label="Origin country"
+                value={form.origin_country}
+                options={["India"]}
+                onChange={(v) => setForm((c) => ({ ...c, origin_country: v }))}
+              />
+              <SelectField
+                label="Destination country"
+                value={form.destination_country}
+                options={COUNTRIES}
+                onChange={(v) => setForm((c) => ({ ...c, destination_country: v }))}
+              />
+              <TextField
+                label="HSN code"
+                value={form.hsn_code ?? ""}
+                onChange={(v) => setForm((c) => ({ ...c, hsn_code: v }))}
+              />
+              <TextField
+                label="Product description"
+                value={form.product_description}
+                onChange={(v) => setForm((c) => ({ ...c, product_description: v }))}
+              />
+              <SelectField
+                label="Product category"
+                value={form.product_category}
+                options={CATEGORIES}
+                onChange={(v) => setForm((c) => ({ ...c, product_category: v }))}
+              />
+              <Button type="submit" loading={mutation.isPending} disabled={!token}>
+                Check compliance
+              </Button>
+              {mutation.isError && (
+                <Alert tone="danger" title="Could not check compliance">
+                  {userMessageForError(mutation.error)}
+                </Alert>
+              )}
+            </form>
           </CardContent>
         </Card>
 
@@ -661,12 +708,10 @@ export function CountryComplianceCheckerPage() {
           {mutation.data ? (
             <ResultView result={mutation.data} />
           ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-ink-2">
-                No approved compliance requirement found yet. Run a check — official-source
-                retrieval can be started automatically.
-              </CardContent>
-            </Card>
+            <EmptyState
+              title="No result yet"
+              description="Run a check. Official-source retrieval can be started automatically."
+            />
           )}
           {isAdmin && <AdminSourceManager />}
           {isAdmin && <AdminReviewQueue />}

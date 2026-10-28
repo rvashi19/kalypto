@@ -77,7 +77,8 @@ def _send_with_resend_http(*, email: str, otp_code: str, purpose: AuthOtpPurpose
         return True
     except httpx.HTTPStatusError as error:
         logger.exception(
-            "Resend auth email delivery failed: status=%s from=%s recipient_domain=%s purpose=%s response=%s",
+            "Resend auth email delivery failed: status=%s from=%s recipient_domain=%s "
+            "purpose=%s response=%s",
             error.response.status_code,
             settings.smtp_from_email,
             recipient_domain,
@@ -87,7 +88,8 @@ def _send_with_resend_http(*, email: str, otp_code: str, purpose: AuthOtpPurpose
         raise EmailDeliveryError("Email delivery failed.") from error
     except httpx.HTTPError as error:
         logger.exception(
-            "Resend auth email request failed: from=%s recipient_domain=%s purpose=%s error_type=%s error=%s",
+            "Resend auth email request failed: from=%s recipient_domain=%s purpose=%s "
+            "error_type=%s error=%s",
             settings.smtp_from_email,
             recipient_domain,
             purpose.value,
@@ -124,14 +126,15 @@ def send_auth_otp_email(*, email: str, otp_code: str, purpose: AuthOtpPurpose) -
     message.set_content(_purpose_body(otp_code=otp_code, purpose=purpose))
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
+        with smtplib.SMTP(settings.smtp_host or "", settings.smtp_port, timeout=10) as smtp:
             smtp.starttls()
             if settings.smtp_username and settings.smtp_password:
                 smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.send_message(message)
     except (OSError, smtplib.SMTPException) as error:
         logger.exception(
-            "SMTP auth email delivery failed: host=%s port=%s from=%s recipient_domain=%s purpose=%s error_type=%s error=%s",
+            "SMTP auth email delivery failed: host=%s port=%s from=%s recipient_domain=%s "
+            "purpose=%s error_type=%s error=%s",
             settings.smtp_host,
             settings.smtp_port,
             settings.smtp_from_email,

@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -193,22 +194,32 @@ export function LoginPage() {
               </Alert>
             ) : null}
 
-            {errorMessage ? (
-              <Alert tone="danger" title="Sign-in failed">
-                {errorMessage}
-                {showVerifyLink ? (
-                  <>
-                    {" "}
-                    <Link
-                      className="font-medium text-brand underline hover:text-brand-hover"
-                      to="/verify-email"
-                    >
-                      Verify your email
-                    </Link>
-                  </>
-                ) : null}
-              </Alert>
-            ) : null}
+            <AnimatePresence initial={false}>
+              {errorMessage ? (
+                <motion.div
+                  key={errorMessage}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <Alert tone="danger" title="Sign-in failed">
+                    {errorMessage}
+                    {showVerifyLink ? (
+                      <>
+                        {" "}
+                        <Link
+                          className="font-medium text-brand underline hover:text-brand-hover"
+                          to="/verify-email"
+                        >
+                          Verify your email
+                        </Link>
+                      </>
+                    ) : null}
+                  </Alert>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Signing in..." : "Sign in"}

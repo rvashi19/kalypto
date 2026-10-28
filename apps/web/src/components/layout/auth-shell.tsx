@@ -58,7 +58,7 @@ export function AuthShell({
 
 function FeaturePill({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-4">
+    <div className="rounded-card border border-white/10 bg-white/[0.06] p-4">
       <p className="font-medium text-white">{title}</p>
       <p className="mt-1.5 leading-6 text-white/65">{body}</p>
     </div>

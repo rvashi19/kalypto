@@ -18,7 +18,7 @@ Built on a production-grade multi-tenant monorepo: FastAPI + PostgreSQL + React 
 4. **Verification Report** — AI audits cross-document fields (buyer name, HSN code, FOB value, weights, port, Incoterm) and estimates eligible government incentives with action items
 5. **Expert Review** — connect with a human CHA/DGFT consultant for a final review
 
-### AI capabilities (Groq llama-3.3-70b)
+### AI capabilities (Groq gpt-oss-120b)
 
 - Generates document checklists tailored to Incoterm, shipment mode, destination country, HSN category, and payment terms
 - Detects mismatches across documents — the exact fields Indian Customs checks during assessment and examination
@@ -93,7 +93,7 @@ Or create a fresh tenant from the signup page.
 | `FRONTEND_URL` | CORS allowed origin for the web app |
 | `VITE_API_BASE_URL` | API base URL used by the frontend |
 | `GROQ_API_KEY` | Groq API key for AI features |
-| `GROQ_MODEL` | Model to use (default: `llama-3.3-70b-versatile`) |
+| `GROQ_MODEL` | Model to use (default: `openai/gpt-oss-120b`) |
 | `UPLOAD_DIR` | Directory for uploaded documents (default: `/tmp/kalypto_uploads`) |
 | `COMPLIANCE_STORE_BACKEND` | Compliance evidence backend: `postgres` by default, `mongo` optional |
 | `COMPLIANCE_SCRAPER_PROVIDER` | Compliance source refresh provider: built-in `http` by default |

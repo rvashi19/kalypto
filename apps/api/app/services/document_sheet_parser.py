@@ -77,7 +77,7 @@ def parse_rows(rows: list[dict[str, Any]], mapping: dict[str, str]) -> list[dict
     field_to_header = {v: k for k, v in mapping.items()}
     items: list[dict[str, Any]] = []
     for i, row in enumerate(rows):
-        def _get(field: str) -> Any:
+        def _get(field: str, row: dict[str, Any] = row) -> Any:
             h = field_to_header.get(field)
             return row.get(h) if h else None
 
@@ -123,6 +123,7 @@ def parse_xlsx(file_bytes: bytes, sheet_name: str | None = None) -> tuple[list[s
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
     sheet_names: list[str] = wb.sheetnames
     ws = wb[sheet_name] if sheet_name and sheet_name in sheet_names else wb.active
+    assert ws is not None  # None only for a workbook with no sheets
     rows_iter = list(ws.iter_rows(values_only=True))
     if not rows_iter:
         return [], [], sheet_names

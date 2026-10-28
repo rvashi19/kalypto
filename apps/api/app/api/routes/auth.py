@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import NoReturn
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.api.deps import AuthProviderDep, CurrentUser, DbSession
@@ -72,13 +74,17 @@ def _set_session_cookies(
 
 def _clear_session_cookies(response: Response) -> None:
     settings = get_settings()
-    cookie_args = {
-        "domain": settings.auth_cookie_domain,
-        "secure": _cookie_secure(),
-        "samesite": settings.auth_cookie_samesite,
-    }
-    response.delete_cookie(key=settings.auth_cookie_name, path="/", **cookie_args)
-    response.delete_cookie(key=settings.refresh_cookie_name, path="/api/v1/auth", **cookie_args)
+    for key, path in (
+        (settings.auth_cookie_name, "/"),
+        (settings.refresh_cookie_name, "/api/v1/auth"),
+    ):
+        response.delete_cookie(
+            key=key,
+            path=path,
+            domain=settings.auth_cookie_domain,
+            secure=_cookie_secure(),
+            samesite=settings.auth_cookie_samesite,
+        )
 
 
 def _user_summary(user: User) -> UserSummary:
@@ -112,7 +118,7 @@ def _current_user_response(current_user: CurrentUser) -> CurrentUserResponse:
     )
 
 
-def _raise_auth_error(error: Exception, *, default_status: int) -> None:
+def _raise_auth_error(error: Exception, *, default_status: int) -> NoReturn:
     if isinstance(error, OtpRateLimitError):
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(error))
     if isinstance(error, EmailNotVerifiedError | DisabledUserError):
