@@ -10,9 +10,9 @@ import { useAuth } from "../../lib/auth";
 import { useLogout } from "../../lib/use-logout";
 
 const CONFIDENCE_STYLES: Record<string, string> = {
-  High: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  Low: "border-slate-600/50 bg-slate-700/40 text-slate-300",
+  High: "border-success-border bg-success-bg text-success-fg",
+  Medium: "border-brand bg-brand-soft text-brand",
+  Low: "border-line-strong bg-surface-2 text-ink",
 };
 
 const CHIP_GROUPS: { label: string; chips: string[] }[] = [
@@ -177,10 +177,10 @@ export function HsnFinderPage() {
   let detailPane: ReactNode;
   if (detailMutation.isPending) {
     detailPane = (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-        <div className="h-6 w-32 animate-pulse rounded bg-slate-800" />
-        <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-800" />
-        <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-slate-800" />
+      <div className="rounded-2xl border border-line bg-surface p-6">
+        <div className="h-6 w-32 animate-pulse rounded bg-surface-2" />
+        <div className="mt-3 h-4 w-full animate-pulse rounded bg-surface-2" />
+        <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-surface-2" />
       </div>
     );
   } else if (selected && detail) {
@@ -202,7 +202,7 @@ export function HsnFinderPage() {
     );
   } else {
     detailPane = (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
+      <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
         Select a result to view its hierarchy, code details, and policy notes.
       </div>
     );
@@ -215,17 +215,15 @@ export function HsnFinderPage() {
       onLogout={() => logoutMutation.mutate()}
     >
       {/* Hero — styled after hsn.codes */}
-      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-950 px-6 py-10 text-center md:py-14">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-300/80">
+      <section className="relative overflow-hidden rounded-3xl border border-line bg-surface   px-6 py-10 text-center md:py-14">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-brand">
           — Harmonised System of Nomenclature · India ITC-HS —
         </p>
-        <h1 className="mt-4 font-serif text-4xl font-bold tracking-tight text-white md:text-6xl">
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
           HSN Code Finder
         </h1>
-        <p className="mt-1 font-serif text-3xl italic text-amber-300 md:text-5xl">
-          Verified India Database
-        </p>
-        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
+        <p className="mt-1 text-lg font-medium text-brand md:text-xl">Verified India Database</p>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-ink-2">
           Search India&apos;s complete ITC-HS classification by product name or HSN code. Over
           14,000 codes across all 98 chapters — from 2-digit chapters to 8-digit tariff lines.
         </p>
@@ -240,13 +238,13 @@ export function HsnFinderPage() {
 
         {/* Search */}
         <div className="mx-auto mt-8 max-w-3xl">
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/90 p-2 shadow-lg focus-within:border-amber-400/50 focus-within:ring-2 focus-within:ring-amber-400/15">
-            <span className="pl-2 text-slate-500">
+          <div className="flex items-center gap-2 rounded-2xl border border-line-strong bg-surface p-2 shadow-lg focus-within:border-brand focus-within:ring-2 focus-within:ring-brand">
+            <span className="pl-2 text-ink-2">
               <SearchIcon />
             </span>
             <input
               autoFocus
-              className="flex-1 bg-transparent px-1 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+              className="flex-1 bg-transparent px-1 py-2 text-sm text-ink placeholder:text-ink-2 outline-none"
               placeholder="Search by HSN code (e.g. 8517) or product name (e.g. rice, mobile phone)…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -255,7 +253,7 @@ export function HsnFinderPage() {
               }}
             />
             <Button
-              className="shrink-0 !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+              className="shrink-0   "
               disabled={searchMutation.isPending || !query.trim()}
               onClick={() => runSearch(query)}
             >
@@ -278,9 +276,7 @@ export function HsnFinderPage() {
                 key={group.label}
                 onClick={() => setChipGroup(i)}
                 className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-                  chipGroup === i
-                    ? "bg-amber-400/15 text-amber-200"
-                    : "text-slate-500 hover:text-slate-300"
+                  chipGroup === i ? "bg-brand-soft text-brand" : "text-ink-2 hover:text-ink"
                 }`}
               >
                 {group.label}
@@ -292,7 +288,7 @@ export function HsnFinderPage() {
               <button
                 key={chip}
                 onClick={() => runSearch(chip)}
-                className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-400 transition hover:border-amber-400/40 hover:text-amber-200"
+                className="rounded-full border border-line-strong bg-surface px-3 py-1 text-xs text-ink-2 transition hover:border-brand hover:text-brand"
               >
                 {chip}
               </button>
@@ -301,10 +297,10 @@ export function HsnFinderPage() {
         </div>
 
         {searchMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
+          <p className="mt-3 text-sm text-danger-fg">{searchMutation.error.message}</p>
         ) : null}
         {aiMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-amber-300">
+          <p className="mt-3 text-sm text-brand">
             AI verification unavailable: {aiMutation.error.message}
           </p>
         ) : null}
@@ -312,19 +308,17 @@ export function HsnFinderPage() {
       </section>
 
       {/* Filter tabs + sort */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex flex-wrap gap-1">
           <button
             onClick={() => setBrowse((b) => !b)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              browse
-                ? "bg-amber-400/15 text-amber-200"
-                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+              browse ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
             }`}
           >
             Browse Chapters
           </button>
-          <span className="mx-1 self-center text-slate-700">|</span>
+          <span className="mx-1 self-center text-ink-3">|</span>
           {LEVELS.map((l) => (
             <button
               key={l.value}
@@ -334,21 +328,21 @@ export function HsnFinderPage() {
               }}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 level === l.value && !browse
-                  ? "bg-amber-400/15 text-amber-200"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                  ? "bg-brand-soft text-brand"
+                  : "text-ink-2 hover:bg-surface-2 hover:text-ink"
               }`}
             >
               {l.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-2 text-xs text-ink-2">
           {searchMutation.data ? <span>{results.length} results</span> : null}
           <span>Sort</span>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 outline-none focus:border-amber-400/50"
+            className="rounded-lg border border-line-strong bg-surface px-2 py-1 text-xs text-ink outline-none focus:border-brand"
           >
             <option value="relevance">Relevance</option>
             <option value="code_asc">Code ↑</option>
@@ -362,20 +356,20 @@ export function HsnFinderPage() {
       {browse ? (
         <div className="mt-5">
           {chaptersQuery.isPending ? (
-            <p className="text-sm text-slate-500">Loading chapters…</p>
+            <p className="text-sm text-ink-2">Loading chapters…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(chaptersQuery.data ?? []).map((ch) => (
                 <button
                   key={ch.code}
                   onClick={() => runSearch(ch.code)}
-                  className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-left transition hover:border-amber-400/40 hover:bg-slate-900"
+                  className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-brand hover:bg-surface"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-bold text-amber-300">Ch {ch.code}</span>
-                    <span className="text-[10px] text-slate-500">{ch.count} codes</span>
+                    <span className="font-mono text-sm font-bold text-brand">Ch {ch.code}</span>
+                    <span className="text-[10px] text-ink-2">{ch.count} codes</span>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">{ch.name}</p>
+                  <p className="mt-1 text-xs leading-5 text-ink">{ch.name}</p>
                 </button>
               ))}
             </div>
@@ -395,13 +389,13 @@ export function HsnFinderPage() {
           ) : null}
 
           {searchMutation.data && results.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-sm leading-6 text-slate-400">
+            <div className="rounded-2xl border border-dashed border-line-strong bg-surface p-8 text-center text-sm leading-6 text-ink-2">
               {EMPTY_STATE}
             </div>
           ) : null}
 
           {!hasSearched ? (
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-10 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-sm text-ink-2">
               Search above to find HSN codes — by product (“basmati rice”) or code (“0910”).
             </div>
           ) : null}
@@ -425,10 +419,10 @@ export function HsnFinderPage() {
 function Stat({ value, label }: { value: number | undefined; label: string }) {
   return (
     <div>
-      <p className="font-mono text-2xl font-bold text-amber-300 md:text-3xl">
+      <p className="font-mono text-2xl font-bold text-brand md:text-3xl">
         {value == null ? "—" : value.toLocaleString("en-IN")}
       </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-2">
         {label}
       </p>
     </div>
@@ -437,14 +431,14 @@ function Stat({ value, label }: { value: number | undefined; label: string }) {
 
 function AiVerdict({ data }: { data: import("@repo/shared").HsnAiClassifyResponse }) {
   return (
-    <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-left text-sm">
+    <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-brand bg-brand-soft p-3 text-left text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-amber-200">AI Classification:</span>
-        <span className="font-mono text-slate-100">{data.hsn_code ?? "—"}</span>
+        <span className="font-semibold text-brand">AI Classification:</span>
+        <span className="font-mono text-ink">{data.hsn_code ?? "—"}</span>
         <VerificationChip status={data.verification} />
       </div>
-      {data.description ? <p className="mt-1 text-slate-300">{data.description}</p> : null}
-      {data.reasoning ? <p className="mt-1 text-xs text-slate-400">{data.reasoning}</p> : null}
+      {data.description ? <p className="mt-1 text-ink">{data.description}</p> : null}
+      {data.reasoning ? <p className="mt-1 text-xs text-ink-2">{data.reasoning}</p> : null}
     </div>
   );
 }
@@ -463,17 +457,15 @@ function ResultCard({
       onClick={onSelect}
       className={`block w-full rounded-xl border p-4 text-left transition ${
         selected
-          ? "border-amber-400/50 bg-amber-400/5 ring-1 ring-amber-400/30"
-          : "border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-900"
+          ? "border-brand bg-brand-soft ring-1 ring-brand"
+          : "border-line bg-surface hover:border-line-strong hover:bg-surface"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-lg font-bold tracking-wide text-amber-300">
-            {item.code}
-          </span>
+          <span className="font-mono text-lg font-bold tracking-wide text-brand">{item.code}</span>
           {item.verified ? (
-            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+            <span className="rounded-full border border-success-border bg-success-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-fg">
               ✓ Verified
             </span>
           ) : null}
@@ -484,8 +476,8 @@ function ResultCard({
           {item.confidence_label} · {Math.round(item.confidence_score)}
         </span>
       </div>
-      <p className="mt-1.5 text-sm leading-6 text-slate-300">{item.description}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+      <p className="mt-1.5 text-sm leading-6 text-ink">{item.description}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
         <Pill>{item.digit_level}-digit</Pill>
         <span>{item.match_reason}</span>
       </div>
@@ -494,7 +486,7 @@ function ResultCard({
           {item.warning_flags.slice(0, 4).map((flag) => (
             <span
               key={flag}
-              className="rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 text-[10px] text-amber-300/90"
+              className="rounded-md border border-brand bg-brand-soft px-2 py-0.5 text-[10px] text-brand"
             >
               {flag}
             </span>
@@ -507,13 +499,13 @@ function ResultCard({
 
 function ResultSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex justify-between">
-        <div className="h-5 w-24 animate-pulse rounded bg-slate-800" />
-        <div className="h-5 w-16 animate-pulse rounded bg-slate-800" />
+        <div className="h-5 w-24 animate-pulse rounded bg-surface-2" />
+        <div className="h-5 w-16 animate-pulse rounded bg-surface-2" />
       </div>
-      <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-800" />
-      <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-slate-800" />
+      <div className="mt-3 h-4 w-full animate-pulse rounded bg-surface-2" />
+      <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-surface-2" />
     </div>
   );
 }
@@ -534,17 +526,17 @@ function DetailPanel({
   onUseForExportQuote: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
       <div>
         <div className="flex items-center gap-2">
-          <p className="font-mono text-xl font-bold text-amber-300">{detail.code}</p>
+          <p className="font-mono text-xl font-bold text-brand">{detail.code}</p>
           <CopyButton value={detail.code} />
         </div>
-        <p className="mt-1.5 text-sm leading-6 text-slate-300">{detail.description}</p>
+        <p className="mt-1.5 text-sm leading-6 text-ink">{detail.description}</p>
       </div>
 
       <Section title="Hierarchy">
-        <div className="space-y-1 text-sm text-slate-300">
+        <div className="space-y-1 text-sm text-ink">
           <HierRow
             label="Chapter"
             value={detail.hierarchy.chapter_code}
@@ -561,17 +553,17 @@ function DetailPanel({
 
       {detail.import_policy || detail.export_policy || detail.policy_condition ? (
         <Section title="Policy notes">
-          <div className="space-y-1 text-sm text-slate-300">
+          <div className="space-y-1 text-sm text-ink">
             {detail.import_policy ? <p>Import: {detail.import_policy}</p> : null}
             {detail.export_policy ? <p>Export: {detail.export_policy}</p> : null}
             {detail.policy_condition ? (
-              <p className="text-slate-400">{detail.policy_condition}</p>
+              <p className="text-ink-2">{detail.policy_condition}</p>
             ) : null}
           </div>
         </Section>
       ) : null}
 
-      <div className="space-y-2 border-t border-slate-800 pt-4">
+      <div className="space-y-2 border-t border-line pt-4">
         <Button
           className="w-full"
           variant="secondary"
@@ -584,31 +576,28 @@ function DetailPanel({
               ? "Submitting…"
               : "Verify with CHA / customs broker"}
         </Button>
-        <Button
-          className="w-full !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
-          onClick={onUseForIncentives}
-        >
+        <Button className="w-full   " onClick={onUseForIncentives}>
           Use this HSN for Incentive Finder
         </Button>
         <Button className="w-full" variant="secondary" onClick={onUseForExportQuote}>
           Use in Export Quote calculator
         </Button>
         {!detail.incentive_rate_available ? (
-          <p className="text-[11px] leading-5 text-slate-500">
+          <p className="text-[11px] leading-5 text-ink-2">
             HSN exists, but no approved incentive/rate data is available for this code yet.
           </p>
         ) : null}
       </div>
 
-      <p className="text-[11px] leading-5 text-slate-500">{detail.disclaimer}</p>
+      <p className="text-[11px] leading-5 text-ink-2">{detail.disclaimer}</p>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">{title}</p>
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -626,10 +615,10 @@ function HierRow({
   if (!value) return null;
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
-      <span className="font-mono text-slate-200">
+      <span className="text-xs uppercase tracking-wide text-ink-2">{label}</span>
+      <span className="font-mono text-ink">
         {value}
-        {extra ? <span className="ml-2 font-sans text-xs text-slate-500">{extra}</span> : null}
+        {extra ? <span className="ml-2 font-sans text-xs text-ink-2">{extra}</span> : null}
       </span>
     </div>
   );
@@ -637,7 +626,7 @@ function HierRow({
 
 function Pill({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded border border-slate-700 bg-slate-800/50 px-1.5 py-0.5 text-[10px] text-slate-400">
+    <span className="rounded border border-line-strong bg-surface-2 px-1.5 py-0.5 text-[10px] text-ink-2">
       {children}
     </span>
   );
@@ -652,7 +641,7 @@ function CopyButton({ value }: { value: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-amber-400/50 hover:text-amber-200"
+      className="rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-ink-2 transition hover:border-brand hover:text-brand"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -663,15 +652,15 @@ function VerificationChip({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     cross_verified: {
       label: "✓ Cross-verified",
-      cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+      cls: "border-success-border bg-success-bg text-success-fg",
     },
     exists_weak_match: {
       label: "Code exists · weak match",
-      cls: "border-amber-500/40 bg-amber-500/15 text-amber-300",
+      cls: "border-brand bg-brand-soft text-brand",
     },
     unverified: {
       label: "⚠ Unverified by source",
-      cls: "border-rose-500/40 bg-rose-500/15 text-rose-300",
+      cls: "border-danger-border bg-danger-bg text-danger-fg",
     },
   };
   const v = map[status] ?? map.unverified;

@@ -62,7 +62,7 @@ export function ForgotPasswordPage() {
 
             {errorMessage ? (
               <p
-                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm font-medium text-danger-fg"
                 role="alert"
               >
                 {errorMessage}
@@ -72,9 +72,9 @@ export function ForgotPasswordPage() {
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Sending code..." : "Send reset code"}
             </Button>
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-ink-2">
               Remembered it?{" "}
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/login">
+              <Link className="font-medium text-brand hover:text-brand" to="/login">
                 Sign in
               </Link>
             </p>

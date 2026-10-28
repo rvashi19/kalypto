@@ -275,17 +275,17 @@ export function ToolsPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="relative mb-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 px-5 py-6 shadow-2xl shadow-slate-950/20 md:px-8">
+      <section className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-surface px-5 py-6 shadow-2xl  md:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_86%_8%,rgba(20,184,166,0.1),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.35),rgba(2,6,23,0.92))]" />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-200">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand">
               Export assurance workspace
             </p>
-            <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.035em] text-white md:text-5xl">
+            <h1 className="mt-4 max-w-3xl text-2xl font-semibold tracking-tight text-ink md:text-3xl">
               Practical tools for documentation, compliance, incentives, and claims.
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-ink md:text-base">
               Work through the export lifecycle without losing evidence: rate lookup, destination
               requirements, quote calculations, document generation, verification, claim tracking,
               and compliance review.
@@ -308,26 +308,26 @@ export function ToolsPage() {
               onClick={() => setActiveModule(module.id)}
               className={`group w-full rounded-2xl border p-4 text-left transition-all ${
                 activeModule === module.id
-                  ? "border-cyan-300/35 bg-cyan-300/10 shadow-lg shadow-cyan-950/20"
-                  : "border-white/10 bg-slate-900/65 hover:border-white/20 hover:bg-slate-900"
+                  ? "border-brand bg-brand-soft shadow-lg "
+                  : "border-line bg-surface hover:border-line hover:bg-surface"
               }`}
             >
               <div className="flex items-start gap-3">
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${
                     activeModule === module.id
-                      ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-200"
-                      : "border-white/10 bg-slate-950 text-slate-500 group-hover:text-slate-300"
+                      ? "border-brand bg-brand-soft text-brand"
+                      : "border-line bg-surface text-ink-2 group-hover:text-ink"
                   }`}
                 >
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-ink-2">
                     {module.eyebrow}
                   </p>
-                  <h2 className="mt-1 text-sm font-semibold text-slate-100">{module.title}</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">{module.summary}</p>
+                  <h2 className="mt-1 text-sm font-semibold text-ink">{module.title}</h2>
+                  <p className="mt-1 text-xs leading-5 text-ink-2">{module.summary}</p>
                 </div>
               </div>
             </button>
@@ -396,7 +396,7 @@ export function ToolsPage() {
               actionLabel="Verify docs"
               badge={<AiBadge />}
               footer={
-                <p className="text-xs leading-5 text-slate-500">
+                <p className="text-xs leading-5 text-ink-2">
                   AI reports are decision-support. Deterministic reconciliation remains the system
                   of record for claim-risk findings.
                 </p>
@@ -447,10 +447,10 @@ function SignalCard({
   tone: "cyan" | "rose" | "amber" | "emerald";
 }) {
   const toneClass = {
-    cyan: "text-cyan-100 border-cyan-300/20 bg-cyan-300/10",
-    rose: "text-rose-100 border-rose-300/20 bg-rose-300/10",
-    amber: "text-amber-100 border-amber-300/20 bg-amber-300/10",
-    emerald: "text-emerald-100 border-emerald-300/20 bg-emerald-300/10",
+    cyan: "text-brand border-brand bg-brand-soft",
+    rose: "text-danger-fg border-danger-border bg-danger-bg",
+    amber: "text-brand border-brand bg-brand-soft",
+    emerald: "text-success-fg border-success-border bg-success-bg",
   }[tone];
 
   return (
@@ -473,8 +473,8 @@ function PanelFrame({
   children: ReactNode;
 }) {
   return (
-    <Card className="overflow-hidden border-white/10 bg-slate-900/80">
-      <div className="h-px bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent" />
+    <Card className="overflow-hidden border-line bg-surface">
+      <div className="h-px bg-surface from-transparent  to-transparent" />
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-xl tracking-[-0.02em]">{title}</CardTitle>
@@ -490,9 +490,9 @@ function PanelFrame({
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink-2">{label}</span>
       {children}
-      {hint ? <span className="block text-xs text-slate-600">{hint}</span> : null}
+      {hint ? <span className="block text-xs text-ink-3">{hint}</span> : null}
     </label>
   );
 }
@@ -544,25 +544,21 @@ function HsnFinderPanel({
       {error instanceof Error ? <ErrorBox message={error.message} /> : null}
       {result ? (
         <div className="mt-5 grid gap-4 lg:grid-cols-[280px_1fr]">
-          <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-              Finder status
-            </p>
+          <div className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-2">Finder status</p>
             <p
-              className={`mt-3 text-2xl font-black ${result.found ? "text-emerald-300" : "text-amber-300"}`}
+              className={`mt-3 text-2xl font-black ${result.found ? "text-success-fg" : "text-brand"}`}
             >
               {result.found ? "Approved source found" : "No approved source"}
             </p>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              {result.message ?? result.notes}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-ink-2">{result.message ?? result.notes}</p>
             {!result.found ? (
-              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
+              <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-3 text-xs leading-5 text-brand">
                 Import the latest official DGFT/CBIC schedule, keep it as pending, and approve it
                 only after operator review. Client screens never show pending or expired rows.
               </div>
             ) : null}
-            <p className="mt-4 text-xs leading-5 text-amber-300">{result.disclaimer}</p>
+            <p className="mt-4 text-xs leading-5 text-brand">{result.disclaimer}</p>
           </div>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
@@ -589,31 +585,31 @@ function HsnFinderPanel({
                 : null}
             </div>
             {result.rate_evidence?.length ? (
-              <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+              <div className="rounded-2xl border border-line bg-surface p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-2">
                   Source evidence
                 </p>
                 <div className="mt-3 grid gap-3">
                   {result.rate_evidence.map((row) => (
                     <div
                       key={`${row.scheme}-${row.version_stamp}`}
-                      className="rounded-xl bg-white/[0.03] p-3"
+                      className="rounded-xl bg-surface-2 p-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-semibold text-slate-100">
+                        <p className="font-semibold text-ink">
                           {row.scheme} · {row.rate}%
                         </p>
-                        <span className="rounded-full border border-emerald-300/25 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
+                        <span className="rounded-full border border-success-border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-success-fg">
                           {row.review_status}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs leading-5 text-slate-400">
+                      <p className="mt-2 text-xs leading-5 text-ink-2">
                         {row.source} · effective {row.effective_date}
                         {row.expires_at ? ` · expires ${row.expires_at}` : ""}
                       </p>
                       {row.source_url ? (
                         <a
-                          className="mt-2 inline-block text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+                          className="mt-2 inline-block text-xs font-semibold text-brand hover:text-brand"
                           href={row.source_url}
                           target="_blank"
                           rel="noreferrer"
@@ -705,7 +701,7 @@ function ComplianceCheckerPanel({
         </Field>
         <Field label="Extra facts">
           <textarea
-            className="min-h-28 w-full rounded-md border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/60"
+            className="min-h-28 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-brand"
             value={detailsText}
             onChange={(event) =>
               onChange({
@@ -733,14 +729,14 @@ function ComplianceCheckerPanel({
       {error instanceof Error ? <ErrorBox message={error.message} /> : null}
       {result ? (
         <div className="mt-5 space-y-4">
-          <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
+          <div className="rounded-2xl border border-line bg-surface p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-semibold text-slate-100">{result.confidence_level} confidence</p>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-widest text-slate-400">
+              <p className="font-semibold text-ink">{result.confidence_level} confidence</p>
+              <span className="rounded-full border border-line px-3 py-1 text-xs uppercase tracking-widest text-ink-2">
                 {result.status.replaceAll("_", " ")}
               </span>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{result.answer}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-2">{result.answer}</p>
           </div>
           <ResultColumns
             groups={[
@@ -879,7 +875,7 @@ function QuotePanel({
         <Button disabled={isPending || !form.fob_value || !form.hsn_code} onClick={onCalculate}>
           {isPending ? "Calculating..." : "Calculate quote"}
         </Button>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-2">
           Incentives appear only when tenant-verified rates and INR basis exist.
         </p>
       </div>
@@ -901,16 +897,16 @@ function QuotePanel({
               value={formatMoney(result.exporter_net_realization_inr)}
             />
           </div>
-          <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-            <p className="text-sm font-semibold text-slate-100">Calculation trail</p>
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <p className="text-sm font-semibold text-ink">Calculation trail</p>
             <div className="mt-3 space-y-2">
               {result.line_items.map((item) => (
                 <div
                   key={`${item.label}-${item.currency}`}
                   className="flex justify-between gap-3 text-sm"
                 >
-                  <span className="text-slate-500">{item.label}</span>
-                  <span className="font-medium text-slate-200">
+                  <span className="text-ink-2">{item.label}</span>
+                  <span className="font-medium text-ink">
                     {formatMoney(item.amount, item.currency)}
                   </span>
                 </div>
@@ -937,7 +933,7 @@ function QuotePanel({
               <ResultColumns groups={[["Warnings", result.warnings]]} />
             </div>
           )}
-          <p className="text-xs leading-5 text-amber-300 xl:col-span-2">{result.disclaimer}</p>
+          <p className="text-xs leading-5 text-brand xl:col-span-2">{result.disclaimer}</p>
         </div>
       ) : null}
     </PanelFrame>
@@ -969,8 +965,8 @@ function ShipmentActionPanel({
   return (
     <PanelFrame title={title} description={description} badge={badge}>
       {!shipments.length ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/60 p-8 text-center">
-          <p className="text-sm text-slate-500">{emptyText}</p>
+        <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
+          <p className="text-sm text-ink-2">{emptyText}</p>
           <div className="mt-4">{footer}</div>
         </div>
       ) : (
@@ -979,13 +975,13 @@ function ShipmentActionPanel({
             <Link
               key={shipment.id}
               to={`/shipments/${shipment.id}`}
-              className="rounded-2xl border border-white/8 bg-slate-950/60 p-4 transition hover:border-cyan-300/30 hover:bg-cyan-300/5"
+              className="rounded-2xl border border-line bg-surface p-4 transition hover:border-brand hover:bg-brand-soft"
             >
-              <p className="font-semibold text-slate-100">{shipment.product_name}</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="font-semibold text-ink">{shipment.product_name}</p>
+              <p className="mt-1 text-xs text-ink-2">
                 HSN {shipment.hsn_code} / {shipment.destination_country}
               </p>
-              <p className="mt-4 text-sm font-semibold text-cyan-300">{actionLabel} - open</p>
+              <p className="mt-4 text-sm font-semibold text-brand">{actionLabel} - open</p>
             </Link>
           ))}
         </div>
@@ -1020,48 +1016,48 @@ function ClaimsPanel({
         <Metric label="Money at risk" value={formatMoney(discrepancies?.potential_amount ?? 0)} />
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-          <p className="text-sm font-semibold text-slate-100">Recent shipments</p>
+        <div className="rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm font-semibold text-ink">Recent shipments</p>
           <div className="mt-3 space-y-2">
             {shipments.length ? (
               shipments.map((shipment) => (
                 <Link
                   key={shipment.id}
                   to={`/shipments/${shipment.id}`}
-                  className="flex items-center justify-between rounded-xl border border-white/6 px-3 py-2 hover:border-cyan-300/30"
+                  className="flex items-center justify-between rounded-xl border border-line px-3 py-2 hover:border-brand"
                 >
                   <span>
-                    <span className="block text-sm text-slate-200">{shipment.product_name}</span>
-                    <span className="text-xs text-slate-500">{shipment.destination_country}</span>
+                    <span className="block text-sm text-ink">{shipment.product_name}</span>
+                    <span className="text-xs text-ink-2">{shipment.destination_country}</span>
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-ink-2">
                     {formatMoney(shipment.fob_value, shipment.invoice_currency)}
                   </span>
                 </Link>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No shipments yet.</p>
+              <p className="text-sm text-ink-2">No shipments yet.</p>
             )}
           </div>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-          <p className="text-sm font-semibold text-slate-100">Latest findings</p>
+        <div className="rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm font-semibold text-ink">Latest findings</p>
           <div className="mt-3 space-y-2">
             {discrepancies?.items.length ? (
               discrepancies.items.slice(0, 5).map((item) => (
                 <Link
                   key={item.id}
                   to={`/shipments/${item.shipment_id}`}
-                  className="block rounded-xl border border-white/6 px-3 py-2 hover:border-amber-300/30"
+                  className="block rounded-xl border border-line px-3 py-2 hover:border-brand"
                 >
-                  <span className="block text-sm text-slate-200">{item.message}</span>
-                  <span className="mt-1 block text-xs capitalize text-slate-500">
+                  <span className="block text-sm text-ink">{item.message}</span>
+                  <span className="mt-1 block text-xs capitalize text-ink-2">
                     {item.severity} / {item.type.replaceAll("_", " ")}
                   </span>
                 </Link>
               ))
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-2">
                 No persisted findings yet. Run reconciliation on a shipment.
               </p>
             )}
@@ -1126,10 +1122,10 @@ function AlertsPanel({
 }) {
   const coverageCells = coverage?.cells ?? [];
   const statusStyles = {
-    verified: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
-    partial: "border-cyan-300/25 bg-cyan-300/10 text-cyan-200",
-    needs_review: "border-amber-300/25 bg-amber-300/10 text-amber-200",
-    empty: "border-slate-700 bg-slate-950 text-slate-500",
+    verified: "border-success-border bg-success-bg text-success-fg",
+    partial: "border-brand bg-brand-soft text-brand",
+    needs_review: "border-brand bg-brand-soft text-brand",
+    empty: "border-line-strong bg-surface text-ink-2",
   } as const;
 
   return (
@@ -1143,17 +1139,17 @@ function AlertsPanel({
         <Metric label="Lock-risk findings" value={String(lockRisk)} />
       </div>
       {coverage ? (
-        <div className="mt-5 rounded-2xl border border-white/8 bg-slate-950/60 p-4">
+        <div className="mt-5 rounded-2xl border border-line bg-surface p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-100">Compliance coverage matrix</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
+              <p className="text-sm font-semibold text-ink">Compliance coverage matrix</p>
+              <p className="mt-1 text-xs leading-5 text-ink-2">
                 Refresh interval: every {coverage.refresh_interval_days} days / due sources:{" "}
                 {coverage.due_sources_count} / changes needing review:{" "}
                 {coverage.source_changes_needing_review}
               </p>
             </div>
-            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs text-amber-200">
+            <span className="rounded-full border border-brand bg-brand-soft px-3 py-1 text-xs text-brand">
               Review-first data
             </span>
           </div>
@@ -1166,7 +1162,7 @@ function AlertsPanel({
                 <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-75">
                   {cell.status.replaceAll("_", " ")}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
+                <p className="mt-1 text-sm font-semibold text-ink">
                   {cell.country} / {cell.category}
                 </p>
                 <p className="mt-1 text-xs opacity-80">
@@ -1176,21 +1172,21 @@ function AlertsPanel({
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs leading-5 text-slate-600">{coverage.disclaimer}</p>
+          <p className="mt-3 text-xs leading-5 text-ink-3">{coverage.disclaimer}</p>
         </div>
       ) : null}
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-          <p className="text-sm font-semibold text-slate-100">Source refresh queue</p>
+        <div className="rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm font-semibold text-ink">Source refresh queue</p>
           <div className="mt-3 space-y-2">
             {dueSources.length ? (
               dueSources.slice(0, 6).map((source) => (
                 <div
                   key={`${source.source_url}-${source.country}`}
-                  className="rounded-xl border border-white/6 p-3"
+                  className="rounded-xl border border-line p-3"
                 >
-                  <p className="truncate text-sm text-slate-200">{source.source_url}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="truncate text-sm text-ink">{source.source_url}</p>
+                  <p className="mt-1 text-xs text-ink-2">
                     {source.country} / {source.category} / checked{" "}
                     {source.last_checked_at ?? "never"}
                   </p>
@@ -1206,21 +1202,18 @@ function AlertsPanel({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-emerald-300">No sources are due right now.</p>
+              <p className="text-sm text-success-fg">No sources are due right now.</p>
             )}
           </div>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-          <p className="text-sm font-semibold text-slate-100">Change review queue</p>
+        <div className="rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm font-semibold text-ink">Change review queue</p>
           <div className="mt-3 space-y-2">
             {sourceChanges.length ? (
               sourceChanges.slice(0, 6).map((change) => (
-                <div
-                  key={change.id}
-                  className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-3"
-                >
-                  <p className="truncate text-sm text-slate-200">{change.source_url}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                <div key={change.id} className="rounded-xl border border-brand bg-brand-soft p-3">
+                  <p className="truncate text-sm text-ink">{change.source_url}</p>
+                  <p className="mt-1 text-xs text-ink-2">
                     {change.country} / {change.category} /{" "}
                     {new Date(change.created_at).toLocaleString()}
                   </p>
@@ -1252,44 +1245,44 @@ function AlertsPanel({
                   </div>
                   {selectedChangeId === change.id && selectedChangeDetail ? (
                     <div className="mt-3 grid gap-3 text-xs">
-                      <div className="rounded-xl border border-white/8 bg-slate-950/70 p-3">
-                        <p className="font-semibold text-slate-200">
+                      <div className="rounded-xl border border-line bg-surface p-3">
+                        <p className="font-semibold text-ink">
                           Current snapshot: {selectedChangeDetail.current_title}
                         </p>
-                        <p className="mt-1 text-slate-500">
+                        <p className="mt-1 text-ink-2">
                           Scraped{" "}
                           {new Date(selectedChangeDetail.current_scraped_at).toLocaleString()}
                         </p>
-                        <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-slate-300">
+                        <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-surface p-3 text-ink">
                           {selectedChangeDetail.current_markdown_excerpt}
                         </pre>
                       </div>
                       {selectedChangeDetail.previous_markdown_excerpt ? (
-                        <div className="rounded-xl border border-white/8 bg-slate-950/70 p-3">
-                          <p className="font-semibold text-slate-200">
+                        <div className="rounded-xl border border-line bg-surface p-3">
+                          <p className="font-semibold text-ink">
                             Previous snapshot: {selectedChangeDetail.previous_title ?? "Untitled"}
                           </p>
-                          <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-slate-500">
+                          <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-surface p-3 text-ink-2">
                             {selectedChangeDetail.previous_markdown_excerpt}
                           </pre>
                         </div>
                       ) : null}
-                      <p className="text-amber-200">{selectedChangeDetail.excerpt_notice}</p>
+                      <p className="text-brand">{selectedChangeDetail.excerpt_notice}</p>
                     </div>
                   ) : null}
                 </div>
               ))
             ) : (
-              <p className="text-sm text-emerald-300">No scraped changes need review.</p>
+              <p className="text-sm text-success-fg">No scraped changes need review.</p>
             )}
           </div>
         </div>
       </div>
-      <div className="mt-5 rounded-2xl border border-white/8 bg-slate-950/60 p-4">
+      <div className="mt-5 rounded-2xl border border-line bg-surface p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-100">Reviewed evidence ingest</p>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+            <p className="text-sm font-semibold text-ink">Reviewed evidence ingest</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-ink-2">
               Paste reviewed compliance requirement JSON after checking the official source. Use
               `review_status: "approved"` only when a human operator has verified the wording.
             </p>
@@ -1303,7 +1296,7 @@ function AlertsPanel({
           </Button>
         </div>
         <textarea
-          className="mt-4 min-h-48 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 font-mono text-xs leading-5 text-slate-200 outline-none focus:ring-2 focus:ring-cyan-300/50"
+          className="mt-4 min-h-48 w-full rounded-xl border border-line bg-surface px-3 py-3 font-mono text-xs leading-5 text-ink outline-none focus:ring-2 focus:ring-brand"
           value={evidenceJson}
           onChange={(event) => onEvidenceJsonChange(event.target.value)}
           placeholder={`[
@@ -1324,13 +1317,13 @@ function AlertsPanel({
 ]`}
         />
         {ingestResult ? (
-          <p className="mt-3 text-sm text-emerald-300">
+          <p className="mt-3 text-sm text-success-fg">
             Ingested {ingestResult.total} record(s): {ingestResult.created} created,{" "}
             {ingestResult.updated} updated.
           </p>
         ) : null}
         {ingestError instanceof Error ? (
-          <p className="mt-3 text-sm text-rose-300">{ingestError.message}</p>
+          <p className="mt-3 text-sm text-danger-fg">{ingestError.message}</p>
         ) : null}
       </div>
     </PanelFrame>
@@ -1339,9 +1332,9 @@ function AlertsPanel({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">{label}</p>
-      <p className="mt-2 text-xl font-black text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-line bg-surface p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-2">{label}</p>
+      <p className="mt-2 text-xl font-black text-ink">{value}</p>
     </div>
   );
 }
@@ -1350,20 +1343,20 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {groups.map(([title, values]) => (
-        <div key={title} className="rounded-2xl border border-white/8 bg-slate-950/60 p-4">
-          <p className="text-sm font-semibold text-slate-100">{title}</p>
+        <div key={title} className="rounded-2xl border border-line bg-surface p-4">
+          <p className="text-sm font-semibold text-ink">{title}</p>
           <div className="mt-3 space-y-2">
             {values.length ? (
               values.map((value, index) => (
                 <p
                   key={`${title}-${index}`}
-                  className="rounded-xl border border-white/6 bg-slate-900/70 p-3 text-sm leading-6 text-slate-300"
+                  className="rounded-xl border border-line bg-surface p-3 text-sm leading-6 text-ink"
                 >
                   {value}
                 </p>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No items returned.</p>
+              <p className="text-sm text-ink-2">No items returned.</p>
             )}
           </div>
         </div>
@@ -1374,7 +1367,7 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm leading-6 text-rose-100">
+    <div className="mt-4 rounded-2xl border border-danger-border bg-danger-bg p-4 text-sm leading-6 text-danger-fg">
       {message}
     </div>
   );

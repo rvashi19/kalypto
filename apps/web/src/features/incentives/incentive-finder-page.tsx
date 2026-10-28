@@ -17,7 +17,7 @@ const SCHEME_LABEL: Record<string, string> = {
 const SCHEME_ORDER = ["rodtep", "drawback", "rosctl"];
 
 const inputClass =
-  "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20";
+  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-warning-border focus:ring-2 focus:ring-warning-border";
 
 const DISCLAIMER =
   "Incentive/rate information is source-backed but should be verified before filing export documents or claiming benefits.";
@@ -88,16 +88,16 @@ export function IncentiveFinderPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-950 px-6 py-8 text-center md:py-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-300/80">
+      <section className="rounded-3xl border border-line bg-surface   px-6 py-8 text-center md:py-10">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-warning-fg">
           — Export Incentives · RoDTEP · Drawback · RoSCTL —
         </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold tracking-tight text-white md:text-5xl">
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
           Incentive Finder
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-ink-2">
           Look up RoDTEP, Drawback, and RoSCTL rates for any Indian export HSN code.{" "}
-          <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
+          <Link to="/hsn" className="text-warning-fg hover:text-warning-fg">
             Find your HSN code first
           </Link>{" "}
           for best accuracy.
@@ -116,7 +116,7 @@ export function IncentiveFinderPage() {
           <select
             value={scheme}
             onChange={(e) => setScheme(e.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-400/50"
+            className="rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-warning-border"
           >
             <option value="all">All schemes</option>
             <option value="rodtep">RoDTEP</option>
@@ -124,7 +124,7 @@ export function IncentiveFinderPage() {
             <option value="rosctl">RoSCTL</option>
           </select>
           <Button
-            className="shrink-0 !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+            className="shrink-0   "
             disabled={searchMutation.isPending || !hsn.trim()}
             onClick={() => searchMutation.mutate(hsn.trim())}
           >
@@ -136,7 +136,7 @@ export function IncentiveFinderPage() {
           <div className="mt-3">
             <Link
               to={`/calculators/export-quote?hsn_code=${encodeURIComponent(hsn.trim())}`}
-              className="text-xs font-medium text-amber-300 hover:text-amber-200"
+              className="text-xs font-medium text-warning-fg hover:text-warning-fg"
             >
               Calculate landed cost / export quote for this HSN →
             </Link>
@@ -144,7 +144,7 @@ export function IncentiveFinderPage() {
         ) : null}
 
         {isAdmin ? (
-          <label className="mt-3 inline-flex items-center gap-2 text-xs text-slate-400">
+          <label className="mt-3 inline-flex items-center gap-2 text-xs text-ink-2">
             <input
               type="checkbox"
               checked={includeUnapproved}
@@ -158,12 +158,12 @@ export function IncentiveFinderPage() {
         ) : null}
 
         {searchMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
+          <p className="mt-3 text-sm text-danger-fg">{searchMutation.error.message}</p>
         ) : null}
       </section>
 
       {!data && !searchMutation.isPending ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-8 text-center text-sm text-slate-500">
+        <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-sm text-ink-2">
           Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder
           first.
         </div>
@@ -177,9 +177,9 @@ export function IncentiveFinderPage() {
             ) : (
               grouped.map(([key, items]) => (
                 <div key={key}>
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-amber-300">
+                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-warning-fg">
                     {schemeName(key)}
-                    <span className="text-[10px] text-slate-500">{items.length}</span>
+                    <span className="text-[10px] text-ink-2">{items.length}</span>
                   </h2>
                   <div className="space-y-2">
                     {items.map((item) => (
@@ -194,7 +194,7 @@ export function IncentiveFinderPage() {
                 </div>
               ))
             )}
-            <p className="text-[11px] leading-5 text-slate-500">{data.disclaimer}</p>
+            <p className="text-[11px] leading-5 text-ink-2">{data.disclaimer}</p>
           </section>
 
           <aside className="lg:sticky lg:top-4 lg:self-start">
@@ -205,7 +205,7 @@ export function IncentiveFinderPage() {
                 onApprove={() => approveAndRefresh(detailQuery.data.id)}
               />
             ) : (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
                 Select a rate to view full details, validity period, and conditions.
               </div>
             )}
@@ -227,7 +227,7 @@ export function IncentiveFinderPage() {
 
 function EmptyState({ data }: { data: { hsn_exists: boolean; message: string | null } }) {
   return (
-    <div className="rounded-2xl border border-dashed border-amber-300/25 bg-amber-300/5 p-6 text-sm leading-6 text-amber-100">
+    <div className="rounded-2xl border border-dashed border-warning-border bg-warning-bg p-6 text-sm leading-6 text-warning-fg">
       {data.message ??
         (data.hsn_exists
           ? "HSN exists, but no approved incentive/rate data is available for this code."
@@ -250,22 +250,22 @@ function RateCard({
       onClick={onSelect}
       className={`block w-full rounded-xl border p-4 text-left transition ${
         selected
-          ? "border-amber-400/50 bg-amber-400/5 ring-1 ring-amber-400/30"
-          : "border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-900"
+          ? "border-warning-border bg-warning-bg ring-1 ring-warning-border"
+          : "border-line bg-surface hover:border-line-strong hover:bg-surface"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-sm font-semibold text-slate-100">{item.hsn_code}</span>
+          <span className="font-mono text-sm font-semibold text-ink">{item.hsn_code}</span>
           {item.match_level === "prefix" ? (
-            <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+            <span className="rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-ink-2">
               applies at {item.normalized_hsn_code}
             </span>
           ) : null}
         </span>
-        <span className="font-mono text-lg font-bold text-amber-300">{formatRate(item)}</span>
+        <span className="font-mono text-lg font-bold text-warning-fg">{formatRate(item)}</span>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-400 sm:grid-cols-4">
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-ink-2 sm:grid-cols-4">
         <Field
           label="Cap"
           value={
@@ -282,7 +282,7 @@ function RateCard({
         />
       </div>
       {item.condition_text ? (
-        <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
+        <p className="mt-2 text-xs leading-5 text-ink-2">{item.condition_text}</p>
       ) : null}
     </button>
   );
@@ -298,13 +298,13 @@ function DetailPanel({
   onApprove: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warning-fg">
           {schemeName(detail.scheme)}
         </p>
-        <p className="mt-1 font-mono text-2xl font-bold text-amber-300">{formatRate(detail)}</p>
-        <p className="mt-1 text-sm text-slate-300">
+        <p className="mt-1 font-mono text-2xl font-bold text-warning-fg">{formatRate(detail)}</p>
+        <p className="mt-1 text-sm text-ink">
           HSN {detail.hsn_code}
           {detail.product_description ? ` · ${detail.product_description}` : ""}
         </p>
@@ -333,15 +333,15 @@ function DetailPanel({
         </Button>
       ) : null}
 
-      <p className="text-[11px] leading-5 text-slate-500">{DISCLAIMER}</p>
+      <p className="text-[11px] leading-5 text-ink-2">{DISCLAIMER}</p>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">{title}</p>
       <div className="mt-2 space-y-1">{children}</div>
     </div>
   );
@@ -350,8 +350,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
-      <span className="text-right text-slate-200">{value}</span>
+      <span className="text-xs uppercase tracking-wide text-ink-2">{label}</span>
+      <span className="text-right text-ink">{value}</span>
     </div>
   );
 }
@@ -359,8 +359,8 @@ function Row({ label, value }: { label: string; value: string }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="block text-[10px] uppercase tracking-wide text-slate-600">{label}</span>
-      <span className="text-slate-300">{value}</span>
+      <span className="block text-[10px] uppercase tracking-wide text-ink-3">{label}</span>
+      <span className="text-ink">{value}</span>
     </div>
   );
 }

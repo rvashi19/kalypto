@@ -12,7 +12,7 @@ import { useLogout } from "../../lib/use-logout";
 const INCOTERMS = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"];
 
 const inputCls =
-  "w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20";
+  "w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-warning-border focus:ring-2 focus:ring-warning-border";
 
 const ORIGIN_FIELDS: [string, string][] = [
   ["loading_charges", "Loading"],
@@ -151,21 +151,21 @@ export function ExportQuotePage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-950 px-6 py-8 text-center md:py-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-300/80">
+      <section className="rounded-3xl border border-line bg-surface   px-6 py-8 text-center md:py-10">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-warning-fg">
           — Calculator · FOB · CFR · CIF · Landed Cost —
         </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold tracking-tight text-white md:text-5xl">
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
           Landed Cost / Export Quote
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-ink-2">
           Estimate FOB/CFR/CIF, buyer landed cost, and exporter net realization. HSN classification
           comes from{" "}
-          <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
+          <Link to="/hsn" className="text-warning-fg hover:text-warning-fg">
             HSN Finder
           </Link>{" "}
           and approved incentive rates from{" "}
-          <Link to="/incentives" className="text-amber-300 hover:text-amber-200">
+          <Link to="/incentives" className="text-warning-fg hover:text-warning-fg">
             Incentive Finder
           </Link>
           .
@@ -454,7 +454,7 @@ export function ExportQuotePage() {
 
           <div className="flex flex-wrap gap-3">
             <Button
-              className="!bg-amber-400 !text-slate-950 hover:!bg-amber-300"
+              className="  "
               disabled={calcMutation.isPending}
               onClick={() => calcMutation.mutate()}
             >
@@ -468,12 +468,12 @@ export function ExportQuotePage() {
               {saveMutation.isPending ? "Saving…" : "Save quote"}
             </Button>
             {saveMutation.data ? (
-              <span className="self-center text-sm text-emerald-300">
+              <span className="self-center text-sm text-success-fg">
                 Saved {saveMutation.data.quote_number}
               </span>
             ) : null}
             {calcMutation.error instanceof Error ? (
-              <span className="self-center text-sm text-rose-300">
+              <span className="self-center text-sm text-danger-fg">
                 {calcMutation.error.message}
               </span>
             ) : null}
@@ -484,7 +484,7 @@ export function ExportQuotePage() {
           {result ? (
             <Results result={result} ccy={ccy} />
           ) : (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
+            <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
               Enter values and press Calculate to see FOB/CIF, landed cost, and net realization.
             </div>
           )}
@@ -498,9 +498,9 @@ export function ExportQuotePage() {
 function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string }) {
   const inr = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warning-fg">
           {result.named_place_summary}
         </p>
       </div>
@@ -529,15 +529,12 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
       </div>
 
       {result.incentive_breakdown.length ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-line bg-surface p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-2">
             Incentives (on FOB)
           </p>
           {result.incentive_breakdown.map((i, idx) => (
-            <div
-              key={idx}
-              className="mt-1 flex items-center justify-between text-xs text-slate-300"
-            >
+            <div key={idx} className="mt-1 flex items-center justify-between text-xs text-ink">
               <span>
                 {i.scheme.toUpperCase()} {i.rate_percent}% <Badge source={i.source} />
               </span>
@@ -549,12 +546,12 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
 
       <div className="space-y-1">
         {result.warnings.map((w, i) => (
-          <p key={i} className="text-[11px] leading-4 text-amber-300/90">
+          <p key={i} className="text-[11px] leading-4 text-warning-fg">
             ⚠ {w}
           </p>
         ))}
       </div>
-      <p className="text-[11px] leading-4 text-slate-500">{result.disclaimer}</p>
+      <p className="text-[11px] leading-4 text-ink-2">{result.disclaimer}</p>
     </div>
   );
 }
@@ -578,25 +575,23 @@ function SavedQuotes({
   const quotes = quotesQuery.data ?? [];
   if (!quotes.length) return null;
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-        Saved quotes
-      </p>
+    <div className="rounded-2xl border border-line bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">Saved quotes</p>
       <div className="mt-2 space-y-1.5 text-xs">
         {quotes.slice(0, 8).map((q) => (
           <div
             key={q.id}
-            className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 p-2"
+            className="flex items-center justify-between gap-2 rounded-lg border border-line p-2"
           >
             <button
-              className="text-left text-slate-300 hover:text-amber-200"
+              className="text-left text-ink hover:text-warning-fg"
               onClick={() => openMut.mutate(q.id)}
             >
               {q.quote_number} · {q.incoterm} · {q.hsn_code ?? "—"} · ₹
               {q.net_exporter_realization.toLocaleString("en-IN")}
             </button>
             <button
-              className="text-slate-500 hover:text-amber-200"
+              className="text-ink-2 hover:text-warning-fg"
               onClick={() => dupMut.mutate(q.id)}
             >
               Duplicate
@@ -612,7 +607,7 @@ function Badge({ source }: { source: string }) {
   const approved = source === "approved_source_backed";
   return (
     <span
-      className={`ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${approved ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300" : "border-amber-500/40 bg-amber-500/15 text-amber-300"}`}
+      className={`ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${approved ? "border-success-border bg-success-bg text-success-fg" : "border-warning-border bg-warning-bg text-warning-fg"}`}
     >
       {approved ? "approved" : "user"}
     </span>
@@ -621,8 +616,8 @@ function Badge({ source }: { source: string }) {
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-amber-300">
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-warning-fg">
         {title}
       </h2>
       {children}
@@ -637,9 +632,7 @@ function Grid({ children }: { children: ReactNode }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-ink-2">{label}</span>
       {children}
     </label>
   );
@@ -647,13 +640,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Metric({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (
-    <div
-      className={`rounded-lg border border-slate-800 bg-slate-950/40 p-2.5 ${big ? "col-span-2" : ""}`}
-    >
-      <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p
-        className={`mt-0.5 font-semibold ${big ? "text-lg text-amber-300" : "text-sm text-slate-100"}`}
-      >
+    <div className={`rounded-lg border border-line bg-surface p-2.5 ${big ? "col-span-2" : ""}`}>
+      <p className="text-[10px] uppercase tracking-wide text-ink-2">{label}</p>
+      <p className={`mt-0.5 font-semibold ${big ? "text-lg text-warning-fg" : "text-sm text-ink"}`}>
         {value}
       </p>
     </div>
@@ -661,5 +650,5 @@ function Metric({ label, value, big }: { label: string; value: string; big?: boo
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <p className="mt-2 text-[11px] leading-4 text-slate-500">{children}</p>;
+  return <p className="mt-2 text-[11px] leading-4 text-ink-2">{children}</p>;
 }

@@ -228,7 +228,7 @@ export function DocumentVerifierPage() {
           </div>
         ) : (
           <Card>
-            <CardContent className="p-6 text-sm text-red-700">
+            <CardContent className="p-6 text-sm text-danger-fg">
               Verification run was not found.
             </CardContent>
           </Card>
@@ -279,7 +279,7 @@ function RunList({ runs, loading }: { runs: DocumentVerificationRunResponse[]; l
           <Link
             key={run.id}
             to={`/document-verifier/${run.id}`}
-            className="block rounded border border-[#dfe1e6] bg-white p-4 transition hover:border-[#1868db]"
+            className="block rounded border border-[#dfe1e6] bg-surface p-4 transition hover:border-[#1868db]"
           >
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -353,7 +353,7 @@ function UploadPanel({
           type="file"
           accept=".pdf,.xlsx,.csv,.jpg,.jpeg,.png"
           onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
-          className="w-full rounded border border-[#dfe1e6] bg-white p-2 text-sm"
+          className="w-full rounded border border-[#dfe1e6] bg-surface p-2 text-sm"
         />
         {files.length ? (
           <p className="text-xs text-[#42526e]">{files.map((file) => file.name).join(", ")}</p>
@@ -405,7 +405,7 @@ function ActionPanel({
       </CardHeader>
       <CardContent className="space-y-2">
         {needsReverify ? (
-          <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+          <p className="rounded border border-warning-border bg-warning-bg p-2 text-xs text-warning-fg">
             New documents uploaded since the last verification. Extract fields and re-run
             verification to update the score.
           </p>
@@ -433,18 +433,18 @@ function ActionPanel({
 }
 
 const READINESS_STYLES: Record<string, string> = {
-  ready_for_manual_review: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  needs_minor_review: "border-sky-300 bg-sky-50 text-sky-800",
-  needs_corrections: "border-amber-300 bg-amber-50 text-amber-800",
-  high_risk_do_not_file_without_review: "border-red-300 bg-red-50 text-red-800",
-  waiting_for_required_documents: "border-violet-300 bg-violet-50 text-violet-800",
+  ready_for_manual_review: "border-success-border bg-success-bg text-success-fg",
+  needs_minor_review: "border-info-border bg-info-bg text-info-fg",
+  needs_corrections: "border-warning-border bg-warning-bg text-warning-fg",
+  high_risk_do_not_file_without_review: "border-danger-border bg-danger-bg text-danger-fg",
+  waiting_for_required_documents: "border-info-border bg-info-bg text-info-fg",
 };
 
 function scoreColor(score: number): string {
-  if (score >= 90) return "text-emerald-700";
-  if (score >= 75) return "text-sky-700";
-  if (score >= 50) return "text-amber-700";
-  return "text-red-700";
+  if (score >= 90) return "text-success-fg";
+  if (score >= 75) return "text-info-fg";
+  if (score >= 50) return "text-warning-fg";
+  return "text-danger-fg";
 }
 
 function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
@@ -519,14 +519,14 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
           {(["critical", "high", "medium", "low", "info"] as const).map((severity) => (
             <span
               key={severity}
-              className="rounded-full border border-[#dfe1e6] bg-white px-3 py-1 capitalize text-[#42526e]"
+              className="rounded-full border border-[#dfe1e6] bg-surface px-3 py-1 capitalize text-[#42526e]"
             >
               {severity}: {counts[severity] ?? 0}
             </span>
           ))}
         </div>
         {run.score_explanation ? (
-          <p className="rounded border border-[#dfe1e6] bg-white p-3 text-sm text-[#172b4d]">
+          <p className="rounded border border-[#dfe1e6] bg-surface p-3 text-sm text-[#172b4d]">
             {run.score_explanation}
           </p>
         ) : null}
@@ -555,10 +555,10 @@ function ScoreCard({ run }: { run: DocumentVerificationRunResponse }) {
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
-  critical: "bg-red-100 text-red-800",
-  high: "bg-amber-100 text-amber-800",
-  medium: "bg-sky-100 text-sky-800",
-  low: "bg-slate-100 text-slate-700",
+  critical: "bg-danger-bg text-danger-fg",
+  high: "bg-warning-bg text-warning-fg",
+  medium: "bg-info-bg text-info-fg",
+  low: "bg-surface-2 text-ink-3",
 };
 
 function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse }) {
@@ -578,7 +578,7 @@ function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse
       </CardHeader>
       <CardContent className="space-y-2">
         {missing.map((doc) => (
-          <div key={doc.document_type} className="rounded border border-[#dfe1e6] bg-white p-3">
+          <div key={doc.document_type} className="rounded border border-[#dfe1e6] bg-surface p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold text-[#101214]">{doc.label}</p>
               <div className="flex gap-2 text-[10px] font-semibold uppercase tracking-wide">
@@ -590,9 +590,7 @@ function RequestedDocumentsPanel({ run }: { run: DocumentVerificationRunResponse
                 <span className="rounded-full bg-[#f7f8f9] px-2 py-0.5 text-[#42526e]">
                   {doc.required_for}
                 </span>
-                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-800">
-                  missing
-                </span>
+                <span className="rounded-full bg-info-bg px-2 py-0.5 text-info-fg">missing</span>
               </div>
             </div>
             <p className="mt-1 text-sm text-[#42526e]">{doc.reason}</p>
@@ -623,13 +621,13 @@ function DocumentsPanel({ run }: { run: DocumentVerificationRunResponse }) {
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             {run.documents.map((document) => (
-              <div key={document.id} className="rounded border border-[#dfe1e6] bg-white p-3">
+              <div key={document.id} className="rounded border border-[#dfe1e6] bg-surface p-3">
                 <p className="truncate font-semibold text-[#101214]">{document.file_name}</p>
                 <p className="mt-1 text-xs text-[#42526e]">
                   {document.document_type || "not detected"} / {document.extraction_status}
                 </p>
                 {document.extraction_error ? (
-                  <p className="mt-2 text-xs text-amber-700">{document.extraction_error}</p>
+                  <p className="mt-2 text-xs text-warning-fg">{document.extraction_error}</p>
                 ) : null}
               </div>
             ))}
@@ -728,7 +726,7 @@ function IssuesPanel({
               </p>
               <div className="space-y-2">
                 {issues.map((issue) => (
-                  <div key={issue.id} className="rounded border border-[#dfe1e6] bg-white p-3">
+                  <div key={issue.id} className="rounded border border-[#dfe1e6] bg-surface p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-[#101214]">{issue.title}</p>
@@ -765,7 +763,7 @@ function IssuesPanel({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-[#101214]">Evidence: {selectedIssue.title}</p>
-                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-white p-3 text-xs text-[#172b4d]">
+                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-surface p-3 text-xs text-[#172b4d]">
                   {JSON.stringify(
                     selectedIssue.evidence_json ?? selectedIssue.actual_values_json,
                     null,
@@ -803,7 +801,7 @@ function groupFields(run: DocumentVerificationRunResponse | undefined) {
 
 function ErrorBox({ error }: { error: unknown }) {
   return (
-    <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+    <div className="rounded border border-danger-border bg-danger-bg p-3 text-sm text-danger-fg">
       {userMessageForError(error)}
     </div>
   );

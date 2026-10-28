@@ -66,7 +66,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1 text-sm">
-      <span className="text-slate-300">{label}</span>
+      <span className="text-ink">{label}</span>
       <input
         className={inputCls}
         value={value}
@@ -90,7 +90,7 @@ function SelectField({
 }) {
   return (
     <label className="block space-y-1 text-sm">
-      <span className="text-slate-300">{label}</span>
+      <span className="text-ink">{label}</span>
       <select className={selectCls} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o} value={o}>
@@ -106,8 +106,8 @@ function QuestionList({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
-      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-300">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">{title}</p>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-ink">
         {items.map((q) => (
           <li key={q}>{q}</li>
         ))}
@@ -133,7 +133,7 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
   if (result.status === "no_verified_source") {
     return (
       <Card>
-        <CardContent className="py-6 text-sm text-amber-300">
+        <CardContent className="py-6 text-sm text-warning-fg">
           No verified official requirement found in the current knowledge base or official-source
           search.
         </CardContent>
@@ -151,15 +151,15 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             Results will require review before becoming approved guidance.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-slate-300">
+        <CardContent className="space-y-2 text-sm text-ink">
           <p>Status: {job?.status ?? "queued"}</p>
           {job && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-2">
               Pages fetched: {job.pages_fetched} · Snapshots: {job.snapshots_created} · Extracted
               (pending review): {job.requirements_extracted}
             </p>
           )}
-          {job?.message && <p className="text-xs text-slate-500">{job.message}</p>}
+          {job?.message && <p className="text-xs text-ink-2">{job.message}</p>}
           <Button variant="secondary" onClick={() => jobQuery.refetch()}>
             Refresh status
           </Button>
@@ -184,19 +184,14 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             if (!cards.length) return null;
             return (
               <div key={key}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">
-                  {label}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand">{label}</p>
                 <ul className="mt-1 space-y-2">
                   {cards.map((c, i) => (
-                    <li
-                      key={i}
-                      className="rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm"
-                    >
-                      <p className="text-slate-100">{c.detail}</p>
+                    <li key={i} className="rounded-lg border border-line bg-surface p-3 text-sm">
+                      <p className="text-ink">{c.detail}</p>
                       {c.source_url && (
                         <a
-                          className="mt-1 inline-block text-xs text-cyan-300 underline"
+                          className="mt-1 inline-block text-xs text-brand underline"
                           href={c.source_url}
                           target="_blank"
                           rel="noreferrer"
@@ -226,14 +221,14 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             {result.sources.map((s) => (
               <div key={s.source_url}>
                 <a
-                  className="text-cyan-300 underline"
+                  className="text-brand underline"
                   href={s.source_url}
                   target="_blank"
                   rel="noreferrer"
                 >
                   {s.source_name}
                 </a>
-                <span className="ml-2 text-xs text-slate-500">
+                <span className="ml-2 text-xs text-ink-2">
                   {s.last_checked_date ? `last retrieved ${s.last_checked_date}` : "date unknown"}
                 </span>
               </div>
@@ -243,11 +238,11 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
       )}
 
       <Card>
-        <CardContent className="space-y-1 py-4 text-xs text-slate-500">
+        <CardContent className="space-y-1 py-4 text-xs text-ink-2">
           {result.warnings.map((w) => (
             <p key={w}>⚠ {w}</p>
           ))}
-          <p className="pt-1 text-slate-400">{result.disclaimer}</p>
+          <p className="pt-1 text-ink-2">{result.disclaimer}</p>
         </CardContent>
       </Card>
     </div>
@@ -359,19 +354,19 @@ function AdminSourceManager() {
           </Button>
         </div>
         {seedMut.data && (
-          <p className="text-xs text-emerald-300">
+          <p className="text-xs text-success-fg">
             Seeded {seedMut.data.created} new source(s), updated {seedMut.data.updated}, skipped{" "}
             {seedMut.data.skipped}.
           </p>
         )}
         {refreshMut.data && (
-          <p className="text-xs text-emerald-300">
+          <p className="text-xs text-success-fg">
             Ran {refreshMut.data.jobs_run} job(s) - {refreshMut.data.snapshots_created} snapshot(s)
             - {refreshMut.data.requirements_extracted} extracted (pending review).
           </p>
         )}
         {sourceJob && (
-          <div className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 p-3 text-xs text-cyan-100">
+          <div className="rounded-lg border border-brand bg-brand-soft p-3 text-xs text-brand">
             <p className="font-semibold">Latest source refresh: {sourceJob.status}</p>
             <p>
               Fetched {sourceJob.pages_fetched} page/file(s) - checksum{" "}
@@ -381,7 +376,7 @@ function AdminSourceManager() {
               Extracted {sourceJob.requirements_extracted} requirement(s);{" "}
               {sourceJob.pending_review_count} pending review.
             </p>
-            {sourceJob.error_message && <p className="text-red-200">{sourceJob.error_message}</p>}
+            {sourceJob.error_message && <p className="text-danger-fg">{sourceJob.error_message}</p>}
           </div>
         )}
         <div className="grid gap-2 sm:grid-cols-2">
@@ -444,7 +439,7 @@ function AdminSourceManager() {
           onChange={updateAllowedDomains}
         />
         <label className="block space-y-1 text-sm">
-          <span className="text-slate-300">Notes (optional)</span>
+          <span className="text-ink">Notes (optional)</span>
           <textarea
             className={inputCls}
             value={form.notes ?? ""}
@@ -452,7 +447,7 @@ function AdminSourceManager() {
             onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
           />
         </label>
-        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-ink">
           <span>Authority level: official</span>
           <label className="flex items-center gap-2">
             <input
@@ -470,26 +465,26 @@ function AdminSourceManager() {
           {createMut.isPending ? "Adding..." : "Add official source"}
         </Button>
         {createMut.isError && (
-          <p className="text-sm text-red-400">{userMessageForError(createMut.error)}</p>
+          <p className="text-sm text-danger-fg">{userMessageForError(createMut.error)}</p>
         )}
 
         {sources.length > 0 && (
           <div className="space-y-2 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">
               Registered sources
             </p>
             {sources.map((s) => (
               <div
                 key={s.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-xs text-ink-2"
               >
                 <div>
-                  <p className="text-slate-200">
+                  <p className="text-ink">
                     {s.country} - {s.product_categories.join(", ") || "all"} - {s.source_type}
                     {!s.is_active && " - inactive"}
                   </p>
                   <a
-                    className="text-cyan-300 underline"
+                    className="text-brand underline"
                     href={s.base_url}
                     target="_blank"
                     rel="noreferrer"
@@ -546,20 +541,17 @@ function AdminReviewQueue() {
       </CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 && (
-          <p className="text-sm text-slate-500">No pending requirements to review.</p>
+          <p className="text-sm text-ink-2">No pending requirements to review.</p>
         )}
         {items.map((item) => (
-          <div
-            key={item.requirement_id}
-            className="rounded-lg border border-white/10 bg-slate-950/60 p-3"
-          >
-            <p className="text-sm text-slate-100">{item.detail}</p>
-            <p className="mt-1 text-xs text-slate-500">
+          <div key={item.requirement_id} className="rounded-lg border border-line bg-surface p-3">
+            <p className="text-sm text-ink">{item.detail}</p>
+            <p className="mt-1 text-xs text-ink-2">
               {item.country} · {item.category} · {item.requirement_type} · confidence{" "}
               {item.confidence_score}
             </p>
             <a
-              className="text-xs text-cyan-300 underline"
+              className="text-xs text-brand underline"
               href={item.source_url}
               target="_blank"
               rel="noreferrer"
@@ -569,7 +561,7 @@ function AdminReviewQueue() {
             {item.evidence_excerpts.map((ex, i) => (
               <p
                 key={i}
-                className="mt-1 border-l-2 border-slate-700 pl-2 text-xs italic text-slate-400"
+                className="mt-1 border-l-2 border-line-strong pl-2 text-xs italic text-ink-2"
               >
                 {ex}
               </p>
@@ -614,11 +606,11 @@ export function CountryComplianceCheckerPage() {
       onLogout={() => logoutMutation.mutate()}
     >
       <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand">
           Source-backed assistant
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-slate-50">Country Compliance Checker</h2>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500">
+        <h2 className="mt-1 text-xl font-semibold text-ink">Country Compliance Checker</h2>
+        <p className="mt-1 max-w-2xl text-sm text-ink-2">
           Enter your shipment details to see destination-country documents, certificates, labels,
           inspections, licences, restrictions, and buyer/CHA questions — backed by official-source
           evidence only.
@@ -664,7 +656,7 @@ export function CountryComplianceCheckerPage() {
               {mutation.isPending ? "Checking…" : "Check compliance"}
             </Button>
             {mutation.isError && (
-              <p className="text-sm text-red-400">{userMessageForError(mutation.error)}</p>
+              <p className="text-sm text-danger-fg">{userMessageForError(mutation.error)}</p>
             )}
           </CardContent>
         </Card>
@@ -674,7 +666,7 @@ export function CountryComplianceCheckerPage() {
             <ResultView result={mutation.data} />
           ) : (
             <Card>
-              <CardContent className="py-8 text-center text-sm text-slate-500">
+              <CardContent className="py-8 text-center text-sm text-ink-2">
                 No approved compliance requirement found yet. Run a check — official-source
                 retrieval can be started automatically.
               </CardContent>

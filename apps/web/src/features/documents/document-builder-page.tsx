@@ -10,10 +10,10 @@ import { useAuth } from "../../lib/auth";
 // ── Style constants ──────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20";
-const labelCls = "block text-xs font-medium text-slate-400 mb-1";
-const sectionCls = "rounded-xl border border-slate-800 bg-slate-900/60 p-5";
-const headingCls = "text-sm font-semibold text-slate-200 mb-4";
+  "w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand";
+const labelCls = "block text-xs font-medium text-ink-2 mb-1";
+const sectionCls = "rounded-xl border border-line bg-surface p-5";
+const headingCls = "text-sm font-semibold text-ink mb-4";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,14 +253,15 @@ function Field({
   highlight?: boolean;
 }) {
   const cls = highlight
-    ? inputCls.replace("border-slate-700", "border-amber-500/60") + " ring-1 ring-amber-500/30"
+    ? inputCls.replace("border-line-strong", "border-warning-border") +
+      " ring-1 ring-warning-border"
     : inputCls;
   return (
     <div>
       <label className={labelCls}>
         {label}
-        {required && <span className="text-red-400 ml-0.5">*</span>}
-        {highlight && <span className="ml-1 text-amber-400 text-xs">← fill in</span>}
+        {required && <span className="text-danger-fg ml-0.5">*</span>}
+        {highlight && <span className="ml-1 text-warning-fg text-xs">← fill in</span>}
       </label>
       <input
         type={type}
@@ -287,14 +288,14 @@ function SelectField({
   highlight?: boolean;
 }) {
   const cls = highlight
-    ? inputCls.replace("border-slate-700", "border-amber-500/60") +
-      " ring-1 ring-amber-500/30 cursor-pointer"
+    ? inputCls.replace("border-line-strong", "border-warning-border") +
+      " ring-1 ring-warning-border cursor-pointer"
     : inputCls + " cursor-pointer";
   return (
     <div>
       <label className={labelCls}>
         {label}
-        {highlight && <span className="ml-1 text-amber-400 text-xs">← fill in</span>}
+        {highlight && <span className="ml-1 text-warning-fg text-xs">← fill in</span>}
       </label>
       <select className={cls} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
@@ -318,18 +319,18 @@ function ValidationBadges({
       {errors.map((i) => (
         <div
           key={i.code}
-          className="flex gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+          className="flex gap-2 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs text-danger-fg"
         >
-          <span className="shrink-0 font-mono text-red-400">{i.code}</span>
+          <span className="shrink-0 font-mono text-danger-fg">{i.code}</span>
           <span>{i.message}</span>
         </div>
       ))}
       {warnings.map((i) => (
         <div
           key={i.code}
-          className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+          className="flex gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-xs text-warning-fg"
         >
-          <span className="shrink-0 font-mono text-amber-400">{i.code}</span>
+          <span className="shrink-0 font-mono text-warning-fg">{i.code}</span>
           <span>{i.message}</span>
         </div>
       ))}
@@ -377,7 +378,7 @@ function ExtractPanel({
   return (
     <div className={sectionCls + " mb-1"}>
       <p className={headingCls}>Auto-fill from existing document</p>
-      <p className="mb-3 text-xs text-slate-400 leading-relaxed">
+      <p className="mb-3 text-xs text-ink-2 leading-relaxed">
         Upload a previous invoice, Excel sheet, or Word document — we'll extract all information
         automatically and fill in the form. Missing fields will be highlighted in orange.
       </p>
@@ -392,8 +393,8 @@ function ExtractPanel({
         onClick={() => fileRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${
           dragging
-            ? "border-indigo-400 bg-indigo-500/10"
-            : "border-slate-600 bg-slate-800/30 hover:border-indigo-500/60 hover:bg-slate-800/50"
+            ? "border-brand bg-brand-soft"
+            : "border-line-strong bg-surface-2 hover:border-brand hover:bg-surface-2"
         }`}
       >
         <input
@@ -405,21 +406,19 @@ function ExtractPanel({
         />
         {mut.isPending ? (
           <div className="flex flex-col items-center gap-2">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-            <span className="text-xs text-slate-400">Extracting information…</span>
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+            <span className="text-xs text-ink-2">Extracting information…</span>
           </div>
         ) : (
           <>
             <span className="text-2xl">📄</span>
-            <span className="text-sm text-slate-300 font-medium">
-              Drop file here or click to browse
-            </span>
-            <span className="text-xs text-slate-500">PDF, Word, Excel, CSV — up to 20 MB</span>
+            <span className="text-sm text-ink font-medium">Drop file here or click to browse</span>
+            <span className="text-xs text-ink-2">PDF, Word, Excel, CSV — up to 20 MB</span>
           </>
         )}
       </div>
 
-      {mut.error && <p className="mt-2 text-xs text-red-400">{(mut.error as Error).message}</p>}
+      {mut.error && <p className="mt-2 text-xs text-danger-fg">{(mut.error as Error).message}</p>}
     </div>
   );
 }
@@ -466,7 +465,7 @@ function LogoPanel({ token }: { token: string }) {
   return (
     <div className={sectionCls}>
       <p className={headingCls}>Company Logo</p>
-      <p className="mb-3 text-xs text-slate-400 leading-relaxed">
+      <p className="mb-3 text-xs text-ink-2 leading-relaxed">
         Upload once — your logo will appear on all generated documents automatically. PNG or JPG,
         under 2 MB.
       </p>
@@ -476,13 +475,13 @@ function LogoPanel({ token }: { token: string }) {
           <img
             src={previewUrl ?? `${api.getLogoUrl()}?t=${Date.now()}`}
             alt="Company logo"
-            className="h-12 max-w-[120px] rounded border border-slate-700 bg-white object-contain p-1"
+            className="h-12 max-w-[120px] rounded border border-line-strong bg-surface object-contain p-1"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
           <button
-            className="text-xs text-slate-500 hover:text-red-400"
+            className="text-xs text-ink-2 hover:text-danger-fg"
             onClick={() => {
               if (confirm("Remove logo?")) deleteMut.mutate();
             }}
@@ -493,7 +492,7 @@ function LogoPanel({ token }: { token: string }) {
         </div>
       )}
 
-      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-800/40 px-3 py-2.5 text-sm text-slate-400 hover:border-indigo-500/60 hover:text-slate-200 transition-colors">
+      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line-strong bg-surface-2 px-3 py-2.5 text-sm text-ink-2 hover:border-brand hover:text-ink transition-colors">
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -504,7 +503,7 @@ function LogoPanel({ token }: { token: string }) {
       </label>
 
       {uploadMut.error && (
-        <p className="mt-1.5 text-xs text-red-400">{(uploadMut.error as Error).message}</p>
+        <p className="mt-1.5 text-xs text-danger-fg">{(uploadMut.error as Error).message}</p>
       )}
     </div>
   );
@@ -529,25 +528,23 @@ function PacksHistory({ token }: { token: string }) {
   });
 
   if (!packs.length)
-    return (
-      <div className="py-8 text-center text-sm text-slate-500">No saved document packs yet.</div>
-    );
+    return <div className="py-8 text-center text-sm text-ink-2">No saved document packs yet.</div>;
 
   return (
     <div className="space-y-2">
       {packs.map((pack) => (
         <div
           key={pack.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
+          className="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface px-4 py-3"
         >
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-100">
+            <p className="truncate text-sm font-medium text-ink">
               {pack.pack_number ?? pack.id.slice(0, 8)}
               {pack.invoice_number && (
-                <span className="ml-2 text-slate-400">· {pack.invoice_number}</span>
+                <span className="ml-2 text-ink-2">· {pack.invoice_number}</span>
               )}
             </p>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
+            <p className="mt-0.5 truncate text-xs text-ink-2">
               {pack.buyer_name ?? "—"} · {pack.destination_country ?? "—"} · {pack.currency} ·{" "}
               {pack.status}
             </p>
@@ -788,24 +785,24 @@ export function DocumentBuilderPage() {
       <div className="space-y-6">
         {/* Hero */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Document Builder</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Document Builder</h1>
+          <p className="mt-1 text-sm text-ink-2">
             Generate export documents — invoices, packing lists, shipping instructions, and more —
             ready for your CHA and buyer.
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-2">
             All documents are drafts based on your data. Verify with your CHA, bank, buyer, and
             government portals before filing or shipment.
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-xl border border-slate-800 bg-slate-900/40 p-1 w-fit">
+        <div className="flex gap-1 rounded-xl border border-line bg-surface p-1 w-fit">
           {(["build", "history"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${tab === t ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${tab === t ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}
             >
               {t === "build" ? "Build Documents" : "Saved Packs"}
             </button>
@@ -826,8 +823,8 @@ export function DocumentBuilderPage() {
                 <div
                   className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
                     extractBanner.confidence >= 70
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                      : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                      ? "border-success-border bg-success-bg text-success-fg"
+                      : "border-warning-border bg-warning-bg text-warning-fg"
                   }`}
                 >
                   <span className="text-base">{extractBanner.confidence >= 70 ? "✓" : "⚠"}</span>
@@ -1100,13 +1097,13 @@ export function DocumentBuilderPage() {
                   {items.map((row, idx) => (
                     <div
                       key={idx}
-                      className="rounded-lg border border-slate-700/60 bg-slate-800/40 p-3"
+                      className="rounded-lg border border-line-strong bg-surface-2 p-3"
                     >
                       <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-400">Item {idx + 1}</span>
+                        <span className="text-xs font-semibold text-ink-2">Item {idx + 1}</span>
                         {items.length > 1 && (
                           <button
-                            className="text-xs text-slate-500 hover:text-red-400"
+                            className="text-xs text-ink-2 hover:text-danger-fg"
                             onClick={() => setItems((rows) => rows.filter((_, i) => i !== idx))}
                           >
                             Remove
@@ -1275,9 +1272,9 @@ export function DocumentBuilderPage() {
                         type="checkbox"
                         checked={selectedDocs.has(d.id)}
                         onChange={() => toggleDoc(d.id)}
-                        className="h-4 w-4 rounded accent-indigo-500"
+                        className="h-4 w-4 rounded accent-brand"
                       />
-                      <span className="text-sm text-slate-300">{d.label}</span>
+                      <span className="text-sm text-ink">{d.label}</span>
                     </label>
                   ))}
                 </div>
@@ -1302,7 +1299,7 @@ export function DocumentBuilderPage() {
                 {validationResult && (
                   <div className="mt-3 space-y-2">
                     <div
-                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${validationResult.valid ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${validationResult.valid ? "bg-success-bg text-success-fg border border-success-border" : "bg-danger-bg text-danger-fg border border-danger-border"}`}
                     >
                       {validationResult.valid
                         ? "✓ Ready to generate"
@@ -1330,19 +1327,19 @@ export function DocumentBuilderPage() {
               </Button>
 
               {successMsg && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+                <div className="rounded-lg border border-success-border bg-success-bg px-3 py-2 text-xs text-success-fg">
                   {successMsg}
                 </div>
               )}
 
               {generateMut.error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs text-danger-fg">
                   {(generateMut.error as Error).message}
                 </div>
               )}
 
               {/* Disclaimer */}
-              <div className="rounded-lg border border-slate-700/40 bg-slate-800/30 px-3 py-3 text-xs text-slate-500 leading-relaxed">
+              <div className="rounded-lg border border-line-strong bg-surface-2 px-3 py-3 text-xs text-ink-2 leading-relaxed">
                 Generated documents are drafts based on your data. Verify with your CHA/customs
                 broker, bank, buyer, and applicable government portals (ICEGATE, DGFT, CBIC) before
                 filing or shipment.
