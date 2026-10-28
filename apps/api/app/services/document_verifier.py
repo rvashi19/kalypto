@@ -536,6 +536,12 @@ def _chat_json(system: str, user: str) -> dict[str, Any]:
         return _extract_json((repair.choices[0].message.content or "").strip())
 
 
+def _percent(value: Any) -> float:
+    """AI models return confidence as 0-1 or 0-100; store it as 0-100."""
+    score = float(value or 0)
+    return round(score * 100, 2) if 0 < score <= 1 else score
+
+
 def extract_fields_with_ai_or_parser(text: str, file_type: str) -> DocumentExtractionResult:
     if text.strip() and _resolve_provider() is not None:
         try:
@@ -555,7 +561,7 @@ def extract_fields_with_ai_or_parser(text: str, file_type: str) -> DocumentExtra
                         field_label=str(item.get("field_label") or FIELD_LABELS.get(field_key) or field_key),
                         raw_value=str(raw_value) if raw_value is not None else None,
                         normalized_value=str(normalized) if normalized is not None else None,
-                        confidence_score=float(item.get("confidence_score") or 0),
+                        confidence_score=_percent(item.get("confidence_score")),
                         page_number=item.get("page_number"),
                         table_reference=item.get("table_reference"),
                         evidence_excerpt=item.get("evidence_excerpt"),
