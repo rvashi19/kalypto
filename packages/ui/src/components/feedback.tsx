@@ -123,7 +123,15 @@ export interface QueryStateProps {
   children: React.ReactNode;
 }
 
-export function QueryState({ isLoading, isError, error, onRetry, isEmpty, empty, children }: QueryStateProps) {
+export function QueryState({
+  isLoading,
+  isError,
+  error,
+  onRetry,
+  isEmpty,
+  empty,
+  children,
+}: QueryStateProps) {
   if (isLoading) {
     return (
       <div role="status" aria-busy="true" className="space-y-3">
@@ -136,7 +144,11 @@ export function QueryState({ isLoading, isError, error, onRetry, isEmpty, empty,
   }
   if (isError) {
     const message =
-      typeof error === "string" ? error : error instanceof Error ? error.message : "Something went wrong.";
+      typeof error === "string"
+        ? error
+        : error instanceof Error
+          ? error.message
+          : "Something went wrong.";
     return (
       <Alert tone="danger" title="Could not load this data">
         <p>{message}</p>

@@ -10,6 +10,7 @@ the legacy CountryComplianceCheckerService.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -79,7 +80,9 @@ def _missing_questions(payload: ComplianceCheckRequest) -> list[str]:
     return list(dict.fromkeys(questions))[:6]
 
 
-def _confidence(matches: list[RequirementMatch]) -> tuple[str, float]:
+def _confidence(
+    matches: list[RequirementMatch],
+) -> tuple[Literal["High", "Medium", "Low"], float]:
     if not matches:
         return "Low", 0.0
     avg = sum(m.score for m in matches) / len(matches)

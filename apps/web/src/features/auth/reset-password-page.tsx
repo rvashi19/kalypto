@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -125,7 +134,7 @@ export function ResetPasswordPage() {
 
             {errorMessage ? (
               <p
-                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm font-medium text-danger-fg"
                 role="alert"
               >
                 {errorMessage}
@@ -135,9 +144,9 @@ export function ResetPasswordPage() {
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Resetting..." : "Reset password"}
             </Button>
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-ink-2">
               Need a new code?{" "}
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/forgot-password">
+              <Link className="font-medium text-brand hover:text-brand" to="/forgot-password">
                 Send reset code
               </Link>
             </p>

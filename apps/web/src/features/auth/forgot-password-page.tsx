@@ -1,6 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -28,7 +37,9 @@ export function ForgotPasswordPage() {
       <Card>
         <CardHeader>
           <CardTitle>Forgot password</CardTitle>
-          <CardDescription>If an account exists for this email, a reset code has been sent.</CardDescription>
+          <CardDescription>
+            If an account exists for this email, a reset code has been sent.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -40,12 +51,18 @@ export function ForgotPasswordPage() {
           >
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="owner@exportco.in" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="owner@exportco.in"
+                required
+              />
             </div>
 
             {errorMessage ? (
               <p
-                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm font-medium text-danger-fg"
                 role="alert"
               >
                 {errorMessage}
@@ -55,9 +72,9 @@ export function ForgotPasswordPage() {
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Sending code..." : "Send reset code"}
             </Button>
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-ink-2">
               Remembered it?{" "}
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/login">
+              <Link className="font-medium text-brand hover:text-brand" to="/login">
                 Sign in
               </Link>
             </p>

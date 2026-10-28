@@ -52,7 +52,9 @@ export function FileDropzone({
       return;
     }
     if (maxBytes && f.size > maxBytes) {
-      setLocalError(`File is too large. Maximum size is ${(maxBytes / 1024 / 1024).toFixed(1)} MB.`);
+      setLocalError(
+        `File is too large. Maximum size is ${(maxBytes / 1024 / 1024).toFixed(1)} MB.`
+      );
       return;
     }
     setLocalError(undefined);
@@ -75,14 +77,20 @@ export function FileDropzone({
         }}
         className={cn(
           "flex cursor-pointer flex-col items-center gap-1 rounded-card border-2 border-dashed px-4 py-8 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2",
-          dragging ? "border-brand bg-brand-soft" : "border-line-strong bg-surface hover:bg-surface-2",
+          dragging
+            ? "border-brand bg-brand-soft"
+            : "border-line-strong bg-surface hover:bg-surface-2",
           shown && "border-danger-fg",
           disabled && "cursor-not-allowed opacity-50"
         )}
       >
         <span className="font-medium text-ink">{file ? file.name : label}</span>
         <span className="text-xs text-ink-3">
-          {file ? `${(file.size / 1024).toFixed(0)} KB` : [accept, maxBytes && `up to ${(maxBytes / 1024 / 1024).toFixed(0)} MB`].filter(Boolean).join(" · ")}
+          {file
+            ? `${(file.size / 1024).toFixed(0)} KB`
+            : [accept, maxBytes && `up to ${(maxBytes / 1024 / 1024).toFixed(0)} MB`]
+                .filter(Boolean)
+                .join(" · ")}
         </span>
         <input
           id={inputId}
@@ -91,7 +99,9 @@ export function FileDropzone({
           disabled={disabled}
           className="sr-only"
           aria-invalid={shown ? true : undefined}
-          aria-describedby={[describedBy, shown ? errId : undefined].filter(Boolean).join(" ") || undefined}
+          aria-describedby={
+            [describedBy, shown ? errId : undefined].filter(Boolean).join(" ") || undefined
+          }
           onChange={(e) => {
             take(e.target.files?.[0]);
             e.target.value = "";

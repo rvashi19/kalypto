@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -18,7 +27,10 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = window.setInterval(() => setCooldown((current) => Math.max(0, current - 1)), 1000);
+    const timer = window.setInterval(
+      () => setCooldown((current) => Math.max(0, current - 1)),
+      1000
+    );
     return () => window.clearInterval(timer);
   }, [cooldown]);
 
@@ -55,7 +67,8 @@ export function VerifyEmailPage() {
         <CardHeader>
           <CardTitle>Verify your email</CardTitle>
           <CardDescription>
-            {stateMessage ?? "We sent a verification code to your email. Enter it to activate your account."}
+            {stateMessage ??
+              "We sent a verification code to your email. Enter it to activate your account."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -93,7 +106,7 @@ export function VerifyEmailPage() {
 
             {errorMessage ? (
               <p
-                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm font-medium text-danger-fg"
                 role="alert"
               >
                 {errorMessage}
@@ -116,9 +129,9 @@ export function VerifyEmailPage() {
                   ? "Sending..."
                   : "Resend code"}
             </Button>
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-ink-2">
               Already verified?{" "}
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/login">
+              <Link className="font-medium text-brand hover:text-brand" to="/login">
                 Sign in
               </Link>
             </p>

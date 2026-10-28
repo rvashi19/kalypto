@@ -19,6 +19,7 @@ import type { ShipmentCreate, ShipmentMode, ShipmentStage } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 type RequiredField =
   | "product_name"
@@ -85,14 +86,16 @@ function HsnRateCard({
         </div>
       )}
       {data.notes && <p className="mt-1.5 text-xs text-ink-2">{data.notes}</p>}
-      {data.exchange_rate_note && <p className="mt-1 text-xs italic text-ink-3">{data.exchange_rate_note}</p>}
+      {data.exchange_rate_note && (
+        <p className="mt-1 text-xs italic text-ink-3">{data.exchange_rate_note}</p>
+      )}
       <p className="mt-2 text-xs font-medium text-warning-fg">{data.disclaimer}</p>
     </div>
   );
 }
 
 export function NewShipmentPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentCreate>({
@@ -135,12 +138,7 @@ export function NewShipmentPage() {
     onSuccess: (data) => navigate(`/shipments/${data.id}`),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -170,7 +168,12 @@ export function NewShipmentPage() {
             {crumb.label}
           </Link>
         )}
-        meta={<span>Fill in the shipment details. We'll generate a document checklist and run AI verification.</span>}
+        meta={
+          <span>
+            Fill in the shipment details. We'll generate a document checklist and run AI
+            verification.
+          </span>
+        }
       />
 
       <form onSubmit={handleSubmit} noValidate>
@@ -197,7 +200,9 @@ export function NewShipmentPage() {
                   placeholder="e.g. 09042220"
                 />
               </Field>
-              {token ? <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} token={token} /> : null}
+              {token ? (
+                <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} token={token} />
+              ) : null}
             </div>
             <Field label="Exporter name" required error={errorFor("exporter_name")}>
               <Input
@@ -221,9 +226,7 @@ export function NewShipmentPage() {
               <Input
                 type="number"
                 value={form.fob_value ?? ""}
-                onChange={(e) =>
-                  set("fob_value", e.target.value ? Number(e.target.value) : null)
-                }
+                onChange={(e) => set("fob_value", e.target.value ? Number(e.target.value) : null)}
                 placeholder="e.g. 25000"
               />
             </Field>
@@ -260,10 +263,7 @@ export function NewShipmentPage() {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Field label="Incoterm" required>
-              <Select
-                value={form.incoterm}
-                onChange={(e) => set("incoterm", e.target.value)}
-              >
+              <Select value={form.incoterm} onChange={(e) => set("incoterm", e.target.value)}>
                 {["EXW", "FOB", "CFR", "CIF", "DDP", "DAP", "FCA"].map((t) => (
                   <option key={t}>{t}</option>
                 ))}

@@ -17,12 +17,22 @@ export interface StepperProps {
   className?: string;
 }
 
-export function Stepper({ steps, current, onStepClick, label = "Progress", className }: StepperProps) {
-  const index = Math.max(0, steps.findIndex((s) => s.id === current));
+export function Stepper({
+  steps,
+  current,
+  onStepClick,
+  label = "Progress",
+  className,
+}: StepperProps) {
+  const index = Math.max(
+    0,
+    steps.findIndex((s) => s.id === current)
+  );
   return (
     <nav aria-label={label} className={className}>
       <p className="text-sm font-medium text-ink sm:hidden">
-        Step {index + 1} of {steps.length}: <span className="text-ink-2">{steps[index]?.label}</span>
+        Step {index + 1} of {steps.length}:{" "}
+        <span className="text-ink-2">{steps[index]?.label}</span>
       </p>
       <ol className="mt-2 flex gap-1 sm:mt-0 sm:gap-2">
         {steps.map((s, i) => {
@@ -37,7 +47,9 @@ export function Stepper({ steps, current, onStepClick, label = "Progress", class
                 onClick={() => !s.disabled && onStepClick?.(s.id)}
                 className={cn(
                   "flex min-h-11 w-full items-center justify-center gap-2 rounded-control border px-2 py-2 text-left text-sm font-medium sm:justify-start sm:px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
-                  isCurrent ? "border-brand bg-brand-soft text-brand" : "border-line bg-surface text-ink-2",
+                  isCurrent
+                    ? "border-brand bg-brand-soft text-brand"
+                    : "border-line bg-surface text-ink-2",
                   s.disabled && "cursor-not-allowed opacity-50"
                 )}
               >

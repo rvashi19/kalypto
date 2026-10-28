@@ -14,9 +14,7 @@
   --color-taxicab-yellow: #fca700;
   --color-lavender-wash: #eed7fc;
   --color-leaf-green: #36b37e;
-  --shadow-subtle:
-    rgba(9, 30, 66, 0.31) 0 0 1px 0,
-    rgba(9, 30, 66, 0.25) 0 1px 1px 0;
+  --shadow-subtle: rgba(9, 30, 66, 0.31) 0 0 1px 0, rgba(9, 30, 66, 0.25) 0 1px 1px 0;
   --background: 0 0% 100%;
   --foreground: 210 11% 7%;
   --border: 210 6% 89%;
@@ -36,6 +34,11 @@
   --k-brand-soft: #e9f1fd;
   --k-nav: #101214;
   --k-nav-text: #c7ccd4;
+  --k-nav-muted: #8b93a1;
+  --k-nav-line: #2a2d33;
+  --k-nav-line-strong: #3a3f47;
+  --k-nav-hover: #1c1f24;
+  --k-nav-active: #23272e;
   --k-success-fg: #1f7a4d;
   --k-success-bg: #e8f5ee;
   --k-success-border: #b5dec8;
@@ -95,8 +98,7 @@ body {
 }
 
 .atlassian-shell {
-  background:
-    linear-gradient(180deg, #ffffff 0%, #ffffff 42%, #f8f9fb 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 42%, #f8f9fb 100%);
   color: var(--color-midnight-navy);
 }
 

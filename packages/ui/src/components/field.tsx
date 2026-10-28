@@ -41,7 +41,9 @@ export function Field({ label, hint, error, required, className, children }: Fie
           </span>
         )}
       </Label>
-      {typeof children === "function" ? children(controlProps) : React.cloneElement(children, controlProps)}
+      {typeof children === "function"
+        ? children(controlProps)
+        : React.cloneElement(children, controlProps)}
       {hint && (
         <p id={hintId} className="text-xs text-ink-3">
           {hint}

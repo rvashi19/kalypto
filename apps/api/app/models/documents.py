@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy import JSON as SAJSON
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -26,14 +27,14 @@ class DocumentImportSession(Base, UUIDPrimaryKeyMixin):
     file_type: Mapped[str] = mapped_column(String(10), nullable=False)  # xlsx / csv
     sheet_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
-    detected_columns_json: Mapped[list | None] = mapped_column(SAJSON, nullable=True)
-    suggested_mapping_json: Mapped[dict | None] = mapped_column(SAJSON, nullable=True)
-    parsed_preview_json: Mapped[list | None] = mapped_column(SAJSON, nullable=True)
+    detected_columns_json: Mapped[list[Any] | None] = mapped_column(SAJSON, nullable=True)
+    suggested_mapping_json: Mapped[dict[str, Any] | None] = mapped_column(SAJSON, nullable=True)
+    parsed_preview_json: Mapped[list[Any] | None] = mapped_column(SAJSON, nullable=True)
     raw_file_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # uploaded / mapped / validated / expired
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="uploaded")
-    warnings_json: Mapped[list | None] = mapped_column(SAJSON, nullable=True)
+    warnings_json: Mapped[list[Any] | None] = mapped_column(SAJSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), default=lambda: datetime.now(UTC)
@@ -64,9 +65,9 @@ class ExportDocumentPack(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     source_import_session_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
 
-    shipment_data_json: Mapped[dict | None] = mapped_column(SAJSON, nullable=True)
-    validation_warnings_json: Mapped[list | None] = mapped_column(SAJSON, nullable=True)
-    generated_documents_json: Mapped[list | None] = mapped_column(SAJSON, nullable=True)
+    shipment_data_json: Mapped[dict[str, Any] | None] = mapped_column(SAJSON, nullable=True)
+    validation_warnings_json: Mapped[list[Any] | None] = mapped_column(SAJSON, nullable=True)
+    generated_documents_json: Mapped[list[Any] | None] = mapped_column(SAJSON, nullable=True)
 
 
 class GeneratedExportDocument(Base, UUIDPrimaryKeyMixin):

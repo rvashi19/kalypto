@@ -11,8 +11,10 @@ export const buttonVariants = cva(
       variant: {
         primary: "border-brand bg-brand text-[#ffffff] hover:bg-brand-hover active:bg-brand-hover",
         secondary: "border-line-strong bg-surface text-ink hover:bg-surface-2 active:bg-line",
-        ghost: "border-transparent bg-transparent text-brand hover:bg-brand-soft active:bg-brand-soft",
-        danger: "border-danger-fg bg-danger-fg text-[#ffffff] hover:brightness-90 active:brightness-75",
+        ghost:
+          "border-transparent bg-transparent text-brand hover:bg-brand-soft active:bg-brand-soft",
+        danger:
+          "border-danger-fg bg-danger-fg text-[#ffffff] hover:brightness-90 active:brightness-75",
       },
       size: {
         sm: "h-8 px-3",
@@ -27,7 +29,11 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "default";
 type ButtonSize = "sm" | "md" | "default" | "lg";
 
 /** Class string for buttons and for react-router <Link>s that should look like buttons. */
-export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md", className?: string): string {
+export function buttonClasses(
+  variant: ButtonVariant = "primary",
+  size: ButtonSize = "md",
+  className?: string
+): string {
   return cn(
     buttonVariants({
       variant: variant === "default" ? "primary" : variant,

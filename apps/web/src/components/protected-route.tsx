@@ -73,7 +73,10 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   if (sessionQuery.isError) {
     const signOut = () => {
       // Best effort: clear the server cookie, then drop the local session regardless.
-      void api.logout(token).catch(() => undefined).finally(() => setSession(null));
+      void api
+        .logout(token)
+        .catch(() => undefined)
+        .finally(() => setSession(null));
     };
     return (
       <CenteredScreen>
