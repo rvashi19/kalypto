@@ -443,3 +443,47 @@ def test_resolving_issue_and_reverifying_keeps_status_and_improves_score(client)
     issues_after = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/issues").json()
     hsn_after = next(i for i in issues_after if i["field_key"] == "hsn_code")
     assert hsn_after["status"] == "resolved"  # reviewer decision carried across re-verification
+
+
+def test_spreadsheet_label_value_rows_extract_without_separator() -> None:
+    # Excel rows arrive as "Label<TAB>Value" with no colon between the cells.
+    xlsx_text = "\n".join(
+        [
+            "--- SHEET Invoice ---",
+            "Commercial Invoice",
+            "Invoice No\tINV-2026-001",
+            "HSN Code\t090422",
+            "FOB Value\t100000",
+            "Currency\tUSD",
+            "Incoterm\tFOB",
+        ]
+    )
+    keys = {f.field_key for f in verifier_module._heuristic_extract(xlsx_text, "xlsx").fields}
+    assert {"invoice_number", "hsn_code", "fob_value", "currency", "incoterm"} <= keys
+
+    csv_text, _ = verifier_module.extract_document_text(
+        b'Invoice No,INV-9\nCurrency,USD\nFOB Value,"1,00,000"\n', "csv"
+    )
+    csv_fields = {f.field_key: f.raw_value for f in verifier_module._heuristic_extract(csv_text, "csv").fields}
+    assert csv_fields["invoice_number"] == "INV-9"
+    assert csv_fields["currency"] == "USD"
+    assert csv_fields["fob_value"] == "1,00,000"
+
+
+def test_ai_confidence_on_zero_to_one_scale_is_read_as_percent(monkeypatch) -> None:
+    monkeypatch.setattr(verifier_module, "_resolve_provider", lambda: ("groq", "key", None, "model"))
+    monkeypatch.setattr(
+        verifier_module,
+        "_chat_json",
+        lambda _system, _user: {
+            "document_type": "commercial_invoice",
+            "fields": [
+                {"field_key": "hsn_code", "raw_value": "090422", "confidence_score": 1.0},
+                {"field_key": "currency", "raw_value": "USD", "confidence_score": 0.85},
+                {"field_key": "incoterm", "raw_value": "FOB", "confidence_score": 92},
+            ],
+        },
+    )
+    result = verifier_module.extract_fields_with_ai_or_parser("Invoice text", "pdf")
+    scores = {f.field_key: f.confidence_score for f in result.fields}
+    assert scores == {"hsn_code": 100, "currency": 85, "incoterm": 92}
