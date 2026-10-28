@@ -106,12 +106,10 @@ export function DashboardPage() {
       role={role}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="mb-6 overflow-hidden rounded-3xl border border-line bg-surface p-6 shadow-2xl ">
+      <section className="mb-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-card ">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand">
-              Export assurance overview
-            </p>
+            <p className="text-xs font-semibold text-brand">Export assurance overview</p>
             <h1 className="mt-3 max-w-3xl text-2xl font-semibold tracking-tight text-ink md:text-3xl">
               {user?.full_name
                 ? `Welcome back, ${user.full_name.split(" ")[0]}.`
@@ -193,7 +191,7 @@ export function DashboardPage() {
               <p className="text-sm text-ink-2">Loading shipments...</p>
             ) : null}
             {!shipmentsQuery.isLoading && shipments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-line bg-surface py-8 text-center">
+              <div className="rounded-card border border-dashed border-line bg-surface py-8 text-center">
                 <p className="text-sm text-ink-2">No shipments yet.</p>
                 <Link to="/shipments/new">
                   <Button className="mt-4" size="sm">
@@ -208,7 +206,7 @@ export function DashboardPage() {
                   <Link
                     key={shipment.id}
                     to={`/shipments/${shipment.id}`}
-                    className="flex items-center justify-between rounded-2xl border border-line bg-surface px-4 py-3 transition-colors hover:border-brand hover:bg-brand-soft"
+                    className="flex items-center justify-between rounded-card border border-line bg-surface px-4 py-3 transition-colors hover:border-brand hover:bg-brand-soft"
                   >
                     <div>
                       <p className="text-sm font-medium text-ink">{shipment.product_name}</p>
@@ -244,11 +242,11 @@ export function DashboardPage() {
               <Row label="Email" value={user?.email ?? "-"} />
               <Row label="Role" value={role.replaceAll("_", " ")} />
               <Row label="2FA" value={twoFactorEnabled ? "enabled" : "off"} />
-              <div className="rounded-xl border border-line bg-surface p-3">
+              <div className="rounded-panel border border-line bg-surface p-3">
                 {twoFactorSetup ? (
                   <div className="space-y-2">
                     <Label htmlFor="two_factor_code">Authenticator code</Label>
-                    <p className="break-all rounded-lg border border-brand bg-brand-soft px-2 py-1 font-mono text-[11px] text-brand">
+                    <p className="break-all rounded-lg border border-brand bg-brand-soft px-2 py-1 font-mono text-xs text-brand">
                       {twoFactorSetup.secret}
                     </p>
                     <Input
@@ -347,7 +345,7 @@ export function DashboardPage() {
             </div>
             {discrepancyQuery.data?.items.slice(0, 5).map((item) => (
               <Link
-                className="mt-2 block rounded-2xl border border-line bg-surface p-3 transition hover:border-brand"
+                className="mt-2 block rounded-card border border-line bg-surface p-3 transition hover:border-brand"
                 key={item.id}
                 to={`/shipments/${item.shipment_id}`}
               >
@@ -375,7 +373,7 @@ export function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div
-                className={`rounded-xl border px-3 py-2 text-sm ${
+                className={`rounded-panel border px-3 py-2 text-sm ${
                   assistantStatusQuery.data?.configured
                     ? "border-success-border bg-success-bg text-success-fg"
                     : "border-warning-border bg-warning-bg text-warning-fg"
@@ -384,7 +382,7 @@ export function DashboardPage() {
                 {assistantStatusQuery.data?.message ?? "Checking AI helper status..."}
               </div>
               <textarea
-                className="min-h-24 w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-sm text-ink outline-none focus:ring-2 focus:ring-brand"
+                className="min-h-24 w-full rounded-panel border border-line bg-surface px-3.5 py-3 text-sm text-ink outline-none focus:ring-2 focus:ring-brand"
                 value={assistantQuestion}
                 onChange={(event) => setAssistantQuestion(event.target.value)}
               />
@@ -399,12 +397,12 @@ export function DashboardPage() {
                 {assistantMutation.isPending ? "Asking..." : "Ask assistant"}
               </Button>
               {assistantMutation.data ? (
-                <div className="rounded-2xl border border-line bg-surface p-4 text-sm leading-6 text-ink">
+                <div className="rounded-card border border-line bg-surface p-4 text-sm leading-6 text-ink">
                   {assistantMutation.data.answer}
                 </div>
               ) : null}
               {assistantMutation.isError ? (
-                <p className="rounded-xl border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-fg">
+                <p className="rounded-panel border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-fg">
                   {userMessageForError(assistantMutation.error)}
                 </p>
               ) : null}
@@ -426,8 +424,8 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface px-4 py-4 shadow-xl  backdrop-blur">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-2">{label}</p>
+    <div className="rounded-card border border-line bg-surface px-4 py-4 shadow-card  backdrop-blur">
+      <p className="text-xs font-semibold text-ink-2">{label}</p>
       <p className={`mt-2 text-2xl font-semibold tracking-[-0.02em] ${accent}`}>{value}</p>
     </div>
   );
@@ -435,7 +433,7 @@ function StatCard({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-panel border border-line bg-surface px-3 py-2">
       <span className="text-ink-2">{label}</span>
       <span className="truncate font-medium capitalize text-ink">{value}</span>
     </div>

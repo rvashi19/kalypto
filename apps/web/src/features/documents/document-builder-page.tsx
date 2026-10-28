@@ -12,7 +12,7 @@ import { useAuth } from "../../lib/auth";
 const inputCls =
   "w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand";
 const labelCls = "block text-xs font-medium text-ink-2 mb-1";
-const sectionCls = "rounded-xl border border-line bg-surface p-5";
+const sectionCls = "rounded-panel border border-line bg-surface p-5";
 const headingCls = "text-sm font-semibold text-ink mb-4";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ function ExtractPanel({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => fileRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-dashed py-6 text-center transition-colors ${
           dragging
             ? "border-brand bg-brand-soft"
             : "border-line-strong bg-surface-2 hover:border-brand hover:bg-surface-2"
@@ -535,7 +535,7 @@ function PacksHistory({ token }: { token: string }) {
       {packs.map((pack) => (
         <div
           key={pack.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface px-4 py-3"
+          className="flex items-center justify-between gap-4 rounded-panel border border-line bg-surface px-4 py-3"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-ink">
@@ -797,7 +797,7 @@ export function DocumentBuilderPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-xl border border-line bg-surface p-1 w-fit">
+        <div className="flex gap-1 rounded-panel border border-line bg-surface p-1 w-fit">
           {(["build", "history"] as const).map((t) => (
             <button
               key={t}
@@ -821,7 +821,7 @@ export function DocumentBuilderPage() {
               {/* Extraction result banner */}
               {extractBanner && (
                 <div
-                  className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+                  className={`flex items-start gap-3 rounded-panel border px-4 py-3 text-xs leading-relaxed ${
                     extractBanner.confidence >= 70
                       ? "border-success-border bg-success-bg text-success-fg"
                       : "border-warning-border bg-warning-bg text-warning-fg"

@@ -151,8 +151,8 @@ export function ExportQuotePage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-3xl border border-line bg-surface   px-6 py-8 text-center md:py-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-warning-fg">
+      <section className="rounded-card border border-line bg-surface   px-6 py-8 text-center md:py-10">
+        <p className="text-xs font-semibold text-warning-fg">
           — Calculator · FOB · CFR · CIF · Landed Cost —
         </p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
@@ -484,7 +484,7 @@ export function ExportQuotePage() {
           {result ? (
             <Results result={result} ccy={ccy} />
           ) : (
-            <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
+            <div className="rounded-card border border-line bg-surface p-6 text-sm text-ink-2">
               Enter values and press Calculate to see FOB/CIF, landed cost, and net realization.
             </div>
           )}
@@ -498,11 +498,9 @@ export function ExportQuotePage() {
 function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string }) {
   const inr = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
   return (
-    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
+    <div className="space-y-4 rounded-card border border-line bg-surface p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warning-fg">
-          {result.named_place_summary}
-        </p>
+        <p className="text-xs font-semibold text-warning-fg">{result.named_place_summary}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Metric label="Product value" value={inr(result.product_value)} />
@@ -529,10 +527,8 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
       </div>
 
       {result.incentive_breakdown.length ? (
-        <div className="rounded-xl border border-line bg-surface p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-2">
-            Incentives (on FOB)
-          </p>
+        <div className="rounded-panel border border-line bg-surface p-3">
+          <p className="text-xs font-semibold text-ink-2">Incentives (on FOB)</p>
           {result.incentive_breakdown.map((i, idx) => (
             <div key={idx} className="mt-1 flex items-center justify-between text-xs text-ink">
               <span>
@@ -546,12 +542,12 @@ function Results({ result, ccy }: { result: ExportQuoteCalcResponse; ccy: string
 
       <div className="space-y-1">
         {result.warnings.map((w, i) => (
-          <p key={i} className="text-[11px] leading-4 text-warning-fg">
+          <p key={i} className="text-xs leading-4 text-warning-fg">
             ⚠ {w}
           </p>
         ))}
       </div>
-      <p className="text-[11px] leading-4 text-ink-2">{result.disclaimer}</p>
+      <p className="text-xs leading-4 text-ink-2">{result.disclaimer}</p>
     </div>
   );
 }
@@ -575,8 +571,8 @@ function SavedQuotes({
   const quotes = quotesQuery.data ?? [];
   if (!quotes.length) return null;
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">Saved quotes</p>
+    <div className="rounded-card border border-line bg-surface p-4">
+      <p className="text-xs font-semibold text-ink-2">Saved quotes</p>
       <div className="mt-2 space-y-1.5 text-xs">
         {quotes.slice(0, 8).map((q) => (
           <div
@@ -607,7 +603,7 @@ function Badge({ source }: { source: string }) {
   const approved = source === "approved_source_backed";
   return (
     <span
-      className={`ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${approved ? "border-success-border bg-success-bg text-success-fg" : "border-warning-border bg-warning-bg text-warning-fg"}`}
+      className={`ml-1 rounded-full border px-1.5 py-0.5 text-xs font-semibold ${approved ? "border-success-border bg-success-bg text-success-fg" : "border-warning-border bg-warning-bg text-warning-fg"}`}
     >
       {approved ? "approved" : "user"}
     </span>
@@ -616,10 +612,8 @@ function Badge({ source }: { source: string }) {
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-warning-fg">
-        {title}
-      </h2>
+    <section className="rounded-card border border-line bg-surface p-5">
+      <h2 className="mb-3 text-sm font-semibold text-warning-fg">{title}</h2>
       {children}
     </section>
   );
@@ -632,7 +626,7 @@ function Grid({ children }: { children: ReactNode }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-ink-2">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       {children}
     </label>
   );
@@ -641,7 +635,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Metric({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (
     <div className={`rounded-lg border border-line bg-surface p-2.5 ${big ? "col-span-2" : ""}`}>
-      <p className="text-[10px] uppercase tracking-wide text-ink-2">{label}</p>
+      <p className="text-xs text-ink-2">{label}</p>
       <p className={`mt-0.5 font-semibold ${big ? "text-lg text-warning-fg" : "text-sm text-ink"}`}>
         {value}
       </p>
@@ -650,5 +644,5 @@ function Metric({ label, value, big }: { label: string; value: string; big?: boo
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <p className="mt-2 text-[11px] leading-4 text-ink-2">{children}</p>;
+  return <p className="mt-2 text-xs leading-4 text-ink-2">{children}</p>;
 }

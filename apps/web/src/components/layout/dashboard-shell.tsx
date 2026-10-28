@@ -48,9 +48,7 @@ function SidebarContent({ organizationName, role, onLogout, pathname, onNavigate
       <nav aria-label="Main navigation" className="flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-[#8b93a1]">
-              {group.label}
-            </p>
+            <p className="px-3 pb-1 text-xs font-medium uppercase text-[#8b93a1]">{group.label}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = pathname.startsWith(item.href);

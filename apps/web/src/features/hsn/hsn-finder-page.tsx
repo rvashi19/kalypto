@@ -177,7 +177,7 @@ export function HsnFinderPage() {
   let detailPane: ReactNode;
   if (detailMutation.isPending) {
     detailPane = (
-      <div className="rounded-2xl border border-line bg-surface p-6">
+      <div className="rounded-card border border-line bg-surface p-6">
         <div className="h-6 w-32 animate-pulse rounded bg-surface-2" />
         <div className="mt-3 h-4 w-full animate-pulse rounded bg-surface-2" />
         <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-surface-2" />
@@ -202,7 +202,7 @@ export function HsnFinderPage() {
     );
   } else {
     detailPane = (
-      <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
+      <div className="rounded-card border border-line bg-surface p-6 text-sm text-ink-2">
         Select a result to view its hierarchy, code details, and policy notes.
       </div>
     );
@@ -215,8 +215,8 @@ export function HsnFinderPage() {
       onLogout={() => logoutMutation.mutate()}
     >
       {/* Hero — styled after hsn.codes */}
-      <section className="relative overflow-hidden rounded-3xl border border-line bg-surface   px-6 py-10 text-center md:py-14">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-brand">
+      <section className="relative overflow-hidden rounded-card border border-line bg-surface   px-6 py-10 text-center md:py-14">
+        <p className="text-xs font-semibold text-brand">
           — Harmonised System of Nomenclature · India ITC-HS —
         </p>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
@@ -238,7 +238,7 @@ export function HsnFinderPage() {
 
         {/* Search */}
         <div className="mx-auto mt-8 max-w-3xl">
-          <div className="flex items-center gap-2 rounded-2xl border border-line-strong bg-surface p-2 shadow-lg focus-within:border-brand focus-within:ring-2 focus-within:ring-brand">
+          <div className="flex items-center gap-2 rounded-card border border-line-strong bg-surface p-2 shadow-card focus-within:border-brand focus-within:ring-2 focus-within:ring-brand">
             <span className="pl-2 text-ink-2">
               <SearchIcon />
             </span>
@@ -275,7 +275,7 @@ export function HsnFinderPage() {
               <button
                 key={group.label}
                 onClick={() => setChipGroup(i)}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
                   chipGroup === i ? "bg-brand-soft text-brand" : "text-ink-2 hover:text-ink"
                 }`}
               >
@@ -363,11 +363,11 @@ export function HsnFinderPage() {
                 <button
                   key={ch.code}
                   onClick={() => runSearch(ch.code)}
-                  className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-brand hover:bg-surface"
+                  className="rounded-panel border border-line bg-surface p-3 text-left transition hover:border-brand hover:bg-surface"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-sm font-bold text-brand">Ch {ch.code}</span>
-                    <span className="text-[10px] text-ink-2">{ch.count} codes</span>
+                    <span className="text-xs text-ink-2">{ch.count} codes</span>
                   </div>
                   <p className="mt-1 text-xs leading-5 text-ink">{ch.name}</p>
                 </button>
@@ -389,13 +389,13 @@ export function HsnFinderPage() {
           ) : null}
 
           {searchMutation.data && results.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-line-strong bg-surface p-8 text-center text-sm leading-6 text-ink-2">
+            <div className="rounded-card border border-dashed border-line-strong bg-surface p-8 text-center text-sm leading-6 text-ink-2">
               {EMPTY_STATE}
             </div>
           ) : null}
 
           {!hasSearched ? (
-            <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-sm text-ink-2">
+            <div className="rounded-card border border-dashed border-line bg-surface p-10 text-center text-sm text-ink-2">
               Search above to find HSN codes — by product (“basmati rice”) or code (“0910”).
             </div>
           ) : null}
@@ -422,16 +422,14 @@ function Stat({ value, label }: { value: number | undefined; label: string }) {
       <p className="font-mono text-2xl font-bold text-brand md:text-3xl">
         {value == null ? "—" : value.toLocaleString("en-IN")}
       </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-2">
-        {label}
-      </p>
+      <p className="mt-1 text-xs font-semibold text-ink-2">{label}</p>
     </div>
   );
 }
 
 function AiVerdict({ data }: { data: import("@repo/shared").HsnAiClassifyResponse }) {
   return (
-    <div className="mx-auto mt-4 max-w-3xl rounded-xl border border-brand bg-brand-soft p-3 text-left text-sm">
+    <div className="mx-auto mt-4 max-w-3xl rounded-panel border border-brand bg-brand-soft p-3 text-left text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-brand">AI Classification:</span>
         <span className="font-mono text-ink">{data.hsn_code ?? "—"}</span>
@@ -455,7 +453,7 @@ function ResultCard({
   return (
     <button
       onClick={onSelect}
-      className={`block w-full rounded-xl border p-4 text-left transition ${
+      className={`block w-full rounded-panel border p-4 text-left transition ${
         selected
           ? "border-brand bg-brand-soft ring-1 ring-brand"
           : "border-line bg-surface hover:border-line-strong hover:bg-surface"
@@ -463,15 +461,15 @@ function ResultCard({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-lg font-bold tracking-wide text-brand">{item.code}</span>
+          <span className="font-mono text-lg font-bold text-brand">{item.code}</span>
           {item.verified ? (
-            <span className="rounded-full border border-success-border bg-success-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-fg">
+            <span className="rounded-full border border-success-border bg-success-bg px-2 py-0.5 text-xs font-semibold text-success-fg">
               ✓ Verified
             </span>
           ) : null}
         </span>
         <span
-          className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${CONFIDENCE_STYLES[item.confidence_label]}`}
+          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${CONFIDENCE_STYLES[item.confidence_label]}`}
         >
           {item.confidence_label} · {Math.round(item.confidence_score)}
         </span>
@@ -486,7 +484,7 @@ function ResultCard({
           {item.warning_flags.slice(0, 4).map((flag) => (
             <span
               key={flag}
-              className="rounded-md border border-brand bg-brand-soft px-2 py-0.5 text-[10px] text-brand"
+              className="rounded-md border border-brand bg-brand-soft px-2 py-0.5 text-xs text-brand"
             >
               {flag}
             </span>
@@ -499,7 +497,7 @@ function ResultCard({
 
 function ResultSkeleton() {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <div className="rounded-panel border border-line bg-surface p-4">
       <div className="flex justify-between">
         <div className="h-5 w-24 animate-pulse rounded bg-surface-2" />
         <div className="h-5 w-16 animate-pulse rounded bg-surface-2" />
@@ -526,7 +524,7 @@ function DetailPanel({
   onUseForExportQuote: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
+    <div className="space-y-4 rounded-card border border-line bg-surface p-5">
       <div>
         <div className="flex items-center gap-2">
           <p className="font-mono text-xl font-bold text-brand">{detail.code}</p>
@@ -583,21 +581,21 @@ function DetailPanel({
           Use in Export Quote calculator
         </Button>
         {!detail.incentive_rate_available ? (
-          <p className="text-[11px] leading-5 text-ink-2">
+          <p className="text-xs leading-5 text-ink-2">
             HSN exists, but no approved incentive/rate data is available for this code yet.
           </p>
         ) : null}
       </div>
 
-      <p className="text-[11px] leading-5 text-ink-2">{detail.disclaimer}</p>
+      <p className="text-xs leading-5 text-ink-2">{detail.disclaimer}</p>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">{title}</p>
+    <div className="rounded-panel border border-line bg-surface p-4">
+      <p className="text-xs font-semibold text-ink-2">{title}</p>
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -615,7 +613,7 @@ function HierRow({
   if (!value) return null;
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs uppercase tracking-wide text-ink-2">{label}</span>
+      <span className="text-xs text-ink-2">{label}</span>
       <span className="font-mono text-ink">
         {value}
         {extra ? <span className="ml-2 font-sans text-xs text-ink-2">{extra}</span> : null}
@@ -626,7 +624,7 @@ function HierRow({
 
 function Pill({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded border border-line-strong bg-surface-2 px-1.5 py-0.5 text-[10px] text-ink-2">
+    <span className="rounded border border-line-strong bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">
       {children}
     </span>
   );
@@ -641,7 +639,7 @@ function CopyButton({ value }: { value: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      className="rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-ink-2 transition hover:border-brand hover:text-brand"
+      className="rounded border border-line-strong px-1.5 py-0.5 text-xs text-ink-2 transition hover:border-brand hover:text-brand"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -665,9 +663,7 @@ function VerificationChip({ status }: { status: string }) {
   };
   const v = map[status] ?? map.unverified;
   return (
-    <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${v.cls}`}
-    >
+    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${v.cls}`}>
       {v.label}
     </span>
   );

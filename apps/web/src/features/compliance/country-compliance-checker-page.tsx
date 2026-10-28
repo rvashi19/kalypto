@@ -106,7 +106,7 @@ function QuestionList({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">{title}</p>
+      <p className="text-xs font-semibold text-ink-2">{title}</p>
       <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-ink">
         {items.map((q) => (
           <li key={q}>{q}</li>
@@ -184,7 +184,7 @@ function ResultView({ result }: { result: ComplianceCheckResponseV1 }) {
             if (!cards.length) return null;
             return (
               <div key={key}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand">{label}</p>
+                <p className="text-xs font-semibold text-brand">{label}</p>
                 <ul className="mt-1 space-y-2">
                   {cards.map((c, i) => (
                     <li key={i} className="rounded-lg border border-line bg-surface p-3 text-sm">
@@ -470,9 +470,7 @@ function AdminSourceManager() {
 
         {sources.length > 0 && (
           <div className="space-y-2 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">
-              Registered sources
-            </p>
+            <p className="text-xs font-semibold text-ink-2">Registered sources</p>
             {sources.map((s) => (
               <div
                 key={s.id}
@@ -606,9 +604,7 @@ export function CountryComplianceCheckerPage() {
       onLogout={() => logoutMutation.mutate()}
     >
       <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand">
-          Source-backed assistant
-        </p>
+        <p className="text-xs font-semibold text-brand">Source-backed assistant</p>
         <h2 className="mt-1 text-xl font-semibold text-ink">Country Compliance Checker</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-2">
           Enter your shipment details to see destination-country documents, certificates, labels,

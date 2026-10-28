@@ -122,7 +122,7 @@ function formatMoney(value: number | null | undefined, currency = "INR") {
 }
 
 function formatCount(value: number | undefined) {
-  return String(value ?? 0).padStart(2, "0");
+  return String(value ?? 0);
 }
 
 function buildQuotePayload(form: QuoteForm): ExportQuoteRequest {
@@ -275,13 +275,10 @@ export function ToolsPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-surface px-5 py-6 shadow-2xl  md:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_86%_8%,rgba(20,184,166,0.1),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.35),rgba(2,6,23,0.92))]" />
+      <section className="relative mb-6 overflow-hidden rounded-card border border-line bg-surface px-5 py-6 shadow-card  md:px-8">
         <div className="relative grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand">
-              Export assurance workspace
-            </p>
+            <p className="text-xs font-semibold text-brand">Export assurance workspace</p>
             <h1 className="mt-4 max-w-3xl text-2xl font-semibold tracking-tight text-ink md:text-3xl">
               Practical tools for documentation, compliance, incentives, and claims.
             </h1>
@@ -302,30 +299,18 @@ export function ToolsPage() {
 
       <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
         <aside className="space-y-3">
-          {MODULES.map((module, index) => (
+          {MODULES.map((module) => (
             <button
               key={module.id}
               onClick={() => setActiveModule(module.id)}
-              className={`group w-full rounded-2xl border p-4 text-left transition-all ${
+              className={`group w-full rounded-card border p-4 text-left transition-all ${
                 activeModule === module.id
-                  ? "border-brand bg-brand-soft shadow-lg "
+                  ? "border-brand bg-brand-soft shadow-card "
                   : "border-line bg-surface hover:border-line hover:bg-surface"
               }`}
             >
               <div className="flex items-start gap-3">
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${
-                    activeModule === module.id
-                      ? "border-brand bg-brand-soft text-brand"
-                      : "border-line bg-surface text-ink-2 group-hover:text-ink"
-                  }`}
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </span>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-ink-2">
-                    {module.eyebrow}
-                  </p>
                   <h2 className="mt-1 text-sm font-semibold text-ink">{module.title}</h2>
                   <p className="mt-1 text-xs leading-5 text-ink-2">{module.summary}</p>
                 </div>
@@ -447,16 +432,16 @@ function SignalCard({
   tone: "cyan" | "rose" | "amber" | "emerald";
 }) {
   const toneClass = {
-    cyan: "text-brand border-brand bg-brand-soft",
-    rose: "text-danger-fg border-danger-border bg-danger-bg",
-    amber: "text-brand border-brand bg-brand-soft",
-    emerald: "text-success-fg border-success-border bg-success-bg",
+    cyan: "text-brand",
+    rose: "text-danger-fg",
+    amber: "text-warning-fg",
+    emerald: "text-success-fg",
   }[tone];
 
   return (
-    <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] opacity-75">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{value}</p>
+    <div className="rounded-panel border border-line bg-surface px-4 py-3">
+      <p className="text-xs font-medium text-ink-2">{label}</p>
+      <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
     </div>
   );
 }
@@ -490,7 +475,7 @@ function PanelFrame({
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink-2">{label}</span>
+      <span className="text-xs font-bold text-ink-2">{label}</span>
       {children}
       {hint ? <span className="block text-xs text-ink-3">{hint}</span> : null}
     </label>
@@ -544,8 +529,8 @@ function HsnFinderPanel({
       {error instanceof Error ? <ErrorBox message={error.message} /> : null}
       {result ? (
         <div className="mt-5 grid gap-4 lg:grid-cols-[280px_1fr]">
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-2">Finder status</p>
+          <div className="rounded-card border border-line bg-surface p-5">
+            <p className="text-xs font-bold text-ink-2">Finder status</p>
             <p
               className={`mt-3 text-2xl font-black ${result.found ? "text-success-fg" : "text-brand"}`}
             >
@@ -553,7 +538,7 @@ function HsnFinderPanel({
             </p>
             <p className="mt-2 text-sm leading-6 text-ink-2">{result.message ?? result.notes}</p>
             {!result.found ? (
-              <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-3 text-xs leading-5 text-brand">
+              <div className="mt-4 rounded-panel border border-brand bg-brand-soft p-3 text-xs leading-5 text-brand">
                 Import the latest official DGFT/CBIC schedule, keep it as pending, and approve it
                 only after operator review. Client screens never show pending or expired rows.
               </div>
@@ -585,21 +570,19 @@ function HsnFinderPanel({
                 : null}
             </div>
             {result.rate_evidence?.length ? (
-              <div className="rounded-2xl border border-line bg-surface p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-2">
-                  Source evidence
-                </p>
+              <div className="rounded-card border border-line bg-surface p-4">
+                <p className="text-xs font-bold text-ink-2">Source evidence</p>
                 <div className="mt-3 grid gap-3">
                   {result.rate_evidence.map((row) => (
                     <div
                       key={`${row.scheme}-${row.version_stamp}`}
-                      className="rounded-xl bg-surface-2 p-3"
+                      className="rounded-panel bg-surface-2 p-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-semibold text-ink">
                           {row.scheme} · {row.rate}%
                         </p>
-                        <span className="rounded-full border border-success-border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-success-fg">
+                        <span className="rounded-full border border-success-border px-2 py-1 text-xs font-bold text-success-fg">
                           {row.review_status}
                         </span>
                       </div>
@@ -729,10 +712,10 @@ function ComplianceCheckerPanel({
       {error instanceof Error ? <ErrorBox message={error.message} /> : null}
       {result ? (
         <div className="mt-5 space-y-4">
-          <div className="rounded-2xl border border-line bg-surface p-4">
+          <div className="rounded-card border border-line bg-surface p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="font-semibold text-ink">{result.confidence_level} confidence</p>
-              <span className="rounded-full border border-line px-3 py-1 text-xs uppercase tracking-widest text-ink-2">
+              <span className="rounded-full border border-line px-3 py-1 text-xs text-ink-2">
                 {result.status.replaceAll("_", " ")}
               </span>
             </div>
@@ -897,7 +880,7 @@ function QuotePanel({
               value={formatMoney(result.exporter_net_realization_inr)}
             />
           </div>
-          <div className="rounded-2xl border border-line bg-surface p-4">
+          <div className="rounded-card border border-line bg-surface p-4">
             <p className="text-sm font-semibold text-ink">Calculation trail</p>
             <div className="mt-3 space-y-2">
               {result.line_items.map((item) => (
@@ -965,7 +948,7 @@ function ShipmentActionPanel({
   return (
     <PanelFrame title={title} description={description} badge={badge}>
       {!shipments.length ? (
-        <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
+        <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center">
           <p className="text-sm text-ink-2">{emptyText}</p>
           <div className="mt-4">{footer}</div>
         </div>
@@ -975,7 +958,7 @@ function ShipmentActionPanel({
             <Link
               key={shipment.id}
               to={`/shipments/${shipment.id}`}
-              className="rounded-2xl border border-line bg-surface p-4 transition hover:border-brand hover:bg-brand-soft"
+              className="rounded-card border border-line bg-surface p-4 transition hover:border-brand hover:bg-brand-soft"
             >
               <p className="font-semibold text-ink">{shipment.product_name}</p>
               <p className="mt-1 text-xs text-ink-2">
@@ -1016,7 +999,7 @@ function ClaimsPanel({
         <Metric label="Money at risk" value={formatMoney(discrepancies?.potential_amount ?? 0)} />
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-surface p-4">
+        <div className="rounded-card border border-line bg-surface p-4">
           <p className="text-sm font-semibold text-ink">Recent shipments</p>
           <div className="mt-3 space-y-2">
             {shipments.length ? (
@@ -1024,7 +1007,7 @@ function ClaimsPanel({
                 <Link
                   key={shipment.id}
                   to={`/shipments/${shipment.id}`}
-                  className="flex items-center justify-between rounded-xl border border-line px-3 py-2 hover:border-brand"
+                  className="flex items-center justify-between rounded-panel border border-line px-3 py-2 hover:border-brand"
                 >
                   <span>
                     <span className="block text-sm text-ink">{shipment.product_name}</span>
@@ -1040,7 +1023,7 @@ function ClaimsPanel({
             )}
           </div>
         </div>
-        <div className="rounded-2xl border border-line bg-surface p-4">
+        <div className="rounded-card border border-line bg-surface p-4">
           <p className="text-sm font-semibold text-ink">Latest findings</p>
           <div className="mt-3 space-y-2">
             {discrepancies?.items.length ? (
@@ -1048,7 +1031,7 @@ function ClaimsPanel({
                 <Link
                   key={item.id}
                   to={`/shipments/${item.shipment_id}`}
-                  className="block rounded-xl border border-line px-3 py-2 hover:border-brand"
+                  className="block rounded-panel border border-line px-3 py-2 hover:border-brand"
                 >
                   <span className="block text-sm text-ink">{item.message}</span>
                   <span className="mt-1 block text-xs capitalize text-ink-2">
@@ -1139,7 +1122,7 @@ function AlertsPanel({
         <Metric label="Lock-risk findings" value={String(lockRisk)} />
       </div>
       {coverage ? (
-        <div className="mt-5 rounded-2xl border border-line bg-surface p-4">
+        <div className="mt-5 rounded-card border border-line bg-surface p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-ink">Compliance coverage matrix</p>
@@ -1157,11 +1140,9 @@ function AlertsPanel({
             {coverageCells.map((cell) => (
               <div
                 key={`${cell.country}-${cell.category}`}
-                className={`rounded-xl border p-3 ${statusStyles[cell.status]}`}
+                className={`rounded-panel border p-3 ${statusStyles[cell.status]}`}
               >
-                <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-75">
-                  {cell.status.replaceAll("_", " ")}
-                </p>
+                <p className="text-xs font-bold opacity-75">{cell.status.replaceAll("_", " ")}</p>
                 <p className="mt-1 text-sm font-semibold text-ink">
                   {cell.country} / {cell.category}
                 </p>
@@ -1176,14 +1157,14 @@ function AlertsPanel({
         </div>
       ) : null}
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-surface p-4">
+        <div className="rounded-card border border-line bg-surface p-4">
           <p className="text-sm font-semibold text-ink">Source refresh queue</p>
           <div className="mt-3 space-y-2">
             {dueSources.length ? (
               dueSources.slice(0, 6).map((source) => (
                 <div
                   key={`${source.source_url}-${source.country}`}
-                  className="rounded-xl border border-line p-3"
+                  className="rounded-panel border border-line p-3"
                 >
                   <p className="truncate text-sm text-ink">{source.source_url}</p>
                   <p className="mt-1 text-xs text-ink-2">
@@ -1206,12 +1187,15 @@ function AlertsPanel({
             )}
           </div>
         </div>
-        <div className="rounded-2xl border border-line bg-surface p-4">
+        <div className="rounded-card border border-line bg-surface p-4">
           <p className="text-sm font-semibold text-ink">Change review queue</p>
           <div className="mt-3 space-y-2">
             {sourceChanges.length ? (
               sourceChanges.slice(0, 6).map((change) => (
-                <div key={change.id} className="rounded-xl border border-brand bg-brand-soft p-3">
+                <div
+                  key={change.id}
+                  className="rounded-panel border border-brand bg-brand-soft p-3"
+                >
                   <p className="truncate text-sm text-ink">{change.source_url}</p>
                   <p className="mt-1 text-xs text-ink-2">
                     {change.country} / {change.category} /{" "}
@@ -1245,7 +1229,7 @@ function AlertsPanel({
                   </div>
                   {selectedChangeId === change.id && selectedChangeDetail ? (
                     <div className="mt-3 grid gap-3 text-xs">
-                      <div className="rounded-xl border border-line bg-surface p-3">
+                      <div className="rounded-panel border border-line bg-surface p-3">
                         <p className="font-semibold text-ink">
                           Current snapshot: {selectedChangeDetail.current_title}
                         </p>
@@ -1258,7 +1242,7 @@ function AlertsPanel({
                         </pre>
                       </div>
                       {selectedChangeDetail.previous_markdown_excerpt ? (
-                        <div className="rounded-xl border border-line bg-surface p-3">
+                        <div className="rounded-panel border border-line bg-surface p-3">
                           <p className="font-semibold text-ink">
                             Previous snapshot: {selectedChangeDetail.previous_title ?? "Untitled"}
                           </p>
@@ -1278,7 +1262,7 @@ function AlertsPanel({
           </div>
         </div>
       </div>
-      <div className="mt-5 rounded-2xl border border-line bg-surface p-4">
+      <div className="mt-5 rounded-card border border-line bg-surface p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-ink">Reviewed evidence ingest</p>
@@ -1296,7 +1280,7 @@ function AlertsPanel({
           </Button>
         </div>
         <textarea
-          className="mt-4 min-h-48 w-full rounded-xl border border-line bg-surface px-3 py-3 font-mono text-xs leading-5 text-ink outline-none focus:ring-2 focus:ring-brand"
+          className="mt-4 min-h-48 w-full rounded-panel border border-line bg-surface px-3 py-3 font-mono text-xs leading-5 text-ink outline-none focus:ring-2 focus:ring-brand"
           value={evidenceJson}
           onChange={(event) => onEvidenceJsonChange(event.target.value)}
           placeholder={`[
@@ -1332,8 +1316,8 @@ function AlertsPanel({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-2">{label}</p>
+    <div className="rounded-card border border-line bg-surface p-4">
+      <p className="text-xs font-bold text-ink-2">{label}</p>
       <p className="mt-2 text-xl font-black text-ink">{value}</p>
     </div>
   );
@@ -1343,14 +1327,14 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {groups.map(([title, values]) => (
-        <div key={title} className="rounded-2xl border border-line bg-surface p-4">
+        <div key={title} className="rounded-card border border-line bg-surface p-4">
           <p className="text-sm font-semibold text-ink">{title}</p>
           <div className="mt-3 space-y-2">
             {values.length ? (
               values.map((value, index) => (
                 <p
                   key={`${title}-${index}`}
-                  className="rounded-xl border border-line bg-surface p-3 text-sm leading-6 text-ink"
+                  className="rounded-panel border border-line bg-surface p-3 text-sm leading-6 text-ink"
                 >
                   {value}
                 </p>
@@ -1367,7 +1351,7 @@ function ResultColumns({ groups }: { groups: Array<[string, string[]]> }) {
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-4 rounded-2xl border border-danger-border bg-danger-bg p-4 text-sm leading-6 text-danger-fg">
+    <div className="mt-4 rounded-card border border-danger-border bg-danger-bg p-4 text-sm leading-6 text-danger-fg">
       {message}
     </div>
   );

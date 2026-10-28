@@ -17,7 +17,7 @@ const SCHEME_LABEL: Record<string, string> = {
 const SCHEME_ORDER = ["rodtep", "drawback", "rosctl"];
 
 const inputClass =
-  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-warning-border focus:ring-2 focus:ring-warning-border";
+  "w-full rounded-panel border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-2 outline-none transition focus:border-warning-border focus:ring-2 focus:ring-warning-border";
 
 const DISCLAIMER =
   "Incentive/rate information is source-backed but should be verified before filing export documents or claiming benefits.";
@@ -88,8 +88,8 @@ export function IncentiveFinderPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-3xl border border-line bg-surface   px-6 py-8 text-center md:py-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-warning-fg">
+      <section className="rounded-card border border-line bg-surface   px-6 py-8 text-center md:py-10">
+        <p className="text-xs font-semibold text-warning-fg">
           — Export Incentives · RoDTEP · Drawback · RoSCTL —
         </p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
@@ -116,7 +116,7 @@ export function IncentiveFinderPage() {
           <select
             value={scheme}
             onChange={(e) => setScheme(e.target.value)}
-            className="rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-warning-border"
+            className="rounded-panel border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-warning-border"
           >
             <option value="all">All schemes</option>
             <option value="rodtep">RoDTEP</option>
@@ -163,7 +163,7 @@ export function IncentiveFinderPage() {
       </section>
 
       {!data && !searchMutation.isPending ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-sm text-ink-2">
+        <div className="mt-6 rounded-card border border-dashed border-line bg-surface p-8 text-center text-sm text-ink-2">
           Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder
           first.
         </div>
@@ -177,9 +177,9 @@ export function IncentiveFinderPage() {
             ) : (
               grouped.map(([key, items]) => (
                 <div key={key}>
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-warning-fg">
+                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-warning-fg">
                     {schemeName(key)}
-                    <span className="text-[10px] text-ink-2">{items.length}</span>
+                    <span className="text-xs text-ink-2">{items.length}</span>
                   </h2>
                   <div className="space-y-2">
                     {items.map((item) => (
@@ -194,7 +194,7 @@ export function IncentiveFinderPage() {
                 </div>
               ))
             )}
-            <p className="text-[11px] leading-5 text-ink-2">{data.disclaimer}</p>
+            <p className="text-xs leading-5 text-ink-2">{data.disclaimer}</p>
           </section>
 
           <aside className="lg:sticky lg:top-4 lg:self-start">
@@ -205,7 +205,7 @@ export function IncentiveFinderPage() {
                 onApprove={() => approveAndRefresh(detailQuery.data.id)}
               />
             ) : (
-              <div className="rounded-2xl border border-line bg-surface p-6 text-sm text-ink-2">
+              <div className="rounded-card border border-line bg-surface p-6 text-sm text-ink-2">
                 Select a rate to view full details, validity period, and conditions.
               </div>
             )}
@@ -227,7 +227,7 @@ export function IncentiveFinderPage() {
 
 function EmptyState({ data }: { data: { hsn_exists: boolean; message: string | null } }) {
   return (
-    <div className="rounded-2xl border border-dashed border-warning-border bg-warning-bg p-6 text-sm leading-6 text-warning-fg">
+    <div className="rounded-card border border-dashed border-warning-border bg-warning-bg p-6 text-sm leading-6 text-warning-fg">
       {data.message ??
         (data.hsn_exists
           ? "HSN exists, but no approved incentive/rate data is available for this code."
@@ -248,7 +248,7 @@ function RateCard({
   return (
     <button
       onClick={onSelect}
-      className={`block w-full rounded-xl border p-4 text-left transition ${
+      className={`block w-full rounded-panel border p-4 text-left transition ${
         selected
           ? "border-warning-border bg-warning-bg ring-1 ring-warning-border"
           : "border-line bg-surface hover:border-line-strong hover:bg-surface"
@@ -258,7 +258,7 @@ function RateCard({
         <span className="flex items-center gap-2">
           <span className="font-mono text-sm font-semibold text-ink">{item.hsn_code}</span>
           {item.match_level === "prefix" ? (
-            <span className="rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-ink-2">
+            <span className="rounded border border-line-strong px-1.5 py-0.5 text-xs text-ink-2">
               applies at {item.normalized_hsn_code}
             </span>
           ) : null}
@@ -298,11 +298,9 @@ function DetailPanel({
   onApprove: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
+    <div className="space-y-4 rounded-card border border-line bg-surface p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warning-fg">
-          {schemeName(detail.scheme)}
-        </p>
+        <p className="text-xs font-semibold text-warning-fg">{schemeName(detail.scheme)}</p>
         <p className="mt-1 font-mono text-2xl font-bold text-warning-fg">{formatRate(detail)}</p>
         <p className="mt-1 text-sm text-ink">
           HSN {detail.hsn_code}
@@ -333,15 +331,15 @@ function DetailPanel({
         </Button>
       ) : null}
 
-      <p className="text-[11px] leading-5 text-ink-2">{DISCLAIMER}</p>
+      <p className="text-xs leading-5 text-ink-2">{DISCLAIMER}</p>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">{title}</p>
+    <div className="rounded-panel border border-line bg-surface p-4">
+      <p className="text-xs font-semibold text-ink-2">{title}</p>
       <div className="mt-2 space-y-1">{children}</div>
     </div>
   );
@@ -350,7 +348,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-xs uppercase tracking-wide text-ink-2">{label}</span>
+      <span className="text-xs text-ink-2">{label}</span>
       <span className="text-right text-ink">{value}</span>
     </div>
   );
@@ -359,7 +357,7 @@ function Row({ label, value }: { label: string; value: string }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="block text-[10px] uppercase tracking-wide text-ink-3">{label}</span>
+      <span className="block text-xs text-ink-3">{label}</span>
       <span className="text-ink">{value}</span>
     </div>
   );

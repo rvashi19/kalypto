@@ -23,14 +23,10 @@ export function AuthShell({
           <div className="relative z-10 flex h-full flex-col justify-between gap-12">
             <div className="space-y-8">
               <div className="inline-flex items-center rounded-full bg-white/10 px-4 py-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white">
-                  {eyebrow}
-                </span>
+                <span className="text-xs font-semibold uppercase text-white">{eyebrow}</span>
               </div>
               <div className="space-y-5">
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-white/60">
-                  KALYPTO
-                </p>
+                <p className="text-sm font-semibold uppercase text-white/60">KALYPTO</p>
                 <h1 className="font-display max-w-2xl text-4xl font-medium leading-[1.05] tracking-normal text-white md:text-6xl">
                   {title}
                 </h1>
