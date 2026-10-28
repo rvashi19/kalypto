@@ -24,6 +24,14 @@ from app.models.document_verifier import (
     DocumentVerificationRun,
     VerificationDocument,
 )
+from app.services.document_verifier_scoring import (
+    DISCLAIMER as SCORING_DISCLAIMER,
+)
+from app.services.document_verifier_scoring import (
+    SCORING_WEIGHTS,
+    build_requested_documents,
+    calculate_scores,
+)
 from app.services.storage import storage
 
 DOCUMENT_TYPE_LABELS = {
@@ -688,25 +696,29 @@ def _required_document_from_requirement(requirement: ComplianceRequirement) -> s
     return None
 
 
-def _add_required_document_issues(
-    session: Session,
-    run: DocumentVerificationRun,
-    uploaded_types: set[str],
-) -> list[DocumentVerificationIssue]:
+def _ccr_required_document_types(session: Session, run: DocumentVerificationRun) -> set[str]:
+    """Document types that approved CCR requirements indicate may be required."""
     if not run.destination_country:
-        return []
+        return set()
     query = select(ComplianceRequirement).where(
         ComplianceRequirement.tenant_id == run.tenant_id,
         ComplianceRequirement.status == "active",
         ComplianceRequirement.review_status == "approved",
     )
-    requirements = session.scalars(query).all()
-    issues = []
     required_types: set[str] = set()
-    for requirement in requirements:
+    for requirement in session.scalars(query).all():
         required = _required_document_from_requirement(requirement)
         if required:
             required_types.add(required)
+    return required_types
+
+
+def _add_required_document_issues(
+    run: DocumentVerificationRun,
+    required_types: set[str],
+    uploaded_types: set[str],
+) -> list[DocumentVerificationIssue]:
+    issues = []
     for required_type in sorted(required_types - uploaded_types):
         label = DOCUMENT_TYPE_LABELS.get(required_type, required_type)
         issues.append(
@@ -727,6 +739,10 @@ def _add_required_document_issues(
     return issues
 
 
+def _issue_signature(issue: DocumentVerificationIssue) -> tuple[str, str, str, str]:
+    return (issue.issue_type, issue.field_key or "", issue.expected_value or "", issue.title)
+
+
 def verify_run(session: Session, run: DocumentVerificationRun) -> DocumentVerificationReport:
     documents = session.scalars(
         select(VerificationDocument).where(VerificationDocument.verification_run_id == run.id)
@@ -736,6 +752,17 @@ def verify_run(session: Session, run: DocumentVerificationRun) -> DocumentVerifi
     if any(doc.extraction_status != "extracted" for doc in documents):
         raise DocumentVerifierError("All uploaded documents must be extracted before verification.")
 
+    # Re-verification: regenerate the latest issue set, but carry over the reviewer's
+    # resolved/ignored decisions for issues that reappear with the same signature.
+    previous_statuses: dict[tuple[str, str, str, str], str] = {
+        _issue_signature(issue): issue.status
+        for issue in session.scalars(
+            select(DocumentVerificationIssue).where(
+                DocumentVerificationIssue.verification_run_id == run.id
+            )
+        ).all()
+        if issue.status in {"resolved", "ignored"}
+    }
     session.execute(delete(DocumentVerificationIssue).where(DocumentVerificationIssue.verification_run_id == run.id))
     session.execute(delete(DocumentVerificationReport).where(DocumentVerificationReport.verification_run_id == run.id))
 
@@ -789,26 +816,55 @@ def verify_run(session: Session, run: DocumentVerificationRun) -> DocumentVerifi
             )
 
     uploaded_types = {doc.document_type for doc in documents if doc.document_type}
-    issues.extend(_add_required_document_issues(session, run, uploaded_types))
+    ccr_required_types = _ccr_required_document_types(session, run)
+    issues.extend(_add_required_document_issues(run, ccr_required_types, uploaded_types))
 
+    # Carry over resolved/ignored decisions from the previous verification pass.
     for issue in issues:
+        carried = previous_statuses.get(_issue_signature(issue))
+        if carried:
+            issue.status = carried
         session.add(issue)
+
+    requested_documents = build_requested_documents(
+        uploaded_types=uploaded_types,
+        ccr_required_types=ccr_required_types,
+        document_type_labels=DOCUMENT_TYPE_LABELS,
+    )
+    scoring = calculate_scores(
+        issues=issues,
+        requested_documents=requested_documents,
+        extracted_fields=fields,
+        documents_count=len(documents),
+    )
 
     counts = {
         "critical": sum(1 for issue in issues if issue.severity == "critical"),
         "high": sum(1 for issue in issues if issue.severity == "high"),
         "medium": sum(1 for issue in issues if issue.severity == "medium"),
         "low": sum(1 for issue in issues if issue.severity == "low"),
+        "info": sum(1 for issue in issues if issue.severity == "info"),
     }
+    open_issues = sum(1 for issue in issues if issue.status == "open")
+    top_risks = [
+        f"{issue.severity.title()}: {issue.title}"
+        for issue in sorted(
+            (issue for issue in issues if issue.status == "open"),
+            key=lambda i: SCORING_WEIGHTS["issue_severity"].get(i.severity, 0),
+            reverse=True,
+        )[:5]
+    ]
     summary = {
-        "verdict": "Review required" if issues else "Likely consistent",
-        "warning": (
-            "This audit is based on uploaded documents and source-backed KALYPTO data. "
-            "Verify with your CHA/customs broker before filing."
-        ),
+        "verdict": "Review required" if open_issues else "Ready for manual review",
+        "warning": SCORING_DISCLAIMER,
         "documents_checked": len(documents),
         "fields_checked": len(fields),
-        "open_issues": len(issues),
+        "open_issues": open_issues,
+        "issue_counts": counts,
+        "top_risks": top_risks,
+        "scoring": scoring.as_json(),
+        "requested_documents": requested_documents,
+        "last_verified_at": datetime.now(UTC).isoformat(),
     }
     report = DocumentVerificationReport(
         verification_run_id=run.id,
@@ -847,18 +903,67 @@ def generate_report_pdf(
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, title="AI Document Verifier Report")
     styles = getSampleStyleSheet()
+    summary = report.summary_json or {}
+    scoring = summary.get("scoring") or {}
     story: list[Any] = [
         Paragraph("AI Document Verifier Report", styles["Title"]),
-        Paragraph("Review required before filing or claiming.", styles["Normal"]),
+        Paragraph("Pre-filing / pre-claim audit. Review required before filing or claiming.", styles["Normal"]),
         Spacer(1, 12),
         Paragraph(f"Run: {run.title}", styles["Heading2"]),
         Paragraph(f"Reference: {run.reference_number or 'Not provided'}", styles["Normal"]),
         Spacer(1, 12),
-        Paragraph("Summary", styles["Heading2"]),
-        Paragraph(json.dumps(report.summary_json, indent=2), styles["Code"]),
-        Spacer(1, 12),
-        Paragraph("Uploaded Documents", styles["Heading2"]),
     ]
+    if scoring:
+        story.append(Paragraph("Document Verification Score", styles["Heading2"]))
+        story.append(
+            Paragraph(
+                f"Overall: {scoring.get('overall_score')}/100 — {scoring.get('score_label', '')}",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(f"Readiness: {scoring.get('readiness_label', scoring.get('readiness_status', ''))}", styles["Normal"])
+        )
+        score_rows = [["Category", "Score"]]
+        for key, label in (
+            ("document_completeness", "Document Completeness"),
+            ("field_consistency", "Field Consistency"),
+            ("extraction_confidence", "Extraction Confidence"),
+            ("claim_filing_risk", "Claim/Filing Risk"),
+        ):
+            score_rows.append([label, str((scoring.get("score_breakdown") or {}).get(key, "-"))])
+        score_table = Table(score_rows, colWidths=[220, 80], hAlign="LEFT")
+        score_table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.25, colors.grey)]))
+        story.append(score_table)
+        story.append(Spacer(1, 6))
+        story.append(Paragraph(scoring.get("score_explanation", ""), styles["Normal"]))
+        story.append(Spacer(1, 12))
+        requested = summary.get("requested_documents") or []
+        missing = [item for item in requested if item.get("status") == "missing"]
+        if missing:
+            story.append(Paragraph("Documents Needed", styles["Heading2"]))
+            doc_need_rows = [["Document", "Priority", "Why"]]
+            for item in missing:
+                doc_need_rows.append([item.get("label", item.get("document_type", "")), item.get("priority", ""), item.get("reason", "")])
+            need_table = Table(doc_need_rows, colWidths=[130, 55, 275], hAlign="LEFT")
+            need_table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.25, colors.grey), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+            story.append(need_table)
+            story.append(Spacer(1, 12))
+        actions = scoring.get("recommended_next_actions") or []
+        if actions:
+            story.append(Paragraph("Recommended Next Actions", styles["Heading2"]))
+            for action in actions:
+                story.append(Paragraph(f"• {action}", styles["Normal"]))
+            story.append(Spacer(1, 12))
+    story.append(Paragraph("Summary", styles["Heading2"]))
+    story.append(
+        Paragraph(
+            json.dumps({k: v for k, v in summary.items() if k not in {"scoring", "requested_documents"}}, indent=2),
+            styles["Code"],
+        )
+    )
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Uploaded Documents", styles["Heading2"]))
     doc_rows = [["File", "Detected Type", "Status"]]
     for item in documents:
         doc_rows.append([item.file_name, item.document_type or "unknown", item.extraction_status])
@@ -874,5 +979,7 @@ def generate_report_pdf(
         story.append(table)
     else:
         story.append(Paragraph("No major mismatches found. Manual review is still recommended before filing.", styles["Normal"]))
+    story.append(Spacer(1, 16))
+    story.append(Paragraph(SCORING_DISCLAIMER, styles["Italic"]))
     doc.build(story)
     return buffer.getvalue()

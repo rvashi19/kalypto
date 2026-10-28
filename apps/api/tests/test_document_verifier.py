@@ -202,6 +202,10 @@ def test_resolve_ignore_and_report_counts(client) -> None:
     report = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/report")
     assert report.status_code == 200
     assert report.json()["issues_count"] == len(issues)
+    pdf = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/report/pdf")
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content.startswith(b"%PDF")
 
 
 def test_missing_required_document_from_ccr_creates_issue(client, session) -> None:
@@ -241,3 +245,201 @@ def test_missing_required_document_from_ccr_creates_issue(client, session) -> No
     assert verify.status_code == 200
     issues = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/issues").json()
     assert any(issue["issue_type"] == "required_document_missing" for issue in issues)
+
+
+# ── Scoring (checker upgrade) ─────────────────────────────────────────────────
+
+class _Issue:
+    def __init__(self, severity: str = "high", status: str = "open", title: str = "HSN mismatch", issue_type: str = "mismatch") -> None:
+        self.severity = severity
+        self.status = status
+        self.title = title
+        self.issue_type = issue_type
+
+
+class _Field:
+    def __init__(self, field_key: str = "quantity", field_label: str = "Quantity", confidence_score: float = 90) -> None:
+        self.field_key = field_key
+        self.field_label = field_label
+        self.confidence_score = confidence_score
+
+
+def _score(issues=(), requested=(), fields=(), docs=3):
+    from app.services.document_verifier_scoring import calculate_scores
+
+    return calculate_scores(
+        issues=list(issues),
+        requested_documents=list(requested),
+        extracted_fields=list(fields),
+        documents_count=docs,
+    )
+
+
+def test_no_major_issues_gives_high_score() -> None:
+    result = _score(fields=[_Field()])
+    assert result.overall_score >= 90
+    assert result.readiness_status == "ready_for_manual_review"
+    assert "No score reductions" in result.score_explanation
+
+
+def test_each_severity_reduces_score_by_configured_amount() -> None:
+    from app.services.document_verifier_scoring import SCORING_WEIGHTS
+
+    for severity, penalty in SCORING_WEIGHTS["issue_severity"].items():
+        result = _score(issues=[_Issue(severity=severity)])
+        assert result.overall_score == 100 - penalty, severity
+        assert result.field_consistency_score == 100 - penalty
+
+
+def test_score_clamped_between_0_and_100() -> None:
+    result = _score(issues=[_Issue(severity="critical") for _ in range(10)])
+    assert result.overall_score == 0
+    assert result.claim_filing_risk_score == 0
+    high = _score()
+    assert high.overall_score <= 100
+
+
+def test_missing_required_document_reduces_score() -> None:
+    requested = [{"document_type": "packing_list", "label": "Packing List", "priority": "high", "status": "missing", "reason": "Upload the Packing List.", "required_for": "consistency", "related_fields": []}]
+    result = _score(requested=requested)
+    assert result.overall_score == 85
+    assert result.document_completeness_score == 85
+    assert "Packing List is missing" in result.score_explanation
+
+
+def test_low_extraction_confidence_reduces_score() -> None:
+    fields = [_Field(confidence_score=40), _Field(field_key="hsn_code", field_label="HSN / HS Code", confidence_score=50)]
+    result = _score(fields=fields)
+    # important (-5) + critical (-10)
+    assert result.extraction_confidence_score == 85
+    assert result.overall_score == 85
+
+
+def test_resolved_issue_removes_penalty_and_ignored_halves_it() -> None:
+    resolved = _score(issues=[_Issue(status="resolved")])
+    assert resolved.overall_score == 100
+    ignored = _score(issues=[_Issue(status="ignored")])  # high=15 -> half = 7.5 -> round 8
+    assert ignored.overall_score == 92
+    assert any("accepted risk" in p["reason"] for p in ignored.penalty_breakdown)
+
+
+def test_critical_missing_document_sets_waiting_status() -> None:
+    requested = [{"document_type": "shipping_bill", "label": "Shipping Bill", "priority": "critical", "status": "missing", "reason": "Upload the Shipping Bill to verify FOB value.", "required_for": "claim", "related_fields": []}]
+    result = _score(requested=requested)
+    assert result.readiness_status == "waiting_for_required_documents"
+
+
+def test_only_invoice_uploaded_requests_more_documents(client) -> None:
+    test_client, _ = client
+    run_id = _create_run(test_client)
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[("files", ("invoice.csv", _csv_bytes(), "text/csv"))],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    verify = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify")
+    assert verify.status_code == 200
+    body = verify.json()
+    assert body["overall_score"] is not None
+    assert body["requested_documents_missing"] >= 3
+
+    run = test_client.get(f"/api/v1/document-verifier/runs/{run_id}").json()
+    assert run["overall_score"] == body["overall_score"]
+    assert run["readiness_status"] == "waiting_for_required_documents"
+    assert run["score_breakdown"]["document_completeness"] < 100
+    assert run["last_verified_at"]
+    missing_types = {d["document_type"] for d in run["requested_documents"] if d["status"] == "missing"}
+    assert "shipping_bill" in missing_types
+    assert "packing_list" in missing_types
+    uploaded_types = {d["document_type"] for d in run["requested_documents"] if d["status"] == "uploaded"}
+    assert "commercial_invoice" in uploaded_types
+
+
+def test_uploading_requested_document_improves_status_after_reverify(client) -> None:
+    test_client, _ = client
+    run_id = _create_run(test_client)
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[("files", ("invoice.csv", _csv_bytes(), "text/csv"))],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    first = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify").json()
+
+    packing_csv = (
+        b"Document,Packing List\n"
+        b"Invoice No:,INV-1\n"
+        b"HSN:,090422\n"
+        b"Number of Packages:,10\n"
+        b"Net Weight:,100\n"
+        b"Gross Weight:,110\n"
+    )
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[("files", ("packing-list.csv", packing_csv, "text/csv"))],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    second = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify").json()
+
+    assert second["requested_documents_missing"] < first["requested_documents_missing"]
+    run = test_client.get(f"/api/v1/document-verifier/runs/{run_id}").json()
+    packing = next(d for d in run["requested_documents"] if d["document_type"] == "packing_list")
+    assert packing["status"] == "uploaded"
+    assert second["overall_score"] >= first["overall_score"]
+
+
+def test_report_includes_score_breakdown_and_requested_documents(client) -> None:
+    test_client, _ = client
+    run_id = _create_run(test_client)
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[("files", ("invoice.csv", _csv_bytes(), "text/csv"))],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify")
+    report = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/report").json()
+    summary = report["summary_json"]
+    assert summary["scoring"]["overall_score"] is not None
+    assert set(summary["scoring"]["score_breakdown"]) == {
+        "document_completeness", "field_consistency", "extraction_confidence", "claim_filing_risk",
+    }
+    assert summary["scoring"]["recommended_next_actions"]
+    assert summary["requested_documents"]
+    assert "issue_counts" in summary
+    assert "CHA/customs broker" in summary["scoring"]["disclaimer"]
+
+
+def test_pdf_report_includes_score_and_requested_documents(client) -> None:
+    test_client, _ = client
+    run_id = _create_run(test_client)
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[("files", ("invoice.csv", _csv_bytes(), "text/csv"))],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify")
+    pdf = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/report/pdf")
+    assert pdf.status_code == 200
+    assert pdf.content.startswith(b"%PDF")
+
+
+def test_resolving_issue_and_reverifying_keeps_status_and_improves_score(client) -> None:
+    test_client, _ = client
+    run_id = _create_run(test_client)
+    test_client.post(
+        f"/api/v1/document-verifier/runs/{run_id}/documents",
+        files=[
+            ("files", ("invoice.csv", _csv_bytes(hsn="090422"), "text/csv")),
+            ("files", ("packing.csv", _csv_bytes(hsn="090421"), "text/csv")),
+        ],
+    )
+    test_client.post(f"/api/v1/document-verifier/runs/{run_id}/extract")
+    first = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify").json()
+    issues = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/issues").json()
+    hsn_issue = next(i for i in issues if i["field_key"] == "hsn_code")
+    test_client.post(f"/api/v1/document-verifier/issues/{hsn_issue['id']}/resolve")
+
+    second = test_client.post(f"/api/v1/document-verifier/runs/{run_id}/verify").json()
+    assert second["overall_score"] > first["overall_score"]
+    issues_after = test_client.get(f"/api/v1/document-verifier/runs/{run_id}/issues").json()
+    hsn_after = next(i for i in issues_after if i["field_key"] == "hsn_code")
+    assert hsn_after["status"] == "resolved"  # reviewer decision carried across re-verification

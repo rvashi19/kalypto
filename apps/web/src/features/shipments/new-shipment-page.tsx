@@ -1,12 +1,25 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  buttonClasses,
+} from "@repo/ui";
 import type { ShipmentCreate, ShipmentMode, ShipmentStage } from "@repo/shared";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
-import { api } from "../../lib/api";
+import { api, userMessageForError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import { inputCls, selectCls, FieldError } from "../../lib/ui";
+import { useLogout } from "../../lib/use-logout";
 
 type RequiredField =
   | "product_name"
@@ -27,26 +40,6 @@ function getErrors(form: ShipmentCreate): Partial<Record<RequiredField, string>>
   return e;
 }
 
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
-        {label}
-        {required && <span className="ml-1 text-rose-400">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 function HsnRateCard({
   hsn,
   fobValue,
@@ -64,53 +57,45 @@ function HsnRateCard({
   });
 
   if (!hsn || hsn.length < 4) return null;
-  if (isLoading) return <p className="mt-1.5 text-xs text-slate-500">Looking up HSN rates...</p>;
+  if (isLoading) return <p className="text-xs text-ink-3">Looking up HSN rates...</p>;
   if (!data) return null;
-  if (!data.found) return <p className="mt-1.5 text-xs text-slate-500">{data.message}</p>;
+  if (!data.found) return <p className="text-xs text-ink-3">{data.message}</p>;
 
   return (
-    <div className="mt-2 rounded-lg border border-sky-500/20 bg-sky-500/8 px-4 py-3">
-      <p className="text-xs font-semibold text-sky-300">{data.description}</p>
-      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+    <div className="rounded-panel border border-info-border bg-info-bg px-4 py-3">
+      <p className="text-sm font-semibold text-ink">{data.description}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
         {data.duty_drawback_rate != null && data.duty_drawback_rate > 0 && (
-          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-300">
-            Duty Drawback {data.duty_drawback_rate}%
-          </span>
+          <Badge tone="success">Duty Drawback {data.duty_drawback_rate}%</Badge>
         )}
         {data.rodtep_rate != null && data.rodtep_rate > 0 && (
-          <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-0.5 text-cyan-100">
-            RoDTEP {data.rodtep_rate}%
-          </span>
+          <Badge tone="info">RoDTEP {data.rodtep_rate}%</Badge>
         )}
         {data.rosctl_rate != null && data.rosctl_rate > 0 && (
-          <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-0.5 text-violet-300">
-            RoSCTL {data.rosctl_rate}%
-          </span>
+          <Badge tone="neutral">RoSCTL {data.rosctl_rate}%</Badge>
         )}
       </div>
       {data.estimated_amounts_inr && (
-        <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-300">
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-ink-2">
           {Object.entries(data.estimated_amounts_inr).map(([scheme, amount]) => (
             <span key={scheme}>
               Est. {scheme.replace("_", " ")}:{" "}
-              <span className="font-semibold text-emerald-400">
-                INR {amount.toLocaleString("en-IN")}
-              </span>
+              <span className="font-semibold text-ink">INR {amount.toLocaleString("en-IN")}</span>
             </span>
           ))}
         </div>
       )}
-      {data.notes && <p className="mt-1.5 text-xs text-slate-500">{data.notes}</p>}
+      {data.notes && <p className="mt-1.5 text-xs text-ink-2">{data.notes}</p>}
       {data.exchange_rate_note && (
-        <p className="mt-1 text-xs italic text-slate-600">{data.exchange_rate_note}</p>
+        <p className="mt-1 text-xs italic text-ink-3">{data.exchange_rate_note}</p>
       )}
-      <p className="mt-2 text-xs font-medium text-amber-300">{data.disclaimer}</p>
+      <p className="mt-2 text-xs font-medium text-warning-fg">{data.disclaimer}</p>
     </div>
   );
 }
 
 export function NewShipmentPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentCreate>({
@@ -153,17 +138,17 @@ export function NewShipmentPage() {
     onSuccess: (data) => navigate(`/shipments/${data.id}`),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (hasErrors) {
       setShowAllErrors(true);
+      const form = e.currentTarget as HTMLFormElement;
+      // Wait for the error render so aria-invalid is set before focusing.
+      requestAnimationFrame(() =>
+        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      );
       return;
     }
     mutation.mutate();
@@ -175,19 +160,21 @@ export function NewShipmentPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <div className="mb-5">
-        <button
-          onClick={() => navigate("/shipments")}
-          className="text-sm text-slate-500 hover:text-slate-300"
-        >
-          Back to shipments
-        </button>
-        <h2 className="mt-2 text-xl font-semibold text-slate-50">New Shipment Profile</h2>
-        <p className="mt-0.5 text-sm text-slate-400">
-          Fill in the shipment details. We'll generate a document checklist and run AI
-          verification.
-        </p>
-      </div>
+      <PageHeader
+        title="New Shipment Profile"
+        breadcrumbs={[{ label: "Shipments", href: "/shipments" }, { label: "New shipment" }]}
+        renderLink={(crumb, className) => (
+          <Link to={crumb.href!} className={className}>
+            {crumb.label}
+          </Link>
+        )}
+        meta={
+          <span>
+            Fill in the shipment details. We'll generate a document checklist and run AI
+            verification.
+          </span>
+        }
+      />
 
       <form onSubmit={handleSubmit} noValidate>
         <Card className="mb-4">
@@ -195,58 +182,51 @@ export function NewShipmentPage() {
             <CardTitle>Product & Classification</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <Field label="Product name" required>
-              <input
-                className={inputCls}
+            <Field label="Product name" required error={errorFor("product_name")}>
+              <Input
                 value={form.product_name}
                 onChange={(e) => set("product_name", e.target.value)}
                 onBlur={() => touch("product_name")}
                 placeholder="e.g. Dried Red Chillies"
               />
-              <FieldError message={errorFor("product_name")} />
             </Field>
-            <Field label="HSN Code" required>
-              <input
-                className={inputCls}
-                value={form.hsn_code}
-                onChange={(e) => set("hsn_code", e.target.value)}
-                onBlur={() => touch("hsn_code")}
-                placeholder="e.g. 09042220"
-              />
-              <FieldError message={errorFor("hsn_code")} />
-                {token ? (
-                  <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} token={token} />
-                ) : null}
-            </Field>
-            <Field label="Exporter name" required>
-              <input
-                className={inputCls}
+            <div className="space-y-2">
+              <Field label="HSN Code" required error={errorFor("hsn_code")}>
+                <Input
+                  className="font-mono"
+                  value={form.hsn_code}
+                  onChange={(e) => set("hsn_code", e.target.value)}
+                  onBlur={() => touch("hsn_code")}
+                  placeholder="e.g. 09042220"
+                />
+              </Field>
+              {token ? (
+                <HsnRateCard hsn={form.hsn_code} fobValue={form.fob_value} token={token} />
+              ) : null}
+            </div>
+            <Field label="Exporter name" required error={errorFor("exporter_name")}>
+              <Input
                 value={form.exporter_name}
                 onChange={(e) => set("exporter_name", e.target.value)}
                 onBlur={() => touch("exporter_name")}
                 placeholder="Your company name"
               />
-              <FieldError message={errorFor("exporter_name")} />
             </Field>
             <Field label="Invoice currency" required>
-              <select
-                className={selectCls}
+              <Select
                 value={form.invoice_currency}
                 onChange={(e) => set("invoice_currency", e.target.value)}
               >
                 {["USD", "EUR", "GBP", "AED", "SGD", "INR"].map((c) => (
                   <option key={c}>{c}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="FOB value">
-              <input
-                className={inputCls}
+              <Input
                 type="number"
                 value={form.fob_value ?? ""}
-                onChange={(e) =>
-                  set("fob_value", e.target.value ? Number(e.target.value) : null)
-                }
+                onChange={(e) => set("fob_value", e.target.value ? Number(e.target.value) : null)}
                 placeholder="e.g. 25000"
               />
             </Field>
@@ -258,25 +238,21 @@ export function NewShipmentPage() {
             <CardTitle>Destination & Buyer</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <Field label="Destination country" required>
-              <input
-                className={inputCls}
+            <Field label="Destination country" required error={errorFor("destination_country")}>
+              <Input
                 value={form.destination_country}
                 onChange={(e) => set("destination_country", e.target.value)}
                 onBlur={() => touch("destination_country")}
                 placeholder="e.g. United States"
               />
-              <FieldError message={errorFor("destination_country")} />
             </Field>
-            <Field label="Buyer country" required>
-              <input
-                className={inputCls}
+            <Field label="Buyer country" required error={errorFor("buyer_country")}>
+              <Input
                 value={form.buyer_country}
                 onChange={(e) => set("buyer_country", e.target.value)}
                 onBlur={() => touch("buyer_country")}
                 placeholder="e.g. United States"
               />
-              <FieldError message={errorFor("buyer_country")} />
             </Field>
           </CardContent>
         </Card>
@@ -287,41 +263,33 @@ export function NewShipmentPage() {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Field label="Incoterm" required>
-              <select
-                className={selectCls}
-                value={form.incoterm}
-                onChange={(e) => set("incoterm", e.target.value)}
-              >
+              <Select value={form.incoterm} onChange={(e) => set("incoterm", e.target.value)}>
                 {["EXW", "FOB", "CFR", "CIF", "DDP", "DAP", "FCA"].map((t) => (
                   <option key={t}>{t}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
-            <Field label="Payment term" required>
-              <input
-                className={inputCls}
+            <Field label="Payment term" required error={errorFor("payment_term")}>
+              <Input
                 value={form.payment_term}
                 onChange={(e) => set("payment_term", e.target.value)}
                 onBlur={() => touch("payment_term")}
                 placeholder="e.g. LC at sight, TT 30 days"
               />
-              <FieldError message={errorFor("payment_term")} />
             </Field>
             <Field label="Shipment mode" required>
-              <select
-                className={selectCls}
+              <Select
                 value={form.shipment_mode}
                 onChange={(e) => set("shipment_mode", e.target.value as ShipmentMode)}
               >
                 <option value="sea">Sea</option>
                 <option value="air">Air</option>
                 <option value="courier">Courier</option>
-              </select>
+              </Select>
             </Field>
             {form.shipment_mode === "sea" && (
               <Field label="Container type">
-                <input
-                  className={inputCls}
+                <Input
                   value={form.container_type ?? ""}
                   onChange={(e) => set("container_type", e.target.value || null)}
                   placeholder="e.g. 20' FCL, LCL"
@@ -329,34 +297,30 @@ export function NewShipmentPage() {
               </Field>
             )}
             <Field label="Shipment stage" required>
-              <select
-                className={selectCls}
+              <Select
                 value={form.shipment_stage}
                 onChange={(e) => set("shipment_stage", e.target.value as ShipmentStage)}
               >
                 <option value="pre_shipment">Pre-shipment</option>
                 <option value="post_shipment">Post-shipment</option>
-              </select>
+              </Select>
             </Field>
             <Field label="Port of loading">
-              <input
-                className={inputCls}
+              <Input
                 value={form.port_of_loading ?? ""}
                 onChange={(e) => set("port_of_loading", e.target.value || null)}
                 placeholder="e.g. Nhava Sheva"
               />
             </Field>
             <Field label="Shipping bill no.">
-              <input
-                className={inputCls}
+              <Input
                 value={form.shipping_bill_no ?? ""}
                 onChange={(e) => set("shipping_bill_no", e.target.value || null)}
                 placeholder="Optional"
               />
             </Field>
             <Field label="Shipment date">
-              <input
-                className={inputCls}
+              <Input
                 type="date"
                 value={form.shipment_date ?? ""}
                 onChange={(e) => set("shipment_date", e.target.value || null)}
@@ -366,20 +330,16 @@ export function NewShipmentPage() {
         </Card>
 
         {mutation.isError && (
-          <div
-            className="mb-4 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm text-rose-300"
-            role="alert"
-          >
-            <span aria-hidden="true">!</span>
-            {mutation.error instanceof Error ? mutation.error.message : "Something went wrong."}
-          </div>
+          <Alert tone="danger" title="Could not create shipment" className="mb-4">
+            {userMessageForError(mutation.error)}
+          </Alert>
         )}
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate("/shipments")}>
+          <Link to="/shipments" className={buttonClasses("secondary", "md")}>
             Cancel
-          </Button>
-          <Button type="submit" disabled={mutation.isPending}>
+          </Link>
+          <Button type="submit" loading={mutation.isPending}>
             {mutation.isPending ? "Creating..." : "Create and get checklist"}
           </Button>
         </div>

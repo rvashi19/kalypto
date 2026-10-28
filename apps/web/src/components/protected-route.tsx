@@ -1,9 +1,32 @@
-import { useEffect, type PropsWithChildren } from "react";
+import { useEffect, type PropsWithChildren, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useLocation } from "react-router-dom";
+import { Alert, Button, Card, Spinner } from "@repo/ui";
 
 import { api, isUnauthorizedError, userMessageForError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+
+function CenteredScreen({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-6">
+      <Card className="w-full max-w-md space-y-3 p-6">{children}</Card>
+    </div>
+  );
+}
+
+function CheckingSession() {
+  return (
+    <CenteredScreen>
+      <div className="flex items-center gap-3 text-brand">
+        <Spinner label="Checking your session" />
+        <h1 className="text-base font-semibold text-ink">Checking your session</h1>
+      </div>
+      <p className="text-sm text-ink-2">
+        We are confirming your access before opening tenant-scoped shipment and compliance data.
+      </p>
+    </CenteredScreen>
+  );
+}
 
 export function ProtectedRoute({ children }: PropsWithChildren) {
   const { loading, token, setSession } = useAuth();
@@ -26,19 +49,7 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   }, [sessionExpired, setSession]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/30">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">
-            Secure workspace
-          </p>
-          <h1 className="mt-3 text-xl font-semibold">Checking your session</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            We are confirming your access before opening tenant-scoped shipment and compliance data.
-          </p>
-        </div>
-      </div>
-    );
+    return <CheckingSession />;
   }
 
   if (!token) {
@@ -56,34 +67,32 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   }
 
   if (sessionQuery.isPending) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/30">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">
-            Secure workspace
-          </p>
-          <h1 className="mt-3 text-xl font-semibold">Checking your session</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            We are confirming your access before opening tenant-scoped shipment and compliance data.
-          </p>
-        </div>
-      </div>
-    );
+    return <CheckingSession />;
   }
 
   if (sessionQuery.isError) {
+    const signOut = () => {
+      // Best effort: clear the server cookie, then drop the local session regardless.
+      void api
+        .logout(token)
+        .catch(() => undefined)
+        .finally(() => setSession(null));
+    };
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
-        <div className="w-full max-w-md rounded-2xl border border-amber-300/20 bg-amber-300/10 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
-            Connection check
-          </p>
-          <h1 className="mt-3 text-xl font-semibold">We could not verify your session</h1>
-          <p className="mt-2 text-sm leading-6 text-amber-100/80">
-            {userMessageForError(sessionQuery.error)}
-          </p>
+      <CenteredScreen>
+        <h1 className="text-base font-semibold text-ink">We could not verify your session</h1>
+        <Alert tone="warning" title="Connection check">
+          {userMessageForError(sessionQuery.error)}
+        </Alert>
+        <div className="flex gap-2">
+          <Button loading={sessionQuery.isFetching} onClick={() => void sessionQuery.refetch()}>
+            Retry
+          </Button>
+          <Button variant="secondary" onClick={signOut}>
+            Sign out
+          </Button>
         </div>
-      </div>
+      </CenteredScreen>
     );
   }
 

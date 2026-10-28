@@ -8,7 +8,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ── Sub-object schemas ────────────────────────────────────────────────────────
 
 class ExporterData(BaseModel):

@@ -77,6 +77,66 @@ Implemented checks include:
 
 Issues are stored with severity, status, evidence, and related document ids. Users can mark issues as resolved or ignored.
 
+## Verification Score
+
+After verification the verifier computes a **Document Verification Score** (0–100) plus four
+category scores. All weights live in one place: `app/services/document_verifier_scoring.py`
+(`SCORING_WEIGHTS`).
+
+Score bands:
+
+- 90–100: Strong consistency — manual review still recommended
+- 75–89: Mostly consistent — review flagged issues
+- 50–74: Needs correction before filing/claiming
+- 0–49: High risk — do not file/claim before review
+
+Category scores:
+
+1. **Document Completeness** — reduced when expected/requested documents are missing
+   (critical −25, high −15, medium −7, low −2 per missing document).
+2. **Field Consistency** — reduced per issue by severity (critical −25, high −15,
+   medium −7, low −2, info −0).
+3. **Extraction Confidence** — reduced when extracted fields fall below 60% confidence
+   (critical fields −10, other fields −5).
+4. **Claim/Filing Risk** — combines issue and missing-document penalties.
+
+The overall score subtracts all penalties from 100 and is clamped to 0–100. Readiness
+statuses: `ready_for_manual_review`, `needs_minor_review`, `needs_corrections`,
+`high_risk_do_not_file_without_review`, and `waiting_for_required_documents` (set whenever
+a critical expected document is missing). The report stores a `score_explanation` and a
+per-penalty breakdown so users can see exactly why the score was reduced.
+
+### Resolved vs ignored issues
+
+- **Resolved** issues carry no penalty (the underlying problem was fixed).
+- **Ignored** issues remain visible and carry **half** penalty — they are treated as
+  accepted risk, not as fixed.
+- Reviewer decisions (resolved/ignored) are carried over across re-verifications for
+  issues that reappear with the same signature.
+
+## Requested / Missing Documents
+
+Verification builds a requested-document list from two sources:
+
+1. A core expected pack (Commercial Invoice, Shipping Bill, Packing List, BL/AWB,
+   Certificate of Origin, LC/PO) with priorities and reasons.
+2. CCR source-backed requirements (e.g. Phytosanitary Certificate) when approved CCR data
+   exists for the destination.
+
+Each entry records `document_type`, `reason`, `priority`, `related_fields`, `required_for`
+(filing / claim / consistency / CCR / optional_review), and `status` (missing / uploaded).
+Equivalents are honored (an Air Waybill satisfies the BL slot; an Invoice-cum-Packing List
+satisfies both invoice and packing-list slots). The list is stored in the report
+`summary_json` — no extra table.
+
+## Re-verification
+
+Users can upload more documents at any time, re-run extraction, and re-run verification.
+Each verification regenerates the latest issue set and report, recalculates the score, and
+updates requested-document statuses (missing → uploaded). Resolved/ignored decisions are
+carried over by issue signature. Only the latest report is kept; historical
+verification versions are not retained (known limitation).
+
 ## Report
 
 The verifier stores a report summary with issue counts and can generate a PDF report using the existing ReportLab stack.
@@ -115,6 +175,20 @@ GROQ_API_KEY=
 
 Uploaded files use KALYPTO's existing storage abstraction: local `UPLOAD_DIR` in development,
 or the configured R2/S3-compatible backend in production.
+
+## Deployment
+
+The verifier tables ship in Alembic migration `0020_document_verifier`. Production databases
+must be migrated before (or as part of) deploying this feature:
+
+```bash
+cd apps/api
+alembic upgrade head
+```
+
+On Render this happens automatically — `scripts/start-render.sh` runs `alembic upgrade head`
+on startup. For any manually managed environment, run the command above against the
+production `DATABASE_URL` before serving traffic.
 
 ## Limitations
 

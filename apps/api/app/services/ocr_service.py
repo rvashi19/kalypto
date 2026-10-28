@@ -88,7 +88,7 @@ def _extract_text_from_image(file_path: str) -> str:
     client = Groq(api_key=settings.groq_api_key)
     try:
         completion = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="qwen/qwen3.8-27b",  # llama-3.2 vision models were retired by Groq
             messages=[
                 {
                     "role": "user",

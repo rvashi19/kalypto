@@ -105,7 +105,7 @@ def _logo_image(logo_bytes: bytes) -> Image | None:
         return None
 
 
-def _title_row(title_text: str, subtitle_text: str | None, logo_bytes: bytes | None, s: dict) -> list:
+def _title_row(title_text: str, subtitle_text: str | None, logo_bytes: bytes | None, s: dict[str, Any]) -> list[Any]:
     """Return a story list: logo (if any) left-aligned beside the document title."""
     if not logo_bytes:
         return [Paragraph(title_text, s["title"]), Paragraph(subtitle_text or "", s["subtitle"])]
@@ -129,9 +129,9 @@ def _title_row(title_text: str, subtitle_text: str | None, logo_bytes: bytes | N
     return [tbl]
 
 
-def _header_table(exporter: dict, buyer: dict, shipment: dict, s: dict) -> list:
+def _header_table(exporter: dict[str, Any], buyer: dict[str, Any], shipment: dict[str, Any], s: dict[str, Any]) -> list[Any]:
     """Two-column header: exporter left, buyer right."""
-    def _block(label: str, lines: list[str]) -> list:
+    def _block(label: str, lines: list[str]) -> list[Any]:
         out = [Paragraph(label, s["label"])]
         for line in lines:
             if line:
@@ -157,8 +157,8 @@ def _header_table(exporter: dict, buyer: dict, shipment: dict, s: dict) -> list:
     if byr.get("consignee_name") and byr.get("consignee_name") != byr.get("buyer_name"):
         byr_lines += ["", "Consignee:", byr.get("consignee_name", ""), byr.get("consignee_address", "")]
 
-    exp_cell = _block("EXPORTER / SHIPPER", [l for l in exp_lines if l])
-    byr_cell = _block("BUYER / CONSIGNEE", [l for l in byr_lines if l])
+    exp_cell = _block("EXPORTER / SHIPPER", [line for line in exp_lines if line])
+    byr_cell = _block("BUYER / CONSIGNEE", [line for line in byr_lines if line])
     tbl = Table([[exp_cell, byr_cell]], colWidths=[87 * mm, 87 * mm])
     tbl.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -172,7 +172,7 @@ def _header_table(exporter: dict, buyer: dict, shipment: dict, s: dict) -> list:
     return [tbl]
 
 
-def _ref_table(pairs: list[tuple[str, str]], s: dict) -> list:
+def _ref_table(pairs: list[tuple[str, str]], s: dict[str, Any]) -> list[Any]:
     """Key-value reference row table."""
     cells = [[Paragraph(k, s["label"]), Paragraph(v or "—", s["bold"])] for k, v in pairs if k]
     if not cells:
@@ -189,9 +189,8 @@ def _ref_table(pairs: list[tuple[str, str]], s: dict) -> list:
     return [tbl]
 
 
-def _item_table(items: list[dict], include_packing: bool, s: dict) -> list:
+def _item_table(items: list[dict[str, Any]], include_packing: bool, s: dict[str, Any]) -> tuple[list[Any], dict[str, float]]:
     """Line item table for invoice/packing list."""
-    currency = ""  # set from outside if available
 
     base_headers = ["#", "Description", "HSN", "Qty", "Unit", "Unit Price", "Total Value"]
     pack_headers = ["Pkgs", "Pkg Type", "Net Wt (kg)", "Gross Wt (kg)"]
@@ -274,7 +273,7 @@ def _item_table(items: list[dict], include_packing: bool, s: dict) -> list:
     return [tbl], totals
 
 
-def _signature_block(declarations: dict, s: dict) -> list:
+def _signature_block(declarations: dict[str, Any], s: dict[str, Any]) -> list[Any]:
     name = declarations.get("authorized_signatory_name") or ""
     designation = declarations.get("authorized_signatory_designation") or ""
     place = declarations.get("place_of_issue") or ""
@@ -305,7 +304,7 @@ def generate_proforma_invoice(data: dict[str, Any], logo_bytes: bytes | None = N
     buf = io.BytesIO()
     doc = _doc(buf, "PROFORMA INVOICE")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row("PROFORMA INVOICE", "Subject to final commercial invoice on shipment.", logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
@@ -360,7 +359,7 @@ def generate_commercial_invoice(data: dict[str, Any], logo_bytes: bytes | None =
     buf = io.BytesIO()
     doc = _doc(buf, "COMMERCIAL INVOICE")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row("COMMERCIAL INVOICE", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
@@ -405,8 +404,8 @@ def generate_commercial_invoice(data: dict[str, Any], logo_bytes: bytes | None =
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph("Declaration", s["h2"]))
     decl_text = declarations.get("declaration_of_origin") or (
-        f"We hereby certify that the goods described in this invoice are of Indian origin "
-        f"and that this invoice is true and correct."
+        "We hereby certify that the goods described in this invoice are of Indian origin "
+        "and that this invoice is true and correct."
     )
     story.append(Paragraph(decl_text, s["normal"]))
 
@@ -429,7 +428,7 @@ def generate_packing_list(data: dict[str, Any], logo_bytes: bytes | None = None)
     buf = io.BytesIO()
     doc = _doc(buf, "PACKING LIST")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row("PACKING LIST", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
@@ -481,7 +480,7 @@ def generate_invoice_cum_packing_list(data: dict[str, Any], logo_bytes: bytes | 
     buf = io.BytesIO()
     doc = _doc(buf, "COMMERCIAL INVOICE-CUM-PACKING LIST")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row("COMMERCIAL INVOICE-CUM-PACKING LIST", None, logo_bytes, s)
     story.append(Spacer(1, 3 * mm))
@@ -537,7 +536,7 @@ def generate_shipping_instruction(data: dict[str, Any], logo_bytes: bytes | None
     buf = io.BytesIO()
     doc = _doc(buf, "SHIPPING INSTRUCTION DRAFT")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row(
         "SHIPPING INSTRUCTION — DRAFT",
@@ -614,7 +613,7 @@ def generate_coo_application_data_sheet(data: dict[str, Any], logo_bytes: bytes 
     buf = io.BytesIO()
     doc = _doc(buf, "CERTIFICATE OF ORIGIN — APPLICATION DATA SHEET")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     story += _title_row(
         "CERTIFICATE OF ORIGIN — APPLICATION DATA SHEET",
@@ -686,7 +685,7 @@ def generate_export_document_checklist(data: dict[str, Any], logo_bytes: bytes |
     buf = io.BytesIO()
     doc = _doc(buf, "EXPORT DOCUMENT CHECKLIST")
     s = _styles()
-    story: list = []
+    story: list[Any] = []
 
     mode = (shipment.get("mode_of_transport") or "sea").lower()
     dest = shipment.get("country_of_final_destination") or "destination country"
@@ -699,7 +698,7 @@ def generate_export_document_checklist(data: dict[str, Any], logo_bytes: bytes |
     )
     story.append(Spacer(1, 4 * mm))
 
-    def _section(title: str, items_list: list[tuple[str, str]]) -> list:
+    def _section(title: str, items_list: list[tuple[str, str]]) -> list[Any]:
         out = [Paragraph(title, s["checklist_head"])]
         for label, note in items_list:
             text = f"☐  <b>{label}</b>"

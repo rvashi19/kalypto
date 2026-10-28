@@ -237,12 +237,11 @@ class TestGenerator:
 
 @pytest.fixture()
 def client(session):
+    import uuid
     from unittest.mock import patch
 
     from app.api.deps import CurrentUserContext
     from app.models import Membership, MembershipRole, Organization, User
-
-    import uuid
 
     org = Organization(id=uuid.uuid4(), name="Test Org", slug="test-org")
     user = User(id=uuid.uuid4(), email="test@example.com", password_hash="x", is_active=True)
@@ -257,10 +256,10 @@ def client(session):
         token=None,  # type: ignore[arg-type]
     )
 
+    import tempfile
+
     from app.api.deps import get_current_user_context
     from app.db.session import get_db_session
-
-    import tempfile
     from app.services import storage as storage_mod
 
     tmpdir = tempfile.mkdtemp()

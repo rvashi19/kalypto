@@ -1,7 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@repo/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@repo/ui";
 
 import { AuthShell } from "../../components/layout/auth-shell";
 import { api, userMessageForError } from "../../lib/api";
@@ -115,13 +126,17 @@ export function LoginPage() {
 
   const errorMessage =
     clientError ??
-    (mutation.isError ? userMessageForError(mutation.error, { preserveUnauthorizedMessage: true }) : null) ??
+    (mutation.isError
+      ? userMessageForError(mutation.error, { preserveUnauthorizedMessage: true })
+      : null) ??
     (googleMutation.isError
       ? userMessageForError(googleMutation.error, { preserveUnauthorizedMessage: true })
       : null);
   const sessionMessage =
     successMessage ??
-    (reason === "session-expired" ? "Your session expired for security. Please sign in again." : null);
+    (reason === "session-expired"
+      ? "Your session expired for security. Please sign in again."
+      : null);
   const showVerifyLink = errorMessage?.toLowerCase().includes("not verified");
 
   return (
@@ -174,42 +189,55 @@ export function LoginPage() {
             </Button>
 
             {sessionMessage ? (
-              <p
-                className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100"
-                role="status"
-              >
+              <Alert tone="info" title="Heads up">
                 {sessionMessage}
-              </p>
+              </Alert>
             ) : null}
 
-            {errorMessage ? (
-              <p
-                className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
-                role="alert"
-              >
-                {errorMessage}
-                {showVerifyLink ? (
-                  <>
-                    {" "}
-                    <Link className="font-medium text-cyan-200 hover:text-cyan-100" to="/verify-email">
-                      Verify your email
-                    </Link>
-                  </>
-                ) : null}
-              </p>
-            ) : null}
+            <AnimatePresence initial={false}>
+              {errorMessage ? (
+                <motion.div
+                  key={errorMessage}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <Alert tone="danger" title="Sign-in failed">
+                    {errorMessage}
+                    {showVerifyLink ? (
+                      <>
+                        {" "}
+                        <Link
+                          className="font-medium text-brand underline hover:text-brand-hover"
+                          to="/verify-email"
+                        >
+                          Verify your email
+                        </Link>
+                      </>
+                    ) : null}
+                  </Alert>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Signing in..." : "Sign in"}
             </Button>
-            <p className="text-center text-sm text-slate-500">
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/forgot-password">
+            <p className="text-center text-sm text-ink-2">
+              <Link
+                className="font-medium text-brand underline hover:text-brand-hover"
+                to="/forgot-password"
+              >
                 Forgot password?
               </Link>
             </p>
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-ink-2">
               New to KALYPTO?{" "}
-              <Link className="font-medium text-cyan-300 hover:text-cyan-200" to="/register">
+              <Link
+                className="font-medium text-brand underline hover:text-brand-hover"
+                to="/register"
+              >
                 Create an account
               </Link>
             </p>

@@ -163,11 +163,7 @@ export interface ComplianceRequirementCard {
 export interface ComplianceCheckResponseV1 {
   session_id: string;
   status:
-    | "answered"
-    | "needs_more_info"
-    | "no_verified_source"
-    | "retrieval_queued"
-    | "pending_review";
+    "answered" | "needs_more_info" | "no_verified_source" | "retrieval_queued" | "pending_review";
   answer_summary: string;
   requirements: Record<string, ComplianceRequirementCard[]>;
   missing_questions: string[];
@@ -596,6 +592,27 @@ export interface DocumentVerificationRunResponse {
   fields: DocumentExtractedFieldResponse[];
   issues: DocumentVerificationIssueResponse[];
   report: DocumentVerificationReportResponse | null;
+  overall_score: number | null;
+  score_label: string | null;
+  readiness_status: string | null;
+  readiness_label: string | null;
+  score_breakdown: Record<string, number> | null;
+  penalty_breakdown: Array<{ category: string; points: number; reason: string }> | null;
+  score_explanation: string | null;
+  recommended_next_actions: string[] | null;
+  requested_documents: RequestedVerifierDocument[] | null;
+  issue_counts: Record<string, number> | null;
+  last_verified_at: string | null;
+}
+
+export interface RequestedVerifierDocument {
+  document_type: string;
+  label: string;
+  reason: string;
+  priority: "critical" | "high" | "medium" | "low";
+  related_fields: string[];
+  required_for: string;
+  status: "missing" | "uploaded" | "waived";
 }
 
 export interface DocumentUploadResponse {
@@ -1098,7 +1115,13 @@ export interface ExportQuoteCalcResponse {
   invoice_value: number;
   exporter_realization_breakdown: Record<string, number>;
   gross_exporter_realization: number;
-  incentive_breakdown: Array<{ scheme: string; rate_percent: number; source: string; amount_inr: number; cap_applied: boolean }>;
+  incentive_breakdown: Array<{
+    scheme: string;
+    rate_percent: number;
+    source: string;
+    amount_inr: number;
+    cap_applied: boolean;
+  }>;
   incentive_amount: number;
   net_exporter_realization: number;
   net_realization_per_unit: number;

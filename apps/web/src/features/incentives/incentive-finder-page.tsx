@@ -1,5 +1,17 @@
 import type { IncentiveDetailResponse, IncentiveRateItem } from "@repo/shared";
-import { Button } from "@repo/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Skeleton,
+} from "@repo/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -7,6 +19,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "../../components/layout/dashboard-shell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useLogout } from "../../lib/use-logout";
 
 const SCHEME_LABEL: Record<string, string> = {
   rodtep: "RoDTEP",
@@ -15,9 +28,6 @@ const SCHEME_LABEL: Record<string, string> = {
 };
 const SCHEME_ORDER = ["rodtep", "drawback", "rosctl"];
 
-const inputClass =
-  "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20";
-
 const DISCLAIMER =
   "Incentive/rate information is source-backed but should be verified before filing export documents or claiming benefits.";
 
@@ -25,18 +35,15 @@ function schemeName(scheme: string) {
   return SCHEME_LABEL[scheme.toLowerCase()] ?? scheme.toUpperCase();
 }
 
-function isExpired(item: IncentiveRateItem) {
-  return item.effective_to != null && new Date(item.effective_to) <= new Date();
-}
-
 function formatRate(item: IncentiveRateItem) {
   if (item.rate_type === "percentage") return `${item.rate_value}%`;
-  if (item.rate_type === "fixed") return `₹${item.rate_value}${item.unit_of_quantity ? ` / ${item.unit_of_quantity}` : ""}`;
+  if (item.rate_type === "fixed")
+    return `₹${item.rate_value}${item.unit_of_quantity ? ` / ${item.unit_of_quantity}` : ""}`;
   return `${item.rate_value}`;
 }
 
 export function IncentiveFinderPage() {
-  const { session, token, setSession } = useAuth();
+  const { session, token } = useAuth();
   const [searchParams] = useSearchParams();
   const isAdmin = session?.membership.role === "owner";
 
@@ -44,10 +51,15 @@ export function IncentiveFinderPage() {
   const [scheme, setScheme] = useState("all");
   const [includeUnapproved, setIncludeUnapproved] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   const searchMutation = useMutation({
     mutationFn: (code: string) =>
-      api.incentiveSearch(code, token!, { scheme, includeUnapproved: includeUnapproved && isAdmin }),
+      api.incentiveSearch(code, token!, {
+        scheme,
+        includeUnapproved: includeUnapproved && isAdmin,
+      }),
     onSuccess: () => setDetailId(null),
   });
 
@@ -67,12 +79,7 @@ export function IncentiveFinderPage() {
     enabled: Boolean(detailId && token),
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (token) await api.logout(token);
-    },
-    onSettled: () => setSession(null),
-  });
+  const logoutMutation = useLogout();
 
   const data = searchMutation.data;
   const grouped = useMemo(() => {
@@ -82,7 +89,7 @@ export function IncentiveFinderPage() {
       map.set(key, [...(map.get(key) ?? []), item]);
     }
     return [...map.entries()].sort(
-      (a, b) => (SCHEME_ORDER.indexOf(a[0]) + 99) - (SCHEME_ORDER.indexOf(b[0]) + 99)
+      (a, b) => SCHEME_ORDER.indexOf(a[0]) + 99 - (SCHEME_ORDER.indexOf(b[0]) + 99)
     );
   }, [data]);
 
@@ -92,97 +99,106 @@ export function IncentiveFinderPage() {
       role={session?.membership.role ?? "owner"}
       onLogout={() => logoutMutation.mutate()}
     >
-      <section className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-950 px-6 py-8 text-center md:py-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-300/80">
-          — Export Incentives · RoDTEP · Drawback · RoSCTL —
-        </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold tracking-tight text-white md:text-5xl">
-          Incentive Finder
-        </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-          Look up RoDTEP, Drawback, and RoSCTL rates for any Indian export HSN code.{" "}
-          <Link to="/hsn" className="text-amber-300 hover:text-amber-200">
-            Find your HSN code first
-          </Link>{" "}
-          for best accuracy.
-        </p>
+      <PageHeader
+        title="Incentive finder"
+        breadcrumbs={[{ label: "Lookup" }, { label: "Incentive finder" }]}
+        meta={
+          <span>
+            Look up RoDTEP, Drawback and RoSCTL rates for any Indian export HSN code.{" "}
+            <Link to="/hsn" className="text-brand hover:underline">
+              Find your HSN code first
+            </Link>{" "}
+            for best accuracy.
+          </span>
+        }
+      />
 
-        <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
-          <input
-            className={`${inputClass} flex-1`}
-            placeholder="Enter or select HSN code (e.g. 12119030)"
-            value={hsn}
-            onChange={(e) => setHsn(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && hsn.trim()) searchMutation.mutate(hsn.trim());
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <form
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (hsn.trim()) searchMutation.mutate(hsn.trim());
             }}
-          />
-          <select
-            value={scheme}
-            onChange={(e) => setScheme(e.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-400/50"
           >
-            <option value="all">All schemes</option>
-            <option value="rodtep">RoDTEP</option>
-            <option value="drawback">Drawback</option>
-            <option value="rosctl">RoSCTL</option>
-          </select>
-          <Button
-            className="shrink-0 !bg-amber-400 !text-slate-950 hover:!bg-amber-300"
-            disabled={searchMutation.isPending || !hsn.trim()}
-            onClick={() => searchMutation.mutate(hsn.trim())}
-          >
-            {searchMutation.isPending ? "Searching…" : "Find incentives"}
-          </Button>
-        </div>
+            <Field label="HSN code" className="flex-1">
+              <Input
+                placeholder="Enter or select HSN code (e.g. 12119030)"
+                value={hsn}
+                onChange={(e) => setHsn(e.target.value)}
+              />
+            </Field>
+            <Field label="Scheme">
+              <Select value={scheme} onChange={(e) => setScheme(e.target.value)}>
+                <option value="all">All schemes</option>
+                <option value="rodtep">RoDTEP</option>
+                <option value="drawback">Drawback</option>
+                <option value="rosctl">RoSCTL</option>
+              </Select>
+            </Field>
+            <Button type="submit" loading={searchMutation.isPending} disabled={!hsn.trim()}>
+              Find incentives
+            </Button>
+          </form>
 
-        {hsn.trim() ? (
-          <div className="mt-3">
+          {hsn.trim() ? (
             <Link
               to={`/calculators/export-quote?hsn_code=${encodeURIComponent(hsn.trim())}`}
-              className="text-xs font-medium text-amber-300 hover:text-amber-200"
+              className="inline-block text-sm font-medium text-brand hover:underline"
             >
               Calculate landed cost / export quote for this HSN →
             </Link>
-          </div>
-        ) : null}
+          ) : null}
 
-        {isAdmin ? (
-          <label className="mt-3 inline-flex items-center gap-2 text-xs text-slate-400">
-            <input
-              type="checkbox"
-              checked={includeUnapproved}
-              onChange={(e) => {
-                setIncludeUnapproved(e.target.checked);
-                if (hsn.trim()) searchMutation.mutate(hsn.trim());
-              }}
-            />
-            Admin: include pending / expired records
-          </label>
-        ) : null}
+          {isAdmin ? (
+            <div className="flex items-center gap-2 text-sm text-ink">
+              <input
+                id="include-unapproved"
+                type="checkbox"
+                className="h-4 w-4 accent-brand"
+                checked={includeUnapproved}
+                onChange={(e) => {
+                  setIncludeUnapproved(e.target.checked);
+                  if (hsn.trim()) searchMutation.mutate(hsn.trim());
+                }}
+              />
+              <label htmlFor="include-unapproved">Admin: include pending / expired records</label>
+            </div>
+          ) : null}
 
-        {searchMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm text-rose-300">{searchMutation.error.message}</p>
-        ) : null}
-      </section>
+          {searchMutation.error instanceof Error ? (
+            <Alert tone="danger" title="Could not search incentives">
+              {searchMutation.error.message}
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {!data && !searchMutation.isPending ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-8 text-center text-sm text-slate-500">
-          Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder first.
-        </div>
+        <EmptyState
+          className="mt-6"
+          title="No search yet"
+          description="Enter an HSN code above. For best accuracy, classify or verify the HSN in HSN Finder first."
+        />
       ) : null}
 
       {data ? (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
           <section className="space-y-5">
             {data.count === 0 ? (
-              <EmptyState data={data} />
+              <Alert tone="warning" title="No incentive rates found">
+                {data.message ??
+                  (data.hsn_exists
+                    ? "HSN exists, but no approved incentive/rate data is available for this code."
+                    : "Classify or verify the HSN in HSN Finder before relying on incentive rates.")}
+              </Alert>
             ) : (
               grouped.map(([key, items]) => (
                 <div key={key}>
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-amber-300">
+                  <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-ink">
                     {schemeName(key)}
-                    <span className="text-[10px] text-slate-500">{items.length}</span>
+                    <Badge>{items.length}</Badge>
                   </h2>
                   <div className="space-y-2">
                     {items.map((item) => (
@@ -197,47 +213,54 @@ export function IncentiveFinderPage() {
                 </div>
               ))
             )}
-            <p className="text-[11px] leading-5 text-slate-500">{data.disclaimer}</p>
+            <p className="text-xs text-ink-2">{data.disclaimer}</p>
           </section>
 
-          <aside className="lg:sticky lg:top-4 lg:self-start">
+          <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start" aria-live="polite">
+            {approveError ? (
+              <Alert tone="danger" title="Could not approve this rate">
+                {approveError}
+              </Alert>
+            ) : null}
+            {detailId && detailQuery.isPending ? <Skeleton className="h-48 w-full" /> : null}
+            {detailId && detailQuery.error instanceof Error ? (
+              <Alert tone="danger" title="Could not load rate details">
+                {detailQuery.error.message}
+              </Alert>
+            ) : null}
             {detailId && detailQuery.data ? (
               <DetailPanel
                 detail={detailQuery.data}
                 isAdmin={Boolean(isAdmin)}
+                approving={approving}
                 onApprove={() => approveAndRefresh(detailQuery.data.id)}
               />
-            ) : (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-                Select a rate to view full details, validity period, and conditions.
-              </div>
-            )}
+            ) : null}
+            {!detailId ? (
+              <EmptyState
+                title="No rate selected"
+                description="Select a rate to view full details, validity period, and conditions."
+              />
+            ) : null}
           </aside>
         </div>
       ) : null}
-
     </DashboardShell>
   );
 
   function approveAndRefresh(id: string) {
+    setApproving(true);
+    setApproveError(null);
     api
       .approveIncentive(id, token!)
       .then(() => {
         if (hsn.trim()) searchMutation.mutate(hsn.trim());
       })
-      .catch(() => undefined);
+      .catch((err: unknown) =>
+        setApproveError(err instanceof Error ? err.message : "Approval failed. Try again.")
+      )
+      .finally(() => setApproving(false));
   }
-}
-
-function EmptyState({ data }: { data: { hsn_exists: boolean; message: string | null } }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-amber-300/25 bg-amber-300/5 p-6 text-sm leading-6 text-amber-100">
-      {data.message ??
-        (data.hsn_exists
-          ? "HSN exists, but no approved incentive/rate data is available for this code."
-          : "Classify or verify the HSN in HSN Finder before relying on incentive rates.")}
-    </div>
-  );
 }
 
 function RateCard({
@@ -251,103 +274,103 @@ function RateCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onSelect}
-      className={`block w-full rounded-xl border p-4 text-left transition ${
+      aria-pressed={selected}
+      className={`block w-full rounded-panel border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
         selected
-          ? "border-amber-400/50 bg-amber-400/5 ring-1 ring-amber-400/30"
-          : "border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-900"
+          ? "border-brand bg-brand-soft ring-1 ring-brand"
+          : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-sm font-semibold text-slate-100">{item.hsn_code}</span>
+          <span className="font-mono text-sm font-semibold text-ink">{item.hsn_code}</span>
           {item.match_level === "prefix" ? (
-            <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
-              applies at {item.normalized_hsn_code}
-            </span>
+            <Badge>applies at {item.normalized_hsn_code}</Badge>
           ) : null}
         </span>
-        <span className="font-mono text-lg font-bold text-amber-300">{formatRate(item)}</span>
+        <span className="font-mono text-lg font-bold text-brand">{formatRate(item)}</span>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-400 sm:grid-cols-4">
-        <Field label="Cap" value={item.cap_value != null ? `${item.cap_value}${item.cap_unit ? ` ${item.cap_unit}` : ""}` : "—"} />
-        <Field label="Unit" value={item.unit_of_quantity ?? "—"} />
-        <Field label="Valid from" value={new Date(item.effective_from).toLocaleDateString()} />
-        <Field label="Valid to" value={item.effective_to ? new Date(item.effective_to).toLocaleDateString() : "current"} />
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-ink-2 sm:grid-cols-4">
+        <KeyValue
+          label="Cap"
+          value={
+            item.cap_value != null
+              ? `${item.cap_value}${item.cap_unit ? ` ${item.cap_unit}` : ""}`
+              : "—"
+          }
+        />
+        <KeyValue label="Unit" value={item.unit_of_quantity ?? "—"} />
+        <KeyValue label="Valid from" value={new Date(item.effective_from).toLocaleDateString()} />
+        <KeyValue
+          label="Valid to"
+          value={item.effective_to ? new Date(item.effective_to).toLocaleDateString() : "current"}
+        />
       </div>
       {item.condition_text ? (
-        <p className="mt-2 text-xs leading-5 text-slate-500">{item.condition_text}</p>
+        <p className="mt-2 text-xs text-ink-2">{item.condition_text}</p>
       ) : null}
     </button>
-  );
-}
-
-function ApprovalBadge({ item }: { item: IncentiveRateItem }) {
-  let label = item.approval_status;
-  let cls = "border-slate-600/50 bg-slate-700/40 text-slate-300";
-  if (isExpired(item)) {
-    label = "expired";
-    cls = "border-slate-600/50 bg-slate-700/40 text-slate-400";
-  } else if (item.approval_status === "approved") {
-    cls = "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
-  } else if (item.approval_status === "pending") {
-    cls = "border-amber-500/40 bg-amber-500/15 text-amber-300";
-  } else if (item.approval_status === "rejected") {
-    cls = "border-rose-500/40 bg-rose-500/15 text-rose-300";
-  }
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
-      {label}
-    </span>
   );
 }
 
 function DetailPanel({
   detail,
   isAdmin,
+  approving,
   onApprove,
 }: {
   detail: IncentiveDetailResponse;
   isAdmin: boolean;
+  approving: boolean;
   onApprove: () => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
-          {schemeName(detail.scheme)}
-        </p>
-        <p className="mt-1 font-mono text-2xl font-bold text-amber-300">{formatRate(detail)}</p>
-        <p className="mt-1 text-sm text-slate-300">
-          HSN {detail.hsn_code}
-          {detail.product_description ? ` · ${detail.product_description}` : ""}
-        </p>
-      </div>
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <div>
+          <p className="text-xs font-semibold text-brand">{schemeName(detail.scheme)}</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-brand">{formatRate(detail)}</p>
+          <p className="mt-1 text-sm text-ink">
+            HSN {detail.hsn_code}
+            {detail.product_description ? ` · ${detail.product_description}` : ""}
+          </p>
+        </div>
 
-      <Section title="Rate details">
-        <Row label="Rate type" value={detail.rate_type} />
-        <Row label="Cap" value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"} />
-        <Row label="Unit" value={detail.unit_of_quantity ?? "—"} />
-        <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
-        <Row label="Valid to" value={detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"} />
-        {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
-      </Section>
+        <Section title="Rate details">
+          <Row label="Rate type" value={detail.rate_type} />
+          <Row
+            label="Cap"
+            value={detail.cap_value != null ? `${detail.cap_value} ${detail.cap_unit ?? ""}` : "—"}
+          />
+          <Row label="Unit" value={detail.unit_of_quantity ?? "—"} />
+          <Row label="Valid from" value={new Date(detail.effective_from).toLocaleDateString()} />
+          <Row
+            label="Valid to"
+            value={
+              detail.effective_to ? new Date(detail.effective_to).toLocaleDateString() : "current"
+            }
+          />
+          {detail.condition_text ? <Row label="Conditions" value={detail.condition_text} /> : null}
+        </Section>
 
-      {isAdmin && detail.approval_status !== "approved" ? (
-        <Button className="w-full" onClick={onApprove}>
-          Approve this rate
-        </Button>
-      ) : null}
+        {isAdmin && detail.approval_status !== "approved" ? (
+          <Button className="w-full" loading={approving} onClick={onApprove}>
+            Approve this rate
+          </Button>
+        ) : null}
 
-      <p className="text-[11px] leading-5 text-slate-500">{DISCLAIMER}</p>
-    </div>
+        <p className="text-xs text-ink-2">{DISCLAIMER}</p>
+      </CardContent>
+    </Card>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+    <div className="rounded-panel border border-line bg-surface p-4">
+      <h3 className="text-xs font-semibold text-ink-2">{title}</h3>
       <div className="mt-2 space-y-1">{children}</div>
     </div>
   );
@@ -356,17 +379,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
-      <span className="text-right text-slate-200">{value}</span>
+      <span className="text-xs text-ink-2">{label}</span>
+      <span className="text-right text-ink">{value}</span>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function KeyValue({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="block text-[10px] uppercase tracking-wide text-slate-600">{label}</span>
-      <span className="text-slate-300">{value}</span>
+      <span className="block text-xs text-ink-3">{label}</span>
+      <span className="text-ink">{value}</span>
     </div>
   );
 }
