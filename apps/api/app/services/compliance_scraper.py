@@ -8,8 +8,9 @@ import re
 import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from http.client import HTTPMessage
 from io import BytesIO
-from typing import Protocol
+from typing import IO, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
@@ -27,7 +28,15 @@ class _NoFollowRedirectHandler(HTTPRedirectHandler):
     (SSRF + official-domain whitelist) before it is fetched. Returning None here makes
     urllib raise HTTPError for the 3xx instead of silently following it."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+    def redirect_request(
+        self,
+        req: Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ) -> Request | None:
         return None
 
 

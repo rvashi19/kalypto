@@ -17,12 +17,13 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Protocol
 
 
 class StorageBackend(ABC):
     @abstractmethod
-    def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None: ...
+    def put(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None: ...
 
     @abstractmethod
     def get(self, key: str) -> bytes: ...
@@ -96,7 +97,8 @@ class R2Storage(StorageBackend):
         from botocore.exceptions import ClientError  # type: ignore[import-untyped]
         try:
             resp = self._client.get_object(Bucket=self._bucket, Key=key)
-            return resp["Body"].read()
+            body: bytes = resp["Body"].read()
+            return body
         except ClientError as e:
             if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
                 raise FileNotFoundError(key) from e
@@ -106,7 +108,7 @@ class R2Storage(StorageBackend):
         self._client.delete_object(Bucket=self._bucket, Key=key)
 
     def exists(self, key: str) -> bool:
-        from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+        from botocore.exceptions import ClientError
         try:
             self._client.head_object(Bucket=self._bucket, Key=key)
             return True

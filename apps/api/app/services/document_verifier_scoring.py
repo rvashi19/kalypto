@@ -14,6 +14,7 @@ Resolved/ignored rule (documented, keep consistent with tests + docs):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -137,8 +138,8 @@ def _clamp(value: float) -> int:
 def score_label(score: int) -> str:
     for threshold, label in SCORING_WEIGHTS["bands"]:
         if score >= threshold:
-            return label
-    return SCORING_WEIGHTS["bands"][-1][1]
+            return str(label)
+    return str(SCORING_WEIGHTS["bands"][-1][1])
 
 
 def build_requested_documents(
@@ -185,7 +186,7 @@ def calculate_scores(
     *,
     issues: list[Any],
     requested_documents: list[dict[str, Any]],
-    extracted_fields: list[Any],
+    extracted_fields: Sequence[Any],
     documents_count: int,
 ) -> ScoringResult:
     """Compute overall + category scores from issues, requested docs, and field confidence.

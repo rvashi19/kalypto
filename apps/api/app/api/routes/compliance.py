@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
@@ -434,7 +435,7 @@ def _retrieval_job_response(
     )
 
 
-def _retrieval_job_status_details(session: DbSession, job: ComplianceRetrievalJob) -> dict:
+def _retrieval_job_status_details(session: DbSession, job: ComplianceRetrievalJob) -> dict[str, Any]:
     source_ids: list[UUID] = []
     for raw_id in job.source_registry_ids_json or []:
         try:
@@ -824,7 +825,7 @@ def refresh_due(
     x_admin_cron_token: str | None = Header(default=None, alias="X-Admin-Cron-Token"),
     tenant_id: UUID | None = None,
     limit: int = 25,
-) -> dict:
+) -> dict[str, Any]:
     """Re-crawl all due official sources for this org (admin / scheduler entrypoint)."""
     tenant_id = require_admin_or_cron(current_user, x_admin_cron_token, tenant_id)
     from app.services.compliance_refresh import refresh_due_sources

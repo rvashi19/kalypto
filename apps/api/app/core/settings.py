@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
-    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    groq_model: str = Field(default="openai/gpt-oss-120b", alias="GROQ_MODEL")
     xai_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("XAI_API_KEY", "OPENAI_API_KEY"),
@@ -116,7 +116,9 @@ class Settings(BaseSettings):
         alias="AUTH_REFRESH_COOKIE_NAME",
     )
     auth_cookie_domain: str | None = Field(default=None, alias="AUTH_COOKIE_DOMAIN")
-    auth_cookie_samesite: str = Field(default="lax", alias="AUTH_COOKIE_SAMESITE")
+    auth_cookie_samesite: Literal["lax", "strict", "none"] = Field(
+        default="lax", alias="AUTH_COOKIE_SAMESITE"
+    )
     rate_limit_auth_window_seconds: int = Field(default=900, alias="RATE_LIMIT_AUTH_WINDOW_SECONDS")
     rate_limit_auth_attempts_per_window: int = Field(
         default=5,
@@ -176,7 +178,7 @@ class Settings(BaseSettings):
         if self.environment.lower() == "production":
             if self.jwt_secret_key == "change-me-in-production" or len(self.jwt_secret_key) < 32:
                 raise ValueError(
-                    "Production JWT_SECRET must be a unique value of 32+ characters."
+                    "Production JWT_SECRET_KEY must be a unique value of 32+ characters."
                 )
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production FRONTEND_URL must use HTTPS.")

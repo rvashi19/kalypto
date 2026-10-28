@@ -10,6 +10,7 @@ an external scheduler (GitHub Actions) via POST /compliance/refresh-due.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -29,7 +30,7 @@ def _is_due(source: ComplianceSourceRegistry, now: datetime) -> bool:
     return last < now - timedelta(days=max(1, source.refresh_frequency_days))
 
 
-def refresh_due_sources(session: Session, *, tenant_id: UUID, limit: int = 25) -> dict:
+def refresh_due_sources(session: Session, *, tenant_id: UUID, limit: int = 25) -> dict[str, Any]:
     """Run retrieval jobs for all due (country, category) groups. Returns a summary."""
     now = datetime.now(UTC)
     sources = session.scalars(
